@@ -3,7 +3,17 @@ import { Link } from 'react-router-dom';
 import { Search, Sun, Moon, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
-export function AppHeader({ searchQuery, setSearchQuery, leftContent }: { searchQuery: string, setSearchQuery: (q: string) => void, leftContent?: React.ReactNode }) {
+export function AppHeader({
+  searchQuery,
+  setSearchQuery,
+  leftContent,
+  rightContent,
+}: {
+  searchQuery: string,
+  setSearchQuery: (q: string) => void,
+  leftContent?: React.ReactNode,
+  rightContent?: React.ReactNode,
+}) {
   const { profile, user, signOut } = useAuthStore();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -51,6 +61,7 @@ export function AppHeader({ searchQuery, setSearchQuery, leftContent }: { search
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
+          {rightContent}
           <button onClick={toggleTheme} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
             {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </button>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link2Off, Share2, FileDown, Loader2 } from 'lucide-react';
 import { 
   ReactFlow, 
   MiniMap, 
@@ -9,7 +10,6 @@ import {
   useNodesState,
   type Node,
   type Viewport,
-  type NodeDragHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { toast } from 'react-hot-toast';
@@ -26,9 +26,12 @@ import { useMapStore } from '../../store/mapStore';
 import { useMapsStore } from '../../store/mapsStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useContentStore } from '../../store/contentStore';
+import { supabase } from '../../lib/supabase';
+import { nanoid } from 'nanoid';
 import { buildFlowElements } from '../../utils/treeLayout';
 import type { MindmapNode, NodeType, NodeDirection } from '../../types';
 import { DEFAULT_BRANCH_COLORS } from '../../types';
+import { exportMindmapToPDF } from '../../utils/exportPDF';
 
 const nodeTypes = {
   root: RootNode,
@@ -56,6 +59,9 @@ export function MindmapCanvas() {
   const [paneMenuInfo, setPaneMenuInfo] = useState<{ x: number; y: number } | null>(null);
   const [previewNode, setPreviewNode] = useState<MindmapNode | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [sharePopoverOpen, setSharePopoverOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch map meta
   const mapMeta = getMapById(mapId || '');
@@ -283,7 +289,7 @@ export function MindmapCanvas() {
     return chain;
   }, [previewNode, nodes]);
 
-  const handleNodeDragStop: NodeDragHandler = useCallback(async (_event, draggedNode) => {
+  const handleNodeDragStop = useCallback(async (_event: React.MouseEvent, draggedNode: Node) => {
     const mappedNode = nodes.find((n) => n.id === draggedNode.id);
     if (!mappedNode || !mappedNode.parentId) {
       if (mappedNode?.type === 'root') {
@@ -366,11 +372,82 @@ export function MindmapCanvas() {
         if (!parentPos) return { id: node.id, position };
         return { id: node.id, position, direction: getDirectionFromPoints(parentPos, position) };
       })
-      .filter((u): u is { id: string; position: { x: number; y: number }; direction?: NodeDirection } => u !== null);
+      .filter((u) => u !== null) as Array<{ id: string; position: { x: number; y: number }; direction?: NodeDirection }>;
 
     await saveNodePositions(updates);
     toast.success('Canvas tidied');
   }, [flowNodePositionMap, getDirectionFromPoints, nodes, saveNodePositions, setFlowNodes]);
+
+  const handleShare = useCallback(async () => {
+    if (!mapId) return;
+    try {
+      let token = mapMeta?.shareToken || null;
+      if (!token) {
+        token = nanoid(21);
+        const { error } = await supabase
+          .from('mindmaps')
+          .update({ share_token: token, is_public: true })
+          .eq('id', mapId);
+        if (error) throw error;
+        await fetchMaps();
+      }
+
+      const url = `${window.location.origin}/share/${token}`;
+      await navigator.clipboard.writeText(url);
+      setShareUrl(url);
+      setSharePopoverOpen(true);
+      toast.success('Link copied to clipboard ✓');
+    } catch (error) {
+      console.error('Failed to share map:', error);
+      toast.error('Failed to create share link');
+    }
+  }, [mapId, mapMeta?.shareToken, fetchMaps]);
+
+  const handleRevokeShare = useCallback(async () => {
+    if (!mapId) return;
+    try {
+      const { error } = await supabase
+        .from('mindmaps')
+        .update({ share_token: null, is_public: false })
+        .eq('id', mapId);
+      if (error) throw error;
+      await fetchMaps();
+      setSharePopoverOpen(false);
+      setShareUrl('');
+      toast.success('Share link revoked');
+    } catch (error) {
+      console.error('Failed to revoke share:', error);
+      toast.error('Failed to revoke link');
+    }
+  }, [mapId, fetchMaps]);
+
+  const handleExportPDF = async () => {
+    if (!mapId || !mapMeta) return;
+    try {
+      setIsExporting(true);
+      const toastId = toast.loading('Fetching content for export...');
+      
+      const fetchPromises = nodes.map(node => {
+        if (!content[node.id]) {
+          return fetchNodeContent(node.id, mapId);
+        }
+        return Promise.resolve();
+      });
+      
+      await Promise.all(fetchPromises);
+      toast.loading('Generating PDF format...', { id: toastId });
+      
+      const finalContent = useContentStore.getState().content;
+      await exportMindmapToPDF(mapMeta, nodes, finalContent);
+      
+      toast.success('PDF Export downloaded!', { id: toastId });
+    } catch (err) {
+      console.error('Export Error:', err);
+      toast.error('Failed to export PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen w-full select-none">
@@ -384,6 +461,54 @@ export function MindmapCanvas() {
           >
             ← Dashboard
           </button>
+        )}
+        rightContent={(
+          <div className="flex items-center gap-2 relative">
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-teal-700 bg-transparent border border-teal-600 hover:bg-teal-50 rounded-lg transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export as PDF"
+            >
+              {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+              {isExporting ? 'Generating...' : 'Export PDF'}
+            </button>
+            <div className="relative">
+              <button
+                onClick={handleShare}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition"
+                title="Share this mindmap"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </button>
+            {sharePopoverOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-[120]">
+                <p className="text-xs font-semibold text-gray-500 mb-2">Shareable link</p>
+                <input
+                  readOnly
+                  value={shareUrl}
+                  className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700"
+                />
+                <div className="mt-3 flex justify-between items-center">
+                  <button
+                    onClick={handleRevokeShare}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"
+                  >
+                    <Link2Off className="w-4 h-4" />
+                    Revoke link
+                  </button>
+                  <button
+                    onClick={() => setSharePopoverOpen(false)}
+                    className="text-sm font-semibold text-gray-500 hover:text-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+            </div>
+          </div>
         )}
       />
       <CanvasToolbar 
