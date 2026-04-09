@@ -18,6 +18,9 @@ export function LoginPage() {
     try {
       await supabase.auth.signInWithOAuth({
         provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
       });
     } catch (error) {
       console.error('Google sign in error:', error);
