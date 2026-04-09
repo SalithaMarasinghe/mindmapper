@@ -1,0 +1,280 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'Satoshi', sans-serif;
+}
+
+/* BlockNote editor customization */
+.rich-editor-wrapper {
+  min-height: 500px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.bn-container {
+  font-family: 'Satoshi', sans-serif !important;
+}
+
+/* Match app theme surface */
+.bn-editor {
+  background: transparent !important;
+  padding: 1rem !important;
+}
+
+/* Slash menu and toolbar use app colors */
+.bn-menu-item:hover,
+.bn-suggestion-menu-item:hover {
+  background-color: #cedcd8 !important;
+}
+
+.notes-hidden .bn-editor {
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+/* -- BlockNote Image Fix -- */
+
+/* Force image blocks to be full width like code blocks */
+.bn-block-content[data-content-type="image"] {
+  width: 100% !important;
+}
+
+.bn-image-block-content-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* The actual <img> tag inside BlockNote */
+.bn-visual-media-wrapper img,
+.bn-block-content img {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  border-radius: 8px !important;
+  object-fit: cover !important;
+}
+
+/* Remove the broken icon / filename label */
+.bn-add-image-button {
+  display: none !important;
+}
+
+/* -- BlockNote Video Fix -- */
+
+.bn-block-content[data-content-type="video"],
+.bn-block-content[data-content-type="file"] {
+  width: 100% !important;
+}
+
+/* Force video element to be full width */
+.bn-block-content video {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 240px !important;
+  display: block !important;
+  border-radius: 8px !important;
+  background: #000 !important;
+}
+
+/* Hide the filename label shown above broken video */
+.bn-file-name {
+  display: none !important;
+}
+
+/* Same max-width as code blocks for consistent sizing */
+.bn-block-content[data-content-type="codeBlock"],
+.bn-block-content[data-content-type="image"],
+.bn-block-content[data-content-type="video"],
+.bn-block-content[data-content-type="file"] {
+  max-width: 100% !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Toggle tab */
+.panel-toggle-tab {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 80px;
+  background: #01696f;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 60;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+  transition: width 150ms ease;
+}
+
+.panel-toggle-tab:hover {
+  width: 28px;
+}
+
+.panel-chevron {
+  transition: transform 200ms ease;
+}
+
+.panel-chevron.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Overlay */
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.panel-overlay-open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Slide panel */
+.node-side-panel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 300px;
+  background: var(--color-surface, #ffffff);
+  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.18);
+  z-index: 50;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transform: translateX(-100%);
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+}
+
+.node-side-panel-open {
+  transform: translateX(0);
+}
+
+/* Close button inside panel */
+.panel-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted, #6b7280);
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.panel-close-btn:hover {
+  background: var(--color-surface-offset, #f3f4f6);
+}
+
+/* Full width editor */
+.node-editor-full {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 1.5rem 2.5rem;
+}
+
+/* -- Preview Modal -- force full opacity on all layers -- */
+
+.preview-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9998 !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+.preview-modal-box {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 9999 !important;
+  width: calc(100vw - 48px) !important;
+  height: calc(100vh - 48px) !important;
+  max-width: 1400px !important;
+  max-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;    /* hard hex, not a variable */
+  border: 1px solid #e0ddd8 !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .preview-modal-box {
+  background: #1c1b19 !important;
+  border-color: #393836 !important;
+}
+
+.preview-modal-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e0ddd8 !important;
+  padding: 1.25rem 1.5rem !important;
+  flex-shrink: 0 !important;
+}
+
+[data-theme="dark"] .preview-modal-header {
+  background: #1c1b19 !important;
+  border-bottom-color: #393836 !important;
+}
+
+.preview-modal-content {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  background: #ffffff !important;   /* hard hex */
+  position: relative !important;
+  isolation: isolate !important;    /* creates new stacking context */
+}
+
+[data-theme="dark"] .preview-modal-content {
+  background: #1c1b19 !important;
+}
+
+.preview-modal-footer {
+  background: #ffffff !important;
+  border-top: 1px solid #e0ddd8 !important;
+  padding: 1rem 1.5rem !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+
+[data-theme="dark"] .preview-modal-footer {
+  background: #1c1b19 !important;
+  border-top-color: #393836 !important;
+}
+
+/* Force BlockNote editor to be opaque inside the modal */
+.preview-modal-content .bn-container,
+.preview-modal-content .bn-editor,
+.preview-modal-content [class*="bn-"],
+.preview-modal-content .ProseMirror {
+  background: #ffffff !important;
+}
+
+[data-theme="dark"] .preview-modal-content .bn-container,
+[data-theme="dark"] .preview-modal-content .bn-editor,
+[data-theme="dark"] .preview-modal-content [class*="bn-"],
+[data-theme="dark"] .preview-modal-content .ProseMirror {
+  background: #1c1b19 !important;
+}
