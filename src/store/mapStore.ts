@@ -47,8 +47,8 @@ const formatNodes = (data: DbNodeRow[]): MindmapNode[] => data.map((n) => ({
   order: n.order_index ?? 0,
   color: n.color ?? '',
   bgColor: n.bg_color ?? '',
-  emoji: n.emoji,
-  position: n.position_x !== null ? { x: n.position_x, y: n.position_y } : undefined,
+  emoji: n.emoji ?? undefined,
+  position: (n.position_x !== null && n.position_y !== null) ? { x: n.position_x, y: n.position_y } : undefined,
 }));
 
 export const useMapStore = create<MapState>((set, get) => ({

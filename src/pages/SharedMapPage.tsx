@@ -112,25 +112,31 @@ export function SharedMapPage() {
         setPreviewNode(node);
         if (contentCache[node.id]) return;
         setPreviewLoading(true);
-        supabase.from('node_content').select('*').eq('node_id', node.id).maybeSingle().then(({ data }) => {
-          const parsed: NodeContent = {
-            nodeId: node.id,
-            mapId: node.mapId,
-            richContent: data?.rich_content || [],
-            definition: data?.definition || '',
-            keyPoints: data?.key_points || [],
-            mentalModel: data?.mental_model || '',
-            goodExample: data?.good_example || '',
-            badExample: data?.bad_example || '',
-            notes: data?.notes || '',
-            resources: data?.resources || [],
-            isCompleted: data?.is_completed || false,
-            completedAt: data?.completed_at || null,
-            lastEdited: data?.last_edited || null,
-            createdAt: data?.created_at || new Date().toISOString(),
-          };
-          setContentCache((prev) => ({ ...prev, [node.id]: parsed }));
-        }).finally(() => setPreviewLoading(false));
+        const fetchContent = async () => {
+          try {
+            const { data } = await supabase.from('node_content').select('*').eq('node_id', node.id).maybeSingle();
+            const parsed: NodeContent = {
+              nodeId: node.id,
+              mapId: node.mapId,
+              richContent: data?.rich_content || [],
+              definition: data?.definition || '',
+              keyPoints: data?.key_points || [],
+              mentalModel: data?.mental_model || '',
+              goodExample: data?.good_example || '',
+              badExample: data?.bad_example || '',
+              notes: data?.notes || '',
+              resources: data?.resources || [],
+              isCompleted: data?.is_completed || false,
+              completedAt: data?.completed_at || null,
+              lastEdited: data?.last_edited || null,
+              createdAt: data?.created_at || new Date().toISOString(),
+            };
+            setContentCache((prev) => ({ ...prev, [node.id]: parsed }));
+          } finally {
+            setPreviewLoading(false);
+          }
+        };
+        fetchContent();
       },
     }
   })), [flowNodes, contentCache]);

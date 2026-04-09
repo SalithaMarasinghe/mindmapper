@@ -9,7 +9,6 @@ import '@blocknote/mantine/style.css';
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { useSettingsStore } from '@/store/settingsStore';
 
 interface RichEditorProps {
   nodeId: string;
@@ -23,9 +22,8 @@ export default function RichEditor({
   nodeId, mapId, initialContent, onSave, readOnly = false,
 }: RichEditorProps) {
   const user = useAuthStore((s) => s.user);
-  const theme = useSettingsStore((s) => s.theme);
   const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = theme === 'dark' || (theme === 'system' && systemDark);
+  const isDark = document.documentElement.classList.contains('dark') || systemDark;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const schema = BlockNoteSchema.create({
@@ -75,7 +73,7 @@ export default function RichEditor({
 
   const editor = useCreateBlockNote({
     schema,
-    initialContent: initialContent?.length ? initialContent : undefined,
+    initialContent: initialContent?.length ? (initialContent as any) : undefined,
     uploadFile,
   });
 

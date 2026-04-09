@@ -224,7 +224,7 @@ export function MindmapCanvas() {
     setPaneMenuInfo(null);
   }, []);
 
-  const handlePaneContextMenu = useCallback((e: React.MouseEvent) => {
+  const handlePaneContextMenu = useCallback((e: React.MouseEvent | MouseEvent) => {
     e.preventDefault();
     setPaneMenuInfo({ x: e.clientX, y: e.clientY });
     setMenuInfo(null);
