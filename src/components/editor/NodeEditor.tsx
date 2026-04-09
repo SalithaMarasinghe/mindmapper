@@ -30,6 +30,7 @@ export function NodeEditor({
   const { nodes } = useMapStore();
   const { getOrCreateContent, content, saveStatus, retrySave, updateContent, markComplete, markIncomplete } = useContentStore();
   const [isNotesHidden, setIsNotesHidden] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
 
   useEffect(() => {
     getOrCreateContent(nodeId, mapId);
@@ -57,6 +58,17 @@ export function NodeEditor({
 
   const nodeContent = content[nodeId];
   const status = saveStatus[nodeId] || 'saved';
+
+  useEffect(() => {
+    if (status === 'saved') {
+      setShowSaved(true);
+      const t = setTimeout(() => setShowSaved(false), 2000);
+      return () => clearTimeout(t);
+    } else {
+      setShowSaved(false);
+    }
+  }, [status]);
+
   const currentNode = nodes.find((n) => n.id === nodeId);
   const isCompleted = nodeContent?.isCompleted || false;
 
@@ -68,15 +80,13 @@ export function NodeEditor({
     );
   }
 
-  const lastSavedTime = nodeContent.lastEdited 
-    ? new Date(nodeContent.lastEdited).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '';
-
   const initialContent = nodeContent.richContent;
 
   function handleSave(blocks: unknown[]) {
     updateContent(nodeId, { richContent: blocks });
   }
+
+  const { setSaveStatus } = useContentStore.getState();
 
   const handleStudyToggle = () => {
     if (isCompleted) {
@@ -89,8 +99,28 @@ export function NodeEditor({
   return (
     <div className="node-study-page flex flex-col h-full bg-[#f8fafc] w-full pb-16">
       <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#f8fafc]/95 backdrop-blur z-10 border-b border-transparent mb-4">
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+        <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
           {currentNode?.label || 'Study Material'}
+          <div className="text-sm font-semibold flex items-center gap-1.5 transition-colors">
+            {(status === 'unsaved' || status === 'saving') && (
+              <span className="text-teal-600 flex items-center gap-1.5 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 shadow-sm ml-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Saving...
+              </span>
+            )}
+            {status === 'saved' && showSaved && (
+              <span className="text-green-600 flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded border border-green-100 shadow-sm transition-opacity duration-300 ml-2">
+                Saved ✓
+              </span>
+            )}
+            {status === 'failed' && (
+              <button 
+                onClick={() => retrySave(nodeId)}
+                className="text-red-600 flex items-center gap-1 bg-red-50 px-2 py-0.5 rounded border border-red-100 shadow-sm hover:bg-red-100 transition-colors ml-2"
+              >
+                ⚠ Save failed — Retry
+              </button>
+            )}
+          </div>
         </h1>
         <div className="node-page-actions flex items-center gap-2">
           <button
@@ -124,33 +154,6 @@ export function NodeEditor({
         </div>
       </div>
 
-      <div className="flex justify-between items-center pb-4 px-1 xl:px-4">
-        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Study Material</h2>
-        <div className="text-sm font-semibold flex items-center gap-1.5 transition-colors">
-          {status === 'unsaved' && (
-            <span className="text-gray-400">Unsaved changes...</span>
-          )}
-          {status === 'saving' && (
-            <span className="text-teal-600 flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Saving...
-            </span>
-          )}
-          {status === 'saved' && (
-            <span className="text-green-600 flex items-center gap-1 bg-green-50 px-3 py-1 rounded-full">
-              Saved ✓ at {lastSavedTime}
-            </span>
-          )}
-          {status === 'failed' && (
-            <button 
-              onClick={() => retrySave(nodeId)}
-              className="text-red-600 flex items-center gap-1 bg-red-50 px-3 py-1 rounded-full hover:bg-red-100 transition-colors"
-            >
-              Save failed ✗ — retry?
-            </button>
-          )}
-        </div>
-      </div>
-
       {isTestMode && (
         <div className="mx-1 xl:mx-4 mb-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-800 flex items-center justify-between gap-4">
           <span>🧠 Test Mode — read your notes, then hide them to test recall</span>
@@ -168,6 +171,7 @@ export function NodeEditor({
           nodeId={nodeId}
           mapId={mapId}
           initialContent={initialContent}
+          onDirty={() => setSaveStatus(nodeId, 'unsaved')}
           onSave={handleSave}
           readOnly={isTestMode}
         />

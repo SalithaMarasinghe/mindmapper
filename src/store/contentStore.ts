@@ -23,6 +23,7 @@ interface ContentState {
   addResource: (nodeId: string, resource: Resource) => void;
   removeResource: (nodeId: string, resourceId: string) => void;
   retrySave: (nodeId: string) => void;
+  setSaveStatus: (nodeId: string, status: SaveStatus) => void;
 }
 
 const emptyContent = (nodeId: string, mapId: string): NodeContent => ({
@@ -192,15 +193,14 @@ export const useContentStore = create<ContentState>((set, get) => ({
       };
     });
 
-    const existingTimer = saveTimers.get(nodeId);
-    if (existingTimer) clearTimeout(existingTimer);
-    
-    const timer = setTimeout(async () => {
-      const { retrySave } = get();
-      retrySave(nodeId);
-    }, 500);
+    // Execute save asynchronously right away since component-level debouncing handles typings delays
+    setTimeout(() => {
+      get().retrySave(nodeId);
+    }, 0);
+  },
 
-    saveTimers.set(nodeId, timer);
+  setSaveStatus: (nodeId, status) => {
+    set(state => ({ saveStatus: { ...state.saveStatus, [nodeId]: status } }));
   },
 
   retrySave: async (nodeId) => {
