@@ -9,7 +9,6 @@ import {
   useReactFlow,
   useNodesState,
   type Node,
-  type Edge,
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -31,7 +30,7 @@ import { useContentStore } from '../../store/contentStore';
 import { supabase } from '../../lib/supabase';
 import { nanoid } from 'nanoid';
 import { buildFlowElements } from '../../utils/treeLayout';
-import type { MindmapNode, NodeType, NodeDirection, Waypoint } from '../../types';
+import type { MindmapNode, NodeType, NodeDirection } from '../../types';
 import { DEFAULT_BRANCH_COLORS } from '../../types';
 import { exportMindmapToPDF } from '../../utils/exportPDF';
 
@@ -92,6 +91,7 @@ export function MindmapCanvas() {
   const hasInitViewportRef = useRef(false);
   const shouldFocusRoot = ((location.state as { focusRoot?: boolean } | null)?.focusRoot) === true;
   const dragStartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const lastBaseNodesRef = useRef<string>('');
 
   useEffect(() => {
     if (!hasInitViewportRef.current && nodes.length > 0 && mapId) {
@@ -126,18 +126,63 @@ export function MindmapCanvas() {
     () => new Map(flowNodes.map((n) => [n.id, n.position] as const)),
     [flowNodes]
   );
-  const { edges: flowEdges } = useMemo(
-    () => buildFlowElements(nodes, edgeWaypoints, flowNodePositionMap),
-    [nodes, edgeWaypoints, flowNodePositionMap]
-  );
+  const { edges: flowEdges } = useMemo(() => {
+    // Calculate dynamic waypoints for real-time smoothness
+    const dynamicWaypoints = { ...edgeWaypoints };
+    
+    // Check for moved nodes compared to store positions
+    nodes.forEach(node => {
+      const livePos = flowNodePositionMap.get(node.id);
+      if (livePos && node.position) {
+        const dx = livePos.x - node.position.x;
+        const dy = livePos.y - node.position.y;
+        
+        // If this node moved, all its outgoing and incoming internal edges should shift
+        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+          // Find edges where this is the target
+          if (node.parentId) {
+            const parentLivePos = flowNodePositionMap.get(node.parentId);
+            const parentStorePos = nodes.find(n => n.id === node.parentId)?.position;
+            
+            // If both parent and child moved by the same amount, shift the joint
+            if (parentLivePos && parentStorePos) {
+              const pdx = parentLivePos.x - parentStorePos.x;
+              const pdy = parentLivePos.y - parentStorePos.y;
+              
+              if (Math.abs(dx - pdx) < 0.1 && Math.abs(dy - pdy) < 0.1) {
+                const edgeId = `${node.parentId}-${node.id}`;
+                if (dynamicWaypoints[edgeId]) {
+                  dynamicWaypoints[edgeId] = dynamicWaypoints[edgeId].map(wp => ({
+                    ...wp,
+                    x: wp.x + dx,
+                    y: wp.y + dy
+                  }));
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return buildFlowElements(nodes, dynamicWaypoints, flowNodePositionMap);
+  }, [nodes, edgeWaypoints, flowNodePositionMap]);
 
   useEffect(() => {
+    if (!baseFlowNodes.length) return;
+    
+    // De-duplicate updates to prevent loop #185
+    // We only care if the IDs or basic structure changed from the store
+    const baseStr = JSON.stringify(baseFlowNodes.map(n => ({ id: n.id, type: n.type })));
+    if (baseStr === lastBaseNodesRef.current) return;
+    lastBaseNodesRef.current = baseStr;
+
     setFlowNodes((prev) => {
       const prevPos = new Map(prev.map((n) => [n.id, n.position] as const));
       return baseFlowNodes.map((node) => ({
         ...node,
         position: prevPos.get(node.id) || node.position,
-        selected: prev.find(p => p.id === node.id)?.selected || false, // Preserve selection
+        selected: prev.find(p => p.id === node.id)?.selected || false,
       }));
     });
   }, [baseFlowNodes, setFlowNodes]);
@@ -318,44 +363,11 @@ export function MindmapCanvas() {
     dragStartPositionsRef.current = startPositions;
   }, [flowNodes]);
 
-  const [liveEdges, setLiveEdges] = useState<Edge[]>([]);
-
-  // Sync liveEdges with flowEdges when not dragging
-  useEffect(() => {
-    setLiveEdges(flowEdges);
-  }, [flowEdges]);
-
-  const handleNodeDrag = useCallback((_event: React.MouseEvent, node: Node) => {
-    const startPos = dragStartPositionsRef.current.get(node.id);
-    if (!startPos) return;
-
-    const dx = node.position.x - startPos.x;
-    const dy = node.position.y - startPos.y;
-
-    // We only care about selections during drag
-    const selectedIds = new Set(flowNodes.filter(n => n.selected || n.id === node.id).map(n => n.id));
-
-    setLiveEdges(prev => prev.map(edge => {
-      // If both ends are in the selection, move the waypoints live
-      if (selectedIds.has(edge.source) && selectedIds.has(edge.target)) {
-        const originalEdge = flowEdges.find(e => e.id === edge.id);
-        const originalWaypoints = (originalEdge?.data?.waypoints as Waypoint[]) || [];
-        
-        return {
-          ...edge,
-          data: {
-            ...edge.data,
-            waypoints: originalWaypoints.map(wp => ({
-              ...wp,
-              x: wp.x + dx,
-              y: wp.y + dy
-            }))
-          }
-        };
-      }
-      return edge;
-    }));
-  }, [flowEdges, flowNodes]);
+  const handleNodeDrag = useCallback(() => {
+    // No-op for state. 
+    // real-time edge updates are now handled by flowEdges useMemo 
+    // which depends on flowNodePositionMap (derived from flowNodes).
+  }, []);
 
   const handleNodeDragStop = useCallback(async (_event: React.MouseEvent, draggedNode: Node) => {
     // Check if the dragged node is part of a selection
@@ -647,7 +659,7 @@ export function MindmapCanvas() {
       <div className="flex-1 w-full bg-[#f8fafc] relative">
         <ReactFlow
           nodes={interactiveFlowNodes}
-          edges={liveEdges}
+          edges={flowEdges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
