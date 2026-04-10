@@ -24,6 +24,7 @@ interface MapState {
   updateEdgeWaypoints: (edgeId: string, waypoints: Waypoint[]) => Promise<void>;
   saveEdgeWaypoints: (waypoints: EdgeWaypoints) => Promise<void>;
   saveBatchChanges: (nodeUpdates: any[], edgeWaypoints: EdgeWaypoints) => Promise<void>;
+  supportsDirection: boolean;
 }
 
 type DbNodeRow = {
@@ -60,6 +61,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   nodes: [],
   edgeWaypoints: {},
   isLoading: false,
+  supportsDirection: true,
 
   loadMap: async (mapId) => {
     set({ mapId, isLoading: true });
@@ -192,6 +194,7 @@ export const useMapStore = create<MapState>((set, get) => ({
           console.error('Failed to add node (fallback):', fallbackError);
           throw fallbackError;
         }
+        set({ supportsDirection: false });
       } else {
         console.error('Failed to add node:', error);
         throw error;
@@ -245,37 +248,37 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   saveNodePositions: async (updates) => {
-    // ... (existing saveNodePositions logic)
-    const { mapId } = get();
+    const { mapId, supportsDirection } = get();
     if (!mapId || updates.length === 0) return;
 
     await Promise.all(
       updates.map(async (item) => {
+        const payload: any = {
+          position_x: item.position.x,
+          position_y: item.position.y,
+        };
+        
+        // Only include direction if we think the server supports it
+        if (supportsDirection && item.direction) {
+          payload.direction = item.direction;
+        }
+
         const { error } = await supabase
           .from('nodes')
-          .update({
-            position_x: item.position.x,
-            position_y: item.position.y,
-          })
+          .update(payload)
           .eq('id', item.id);
 
         if (error) {
-          console.error('Failed to save node position:', error);
-          return;
-        }
-
-        if (item.direction) {
-          const { error: directionError } = await supabase
-            .from('nodes')
-            .update({ direction: item.direction })
-            .eq('id', item.id);
-
-          if (directionError) {
-            const message = directionError.message.toLowerCase();
-            const missingDirectionColumn = directionError.code === '42703' || message.includes('direction');
-            if (!missingDirectionColumn) {
-              console.error('Failed to save node direction:', directionError);
-            }
+          const message = error.message.toLowerCase();
+          const missingCol = error.code === '42703' || message.includes('direction') || error.code === 'PGRST204';
+          
+          if (missingCol && supportsDirection) {
+            set({ supportsDirection: false });
+            // Retry without direction
+            delete payload.direction;
+            await supabase.from('nodes').update(payload).eq('id', item.id);
+          } else {
+            console.error('Failed to save node position:', error);
           }
         }
       })
@@ -378,7 +381,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   saveBatchChanges: async (nodeUpdates, newEdgeWaypoints) => {
-    const { mapId, nodes } = get();
+    const { mapId, nodes, supportsDirection } = get();
     if (!mapId) return;
 
     // Optimistic Update: Update state immediately to prevent flicker
@@ -398,14 +401,27 @@ export const useMapStore = create<MapState>((set, get) => ({
 
     // Persist to Supabase in background
     try {
-      const nodePromises = nodeUpdates.map(item => {
+      const nodePromises = nodeUpdates.map(async (item) => {
         const updateObj: any = {
           position_x: item.position.x,
           position_y: item.position.y
         };
-        if (item.direction) updateObj.direction = item.direction;
+        if (supportsDirection && item.direction) {
+          updateObj.direction = item.direction;
+        }
         
-        return supabase.from('nodes').update(updateObj).eq('id', item.id);
+        const { error } = await supabase.from('nodes').update(updateObj).eq('id', item.id);
+        if (error) {
+          const message = error.message.toLowerCase();
+          const isMissingCol = error.code === '42703' || message.includes('direction') || error.code === 'PGRST204';
+          
+          if (isMissingCol && supportsDirection) {
+            set({ supportsDirection: false });
+            delete updateObj.direction;
+            return supabase.from('nodes').update(updateObj).eq('id', item.id);
+          }
+          throw error;
+        }
       });
 
       const waypointPromise = supabase
@@ -413,10 +429,10 @@ export const useMapStore = create<MapState>((set, get) => ({
         .update({ edge_waypoints: newEdgeWaypoints })
         .eq('id', mapId);
 
-      const results = await Promise.all([...nodePromises, waypointPromise]);
-      const errors = results.filter(r => r.error);
-      if (errors.length > 0) {
-        console.error('Errors during batch save:', errors);
+      const combinedResults = await Promise.allSettled([...nodePromises, waypointPromise]);
+      const failures = combinedResults.filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        console.error('Batch save partial failures:', failures);
       }
       
       // Finally, re-fetch once to ensure ground truth
