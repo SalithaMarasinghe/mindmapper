@@ -6,9 +6,9 @@ body {
 
 /* BlockNote editor customization */
 .rich-editor-wrapper {
+  /* Remove overflow:hidden to prevent side-menus from being clipped */
   min-height: 500px;
   border-radius: 0.5rem;
-  overflow: hidden;
 }
 
 .bn-container {
