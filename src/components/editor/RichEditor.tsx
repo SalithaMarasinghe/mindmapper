@@ -1,6 +1,7 @@
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 
+import { defaultBlockSpecs, BlockNoteSchema } from '@blocknote/core';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
 import { useEffect, useRef, useCallback } from 'react';
@@ -33,6 +34,10 @@ export default function RichEditor({
     onDirtyRef.current = onDirty;
   }, [onSave, onDirty]);
 
+  const schema = BlockNoteSchema.create({
+    blockSpecs: defaultBlockSpecs,
+  });
+
   async function uploadFile(file: File): Promise<string> {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
     const userId = user?.id ?? 'anonymous';
@@ -61,6 +66,7 @@ export default function RichEditor({
   }
 
   const editor = useCreateBlockNote({
+    schema,
     initialContent: initialContent?.length ? (initialContent as any) : undefined,
     uploadFile,
   });
@@ -104,16 +110,13 @@ export default function RichEditor({
       onKeyDown={handleKeyDown}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      onMouseMove={(e) => e.stopPropagation()}
-      onPointerMove={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchMove={(e) => e.stopPropagation()}
     >
       <BlockNoteView
         editor={editor}
         onChange={handleChange}
         editable={!readOnly}
         theme={isDark ? 'dark' : 'light'}
+        sideMenu={true}
       />
     </div>
   );
