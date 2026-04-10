@@ -9,6 +9,7 @@ import {
   useReactFlow,
   useNodesState,
   type Node,
+  type Edge,
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -21,6 +22,7 @@ import { QuickPreviewModal } from './QuickPreviewModal';
 import { RootNode } from './RootNode';
 import { BranchNode } from './BranchNode';
 import { LeafNode } from './LeafNode';
+import { WaypointEdge } from './WaypointEdge';
 
 import { useMapStore } from '../../store/mapStore';
 import { useMapsStore } from '../../store/mapsStore';
@@ -29,7 +31,7 @@ import { useContentStore } from '../../store/contentStore';
 import { supabase } from '../../lib/supabase';
 import { nanoid } from 'nanoid';
 import { buildFlowElements } from '../../utils/treeLayout';
-import type { MindmapNode, NodeType, NodeDirection } from '../../types';
+import type { MindmapNode, NodeType, NodeDirection, Waypoint } from '../../types';
 import { DEFAULT_BRANCH_COLORS } from '../../types';
 import { exportMindmapToPDF } from '../../utils/exportPDF';
 
@@ -50,7 +52,21 @@ export function MindmapCanvas() {
   const navigate = useNavigate();
   const { fitView, setViewport } = useReactFlow();
   
-  const { nodes, loadMap, addNode, updateNode, saveNodePositions, deleteNode } = useMapStore();
+  const edgeTypes = useMemo(() => ({
+    waypoint: WaypointEdge,
+    default: WaypointEdge
+  }), []);
+  
+  const { 
+    nodes, 
+    loadMap, 
+    addNode, 
+    updateNode, 
+    saveNodePositions, 
+    deleteNode, 
+    edgeWaypoints,
+    saveBatchChanges 
+  } = useMapStore();
   const { getMapById, fetchMaps } = useMapsStore();
   const { getViewport, saveViewport } = useSettingsStore();
   const { loadContent, content, fetchNodeContent } = useContentStore();
@@ -75,6 +91,7 @@ export function MindmapCanvas() {
 
   const hasInitViewportRef = useRef(false);
   const shouldFocusRoot = ((location.state as { focusRoot?: boolean } | null)?.focusRoot) === true;
+  const dragStartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   useEffect(() => {
     if (!hasInitViewportRef.current && nodes.length > 0 && mapId) {
@@ -103,15 +120,15 @@ export function MindmapCanvas() {
     setPaneMenuInfo(null);
   }, []);
 
-  const { nodes: baseFlowNodes } = useMemo(() => buildFlowElements(nodes), [nodes]);
+  const { nodes: baseFlowNodes } = useMemo(() => buildFlowElements(nodes, edgeWaypoints), [nodes, edgeWaypoints]);
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(baseFlowNodes);
   const flowNodePositionMap = useMemo(
     () => new Map(flowNodes.map((n) => [n.id, n.position] as const)),
     [flowNodes]
   );
   const { edges: flowEdges } = useMemo(
-    () => buildFlowElements(nodes, flowNodePositionMap),
-    [nodes, flowNodePositionMap]
+    () => buildFlowElements(nodes, edgeWaypoints, flowNodePositionMap),
+    [nodes, edgeWaypoints, flowNodePositionMap]
   );
 
   useEffect(() => {
@@ -120,6 +137,7 @@ export function MindmapCanvas() {
       return baseFlowNodes.map((node) => ({
         ...node,
         position: prevPos.get(node.id) || node.position,
+        selected: prev.find(p => p.id === node.id)?.selected || false, // Preserve selection
       }));
     });
   }, [baseFlowNodes, setFlowNodes]);
@@ -289,10 +307,119 @@ export function MindmapCanvas() {
     return chain;
   }, [previewNode, nodes]);
 
+  const handleNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
+    // Collect starting positions for all selected nodes so we can calculate accurate displacement
+    const startPositions = new Map<string, { x: number; y: number }>();
+    flowNodes.forEach(n => {
+      if (n.selected || n.id === node.id) {
+        startPositions.set(n.id, { ...n.position });
+      }
+    });
+    dragStartPositionsRef.current = startPositions;
+  }, [flowNodes]);
+
+  const [liveEdges, setLiveEdges] = useState<Edge[]>([]);
+
+  // Sync liveEdges with flowEdges when not dragging
+  useEffect(() => {
+    setLiveEdges(flowEdges);
+  }, [flowEdges]);
+
+  const handleNodeDrag = useCallback((_event: React.MouseEvent, node: Node) => {
+    const startPos = dragStartPositionsRef.current.get(node.id);
+    if (!startPos) return;
+
+    const dx = node.position.x - startPos.x;
+    const dy = node.position.y - startPos.y;
+
+    // We only care about selections during drag
+    const selectedIds = new Set(flowNodes.filter(n => n.selected || n.id === node.id).map(n => n.id));
+
+    setLiveEdges(prev => prev.map(edge => {
+      // If both ends are in the selection, move the waypoints live
+      if (selectedIds.has(edge.source) && selectedIds.has(edge.target)) {
+        const originalEdge = flowEdges.find(e => e.id === edge.id);
+        const originalWaypoints = (originalEdge?.data?.waypoints as Waypoint[]) || [];
+        
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            waypoints: originalWaypoints.map(wp => ({
+              ...wp,
+              x: wp.x + dx,
+              y: wp.y + dy
+            }))
+          }
+        };
+      }
+      return edge;
+    }));
+  }, [flowEdges, flowNodes]);
+
   const handleNodeDragStop = useCallback(async (_event: React.MouseEvent, draggedNode: Node) => {
+    // Check if the dragged node is part of a selection
+    const selectedNodes = flowNodes.filter(n => n.selected);
+    const isPartOfSelection = selectedNodes.some(n => n.id === draggedNode.id);
+
+    // Calculate displacement based on starting positions ref
+    const startPos = dragStartPositionsRef.current.get(draggedNode.id);
+    const dx = startPos ? draggedNode.position.x - startPos.x : 0;
+    const dy = startPos ? draggedNode.position.y - startPos.y : 0;
+
+    if (isPartOfSelection && selectedNodes.length > 1) {
+      const selectedIds = new Set(selectedNodes.map(n => n.id));
+      const newEdgeWaypoints = { ...edgeWaypoints };
+      let waypointsChanged = false;
+
+      // Identify internal edges (both endpoints selected) and shift their waypoints
+      nodes.forEach(node => {
+        if (node.parentId && selectedIds.has(node.id) && selectedIds.has(node.parentId)) {
+          const edgeId = `${node.parentId}-${node.id}`;
+          if (newEdgeWaypoints[edgeId] && newEdgeWaypoints[edgeId].length > 0) {
+            newEdgeWaypoints[edgeId] = newEdgeWaypoints[edgeId].map(wp => ({
+              ...wp,
+              x: wp.x + dx,
+              y: wp.y + dy
+            }));
+            waypointsChanged = true;
+          }
+        }
+      });
+
+      const nodeUpdates = selectedNodes.map(flowNode => {
+        const mappedNode = nodes.find(n => n.id === flowNode.id);
+        if (!mappedNode) return null;
+
+        let direction = mappedNode.direction;
+        if (mappedNode.parentId) {
+          const parentPos = flowNodePositionMap.get(mappedNode.parentId) || nodes.find(n => n.id === mappedNode.parentId)?.position;
+          if (parentPos) {
+            direction = getDirectionFromPoints(parentPos, flowNode.position);
+          }
+        }
+
+        return {
+          id: flowNode.id,
+          position: flowNode.position,
+          direction
+        };
+      }).filter(u => u !== null) as Array<{ id: string; position: { x: number; y: number }; direction?: NodeDirection }>;
+
+      if (nodeUpdates.length > 0) {
+        // Use Atomic Save to prevent UI flicker
+        await saveBatchChanges(nodeUpdates, waypointsChanged ? newEdgeWaypoints : edgeWaypoints);
+        toast.success(`Moved ${nodeUpdates.length} nodes`);
+      }
+      return;
+    }
+
+    // Standard single node drag logic
     const mappedNode = nodes.find((n) => n.id === draggedNode.id);
-    if (!mappedNode || !mappedNode.parentId) {
-      if (mappedNode?.type === 'root') {
+    if (!mappedNode) return;
+
+    if (!mappedNode.parentId) {
+      if (mappedNode.type === 'root') {
         await updateNode(mappedNode.id, { position: draggedNode.position });
       }
       return;
@@ -306,7 +433,7 @@ export function MindmapCanvas() {
 
     const direction = getDirectionFromPoints(parentPos, draggedNode.position);
     await updateNode(mappedNode.id, { position: draggedNode.position, direction });
-  }, [flowNodePositionMap, getDirectionFromPoints, nodes, updateNode]);
+  }, [flowNodes, nodes, flowNodePositionMap, getDirectionFromPoints, saveNodePositions, updateNode]);
 
   const handleTidyUp = useCallback(async () => {
     const root = nodes.find((n) => n.type === 'root');
@@ -520,9 +647,12 @@ export function MindmapCanvas() {
       <div className="flex-1 w-full bg-[#f8fafc] relative">
         <ReactFlow
           nodes={interactiveFlowNodes}
-          edges={flowEdges}
+          edges={liveEdges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDrag={handleNodeDrag}
           onNodeDragStop={handleNodeDragStop}
           onMoveEnd={onMoveEnd}
           onNodeContextMenu={onCanvasContextMenu}
@@ -538,10 +668,8 @@ export function MindmapCanvas() {
           elevateNodesOnSelect={false}
           nodesDraggable
           nodesConnectable={false}
-          deleteKeyCode={null}
-          selectionKeyCode={null}
-          multiSelectionKeyCode={null}
-          panOnDrag={[1, 2]}
+          panOnDrag={[2]}
+          selectionOnDrag
           onKeyDown={(e) => {
             if (
               e.target instanceof HTMLElement &&

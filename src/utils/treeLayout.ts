@@ -1,5 +1,5 @@
 import type { Node, Edge } from '@xyflow/react';
-import type { MindmapNode, NodeDirection } from '../types';
+import type { MindmapNode, NodeDirection, EdgeWaypoints } from '../types';
 
 const BRANCH_X_GAP = 240;
 const LEAF_X_GAP = 220;
@@ -20,7 +20,11 @@ function getDirection(from: { x: number; y: number }, to: { x: number; y: number
   return dy >= 0 ? 'bottom' : 'top';
 }
 
-export function buildFlowElements(nodes: MindmapNode[], positionOverrides?: Map<string, { x: number; y: number }>) {
+export function buildFlowElements(
+  nodes: MindmapNode[], 
+  edgeWaypoints: EdgeWaypoints = {},
+  positionOverrides?: Map<string, { x: number; y: number }>
+) {
   const flowNodes: Node[] = [];
   const flowEdges: Edge[] = [];
 
@@ -120,14 +124,18 @@ export function buildFlowElements(nodes: MindmapNode[], positionOverrides?: Map<
 
     const direction = getDirection(parentPos, childPos);
     const targetDirection = oppositeDirection[direction];
+    const edgeId = `${parent.id}-${node.id}`;
 
     flowEdges.push({
-      id: `e-${parent.id}-${node.id}`,
+      id: `e-${edgeId}`,
       source: parent.id,
       target: node.id,
       sourceHandle: `s-${direction}`,
       targetHandle: `t-${targetDirection}`,
-      type: 'smoothstep',
+      type: 'waypoint',
+      data: {
+        waypoints: edgeWaypoints[edgeId] || []
+      },
       style: {
         stroke: parent.color || node.color || '#94a3b8',
         strokeWidth: parent.type === 'root' ? 3 : 2,

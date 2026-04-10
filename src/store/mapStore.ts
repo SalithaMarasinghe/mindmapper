@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { MindmapNode, NodeDirection, NodeType } from '../types';
+import type { MindmapNode, NodeDirection, NodeType, Waypoint, EdgeWaypoints } from '../types';
 import { useAuthStore } from './authStore';
 
 interface MapState {
   mapId: string | null;
   nodes: MindmapNode[];
+  edgeWaypoints: EdgeWaypoints;
   isLoading: boolean;
   loadMap: (mapId: string) => Promise<void>;
   addNode: (
@@ -20,6 +21,9 @@ interface MapState {
   saveNodePositions: (updates: Array<{ id: string; position: { x: number; y: number }; direction?: NodeDirection }>) => Promise<void>;
   deleteNode: (nodeId: string) => Promise<void>;
   moveNode: (nodeId: string, newParentId: string | null) => Promise<void>;
+  updateEdgeWaypoints: (edgeId: string, waypoints: Waypoint[]) => Promise<void>;
+  saveEdgeWaypoints: (waypoints: EdgeWaypoints) => Promise<void>;
+  saveBatchChanges: (nodeUpdates: any[], edgeWaypoints: EdgeWaypoints) => Promise<void>;
 }
 
 type DbNodeRow = {
@@ -54,35 +58,43 @@ const formatNodes = (data: DbNodeRow[]): MindmapNode[] => data.map((n) => ({
 export const useMapStore = create<MapState>((set, get) => ({
   mapId: null,
   nodes: [],
+  edgeWaypoints: {},
   isLoading: false,
 
   loadMap: async (mapId) => {
     set({ mapId, isLoading: true });
     
     try {
-      const { data, error } = await supabase
+      // Fetch nodes
+      const { data: nodesData, error: nodesError } = await supabase
         .from('nodes')
         .select('*')
         .eq('map_id', mapId);
 
-      if (error && error.code !== '42P01') { 
-        console.error('Error fetching nodes:', error);
+      // Fetch waypoints from mindmaps table
+      const { data: mapData } = await supabase
+        .from('mindmaps')
+        .select('edge_waypoints')
+        .eq('id', mapId)
+        .single();
+
+      if (nodesError && nodesError.code !== '42P01') { 
+        console.error('Error fetching nodes:', nodesError);
       }
 
-      if (!data) {
-        set({ nodes: [] });
-        return;
-      }
+      const waypoints = mapData?.edge_waypoints as EdgeWaypoints || {};
+      set({ edgeWaypoints: waypoints });
 
-      if (data.length === 0) {
-        const { data: mapRow, error: mapError } = await supabase
+      if (!nodesData || nodesData.length === 0) {
+        // ... (existing root node creation logic)
+        const { data: mapRow, error: mapMetaError } = await supabase
           .from('mindmaps')
           .select('title,user_id')
           .eq('id', mapId)
           .single();
 
-        if (mapError) {
-          console.error('Error fetching map for root node creation:', mapError);
+        if (mapMetaError) {
+          console.error('Error fetching map for root node creation:', mapMetaError);
           set({ nodes: [] });
           return;
         }
@@ -127,7 +139,7 @@ export const useMapStore = create<MapState>((set, get) => ({
         return;
       }
 
-      set({ nodes: formatNodes(data) });
+      set({ nodes: formatNodes(nodesData) });
     } catch (e) {
       console.error('Failed to load map nodes:', e);
     } finally {
@@ -136,6 +148,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   addNode: async (parentId, label, type, color = '#333333', position, direction) => {
+    // ... (existing addNode logic)
     const { mapId } = get();
     if (!mapId) return;
     
@@ -189,6 +202,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   updateNode: async (nodeId, updates) => {
+    // ... (existing updateNode logic)
     const { mapId } = get();
     if (!mapId) return;
 
@@ -231,6 +245,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   saveNodePositions: async (updates) => {
+    // ... (existing saveNodePositions logic)
     const { mapId } = get();
     if (!mapId || updates.length === 0) return;
 
@@ -266,10 +281,18 @@ export const useMapStore = create<MapState>((set, get) => ({
       })
     );
 
-    await get().loadMap(mapId);
+    // Only fetch nodes again, not the full map to avoid expensive waypoint fetches
+    const { data: refreshedNodes, error: refreshError } = await supabase
+      .from('nodes')
+      .select('*')
+      .eq('map_id', mapId);
+    if (!refreshError) {
+      set({ nodes: formatNodes(refreshedNodes || []) });
+    }
   },
 
   deleteNode: async (nodeId) => {
+    // ... (existing deleteNode logic)
     const { mapId } = get();
     if (!mapId) return;
     
@@ -282,6 +305,21 @@ export const useMapStore = create<MapState>((set, get) => ({
     if (children && children.length > 0) {
       const childIds = children.map(c => c.id);
       await supabase.from('nodes').delete().in('id', childIds);
+      
+      // Cleanup associated waypoints for deleted children
+      const { edgeWaypoints } = get();
+      const newWaypoints = { ...edgeWaypoints };
+      let changed = false;
+      Object.keys(newWaypoints).forEach(key => {
+        if (childIds.some(id => key.includes(id)) || key.includes(nodeId)) {
+          delete newWaypoints[key];
+          changed = true;
+        }
+      });
+      if (changed) {
+        await supabase.from('mindmaps').update({ edge_waypoints: newWaypoints }).eq('id', mapId);
+        set({ edgeWaypoints: newWaypoints });
+      }
     }
 
     const { error } = await supabase.from('nodes').delete().eq('id', nodeId);
@@ -298,5 +336,103 @@ export const useMapStore = create<MapState>((set, get) => ({
     if (!error) {
       await get().loadMap(mapId);
     }
+  },
+
+  updateEdgeWaypoints: async (edgeId, waypoints) => {
+    const { mapId, edgeWaypoints } = get();
+    if (!mapId) return;
+
+    const newWaypoints = {
+      ...edgeWaypoints,
+      [edgeId]: waypoints,
+    };
+
+    const { error } = await supabase
+      .from('mindmaps')
+      .update({ edge_waypoints: newWaypoints })
+      .eq('id', mapId);
+
+    if (error) {
+      console.error('Failed to update edge waypoints:', error);
+      throw error;
+    }
+
+    set({ edgeWaypoints: newWaypoints });
+  },
+
+  saveEdgeWaypoints: async (edgeWaypoints) => {
+    const { mapId } = get();
+    if (!mapId) return;
+
+    const { error } = await supabase
+      .from('mindmaps')
+      .update({ edge_waypoints: edgeWaypoints })
+      .eq('id', mapId);
+
+    if (error) {
+      console.error('Failed to save batch edge waypoints:', error);
+      throw error;
+    }
+
+    set({ edgeWaypoints });
+  },
+
+  saveBatchChanges: async (nodeUpdates, newEdgeWaypoints) => {
+    const { mapId, nodes } = get();
+    if (!mapId) return;
+
+    // Optimistic Update: Update state immediately to prevent flicker
+    const optimisticNodes = nodes.map(n => {
+      const update = nodeUpdates.find(u => u.id === n.id);
+      if (update) {
+        return {
+          ...n,
+          position: update.position,
+          direction: update.direction || n.direction
+        };
+      }
+      return n;
+    });
+
+    set({ nodes: optimisticNodes, edgeWaypoints: newEdgeWaypoints });
+
+    // Persist to Supabase in background
+    try {
+      const nodePromises = nodeUpdates.map(item => {
+        const updateObj: any = {
+          position_x: item.position.x,
+          position_y: item.position.y
+        };
+        if (item.direction) updateObj.direction = item.direction;
+        
+        return supabase.from('nodes').update(updateObj).eq('id', item.id);
+      });
+
+      const waypointPromise = supabase
+        .from('mindmaps')
+        .update({ edge_waypoints: newEdgeWaypoints })
+        .eq('id', mapId);
+
+      const results = await Promise.all([...nodePromises, waypointPromise]);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        console.error('Errors during batch save:', errors);
+      }
+      
+      // Finally, re-fetch once to ensure ground truth
+      const { data: refreshedNodes } = await supabase
+        .from('nodes')
+        .select('*')
+        .eq('map_id', mapId);
+      
+      if (refreshedNodes) {
+        set({ nodes: formatNodes(refreshedNodes) });
+      }
+    } catch (err) {
+      console.error('Batch save failed:', err);
+      // Fallback: reload fully if something went wrong
+      get().loadMap(mapId);
+    }
   }
 }));
+

@@ -1,6 +1,14 @@
 export type NodeType = 'root' | 'branch' | 'leaf';
 export type NodeDirection = 'left' | 'right' | 'top' | 'bottom';
 
+export interface Waypoint {
+  id: string;
+  x: number;
+  y: number;
+}
+
+export type EdgeWaypoints = Record<string, Waypoint[]>;
+
 export interface MindmapNode {
   id: string;
   mapId: string;
@@ -59,6 +67,7 @@ export interface MindmapMeta {
   completedCount: number;
   createdAt: string;
   updatedAt: string;
+  edgeWaypoints?: EdgeWaypoints;
 }
 
 export type SharePermission = 'view' | 'edit';
