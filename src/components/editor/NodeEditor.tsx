@@ -166,7 +166,7 @@ export function NodeEditor({
         </div>
       )}
 
-      <div className={`flex-1 w-full max-w-4xl mx-auto px-1 xl:px-4 ${isTestMode && isNotesHidden ? 'notes-hidden' : ''}`}>
+      <div className={`flex-1 w-full px-1 xl:px-4 ${isTestMode && isNotesHidden ? 'notes-hidden' : ''}`}>
         <RichEditor
           nodeId={nodeId}
           mapId={mapId}

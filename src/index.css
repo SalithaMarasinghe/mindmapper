@@ -186,8 +186,6 @@ body {
 /* Full width editor */
 .node-editor-full {
   width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
   padding: 1.5rem 2rem 1.5rem 2.5rem;
 }
 
