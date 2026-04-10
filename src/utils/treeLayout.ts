@@ -52,16 +52,20 @@ export function buildFlowElements(
 
     children.forEach((child, index) => {
       const override = positionOverrides?.get(child.id);
+      
       if (override) {
         positionById.set(child.id, override);
-      } else if (child.position) {
+      } else if (child.position && child.position.x !== undefined && child.position.y !== undefined) {
+        // High Priority: Use the position exactly as saved in the DB
         positionById.set(child.id, child.position);
       } else {
+        // Fallback: Auto-layout based on index and parent position
         const yGap = child.type === 'leaf' ? LEAF_Y_GAP : BRANCH_Y_GAP;
         const xGap = child.type === 'leaf' ? LEAF_X_GAP : BRANCH_X_GAP;
         const offsetY = (index - (total - 1) / 2) * yGap;
         const offsetX = (index - (total - 1) / 2) * xGap;
         const side = child.direction || 'right';
+        
         if (side === 'left') {
           positionById.set(child.id, { x: parentPos.x - xGap, y: parentPos.y + offsetY });
         } else if (side === 'right') {
