@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { MoreVertical, Copy, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
+import { MoreVertical, Copy, Trash2, Edit2, CheckCircle2, CloudDownload, CloudOff } from 'lucide-react';
 import type { MindmapMeta } from '../../types';
+import { useOfflineStore } from '../../store/offlineStore';
 
 interface MapCardProps {
   map: MindmapMeta;
@@ -12,6 +13,8 @@ interface MapCardProps {
 
 export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { offlineMapIds } = useOfflineStore();
+  const isOffline = offlineMapIds.includes(map.id);
 
   const percent = map.nodeCount === 0 ? 0 : Math.round((map.completedCount / map.nodeCount) * 100);
   const isCompleted = percent === 100 && map.nodeCount > 0;
@@ -35,9 +38,12 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
       <div className="flex justify-between items-start">
         <div className="flex flex-col">
           <div className="text-4xl mb-3 leading-none">{map.emoji || '🧠'}</div>
-          <h3 className="font-semibold text-gray-900 text-lg truncate pr-6 tracking-tight mb-1" title={map.title}>
-            {map.title}
-          </h3>
+          <div className="flex items-center gap-1.5 mb-1">
+            <h3 className="font-semibold text-gray-900 text-lg truncate tracking-tight" title={map.title}>
+              {map.title}
+            </h3>
+            {isOffline && <CloudDownload className="h-4 w-4 text-teal-600 flex-shrink-0" title="Available offline" />}
+          </div>
           <div className="flex gap-1.5 mt-1 overflow-hidden">
             {map.tags?.slice(0, 3).map(tag => (
               <span key={tag} className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded flex-shrink-0 max-w-[80px] truncate">
@@ -83,7 +89,7 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 bottom-8 w-40 bg-white rounded-lg shadow-lg shadow-gray-200/50 border border-gray-100 py-1.5 z-40">
+                <div className="absolute right-0 bottom-8 w-48 bg-white rounded-lg shadow-lg shadow-gray-200/50 border border-gray-100 py-1.5 z-40">
                   <button 
                     onClick={() => { setMenuOpen(false); onRename(); }}
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition"
@@ -95,6 +101,16 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition"
                   >
                     <Copy className="h-3.5 w-3.5 text-gray-400" /> Duplicate
+                  </button>
+                  <button 
+                    onClick={async () => { 
+                      setMenuOpen(false); 
+                      await useOfflineStore.getState().toggleOffline(map.id);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    {isOffline ? <CloudOff className="h-3.5 w-3.5 text-gray-400" /> : <CloudDownload className="h-3.5 w-3.5 text-gray-400" />}
+                    {isOffline ? 'Remove offline access' : 'Make available offline'}
                   </button>
                   <div className="h-px bg-gray-100 my-1 font-medium" />
                   <button 

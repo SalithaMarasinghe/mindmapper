@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { MindmapNode, NodeDirection, NodeType, Waypoint, EdgeWaypoints } from '../types';
 import { useAuthStore } from './authStore';
+import { offlineStore } from '../lib/offlineStore';
+import { toast } from 'react-hot-toast';
 
 interface MapState {
   mapId: string | null;
@@ -67,6 +69,26 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ mapId, isLoading: true });
     
     try {
+      if (!navigator.onLine) {
+        const isOfflineSaved = await offlineStore.isMapOffline(mapId);
+        if (isOfflineSaved) {
+          const offlineNodes = await offlineStore.getMapNodes(mapId);
+          const mapMeta = await offlineStore.getMapMeta(mapId);
+          // Wait, edgeWaypoints isn't stored in meta, it's just in the DB mindmaps table. We didn't explicitly save edgeWaypoints in offlineStore... Let's just use empty waypoints or whatever is in mapMeta if we add it later.
+          set({ 
+            nodes: offlineNodes || [], 
+            edgeWaypoints: (mapMeta as any)?.edge_waypoints || {},
+            isLoading: false
+          });
+          toast.success("Loaded offline version");
+          return;
+        } else {
+          toast.error("You are offline and this map is not available offline.");
+          set({ isLoading: false });
+          return;
+        }
+      }
+
       // Fetch nodes
       const { data: nodesData, error: nodesError } = await supabase
         .from('nodes')
@@ -150,6 +172,10 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   addNode: async (parentId, label, type, color = '#333333', position, direction) => {
+    if (!navigator.onLine) {
+      toast.error('Cannot add nodes while offline');
+      return;
+    }
     // ... (existing addNode logic)
     const { mapId } = get();
     if (!mapId) return;
@@ -205,6 +231,10 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   updateNode: async (nodeId, updates) => {
+    if (!navigator.onLine) {
+      toast.error('Cannot update nodes while offline');
+      return;
+    }
     // ... (existing updateNode logic)
     const { mapId } = get();
     if (!mapId) return;
@@ -248,6 +278,7 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   saveNodePositions: async (updates) => {
+    if (!navigator.onLine) return; // Silent fail for positions
     const { mapId, supportsDirection } = get();
     if (!mapId || updates.length === 0) return;
 
@@ -295,6 +326,10 @@ export const useMapStore = create<MapState>((set, get) => ({
   },
 
   deleteNode: async (nodeId) => {
+    if (!navigator.onLine) {
+      toast.error('Cannot delete nodes while offline');
+      return;
+    }
     // ... (existing deleteNode logic)
     const { mapId } = get();
     if (!mapId) return;

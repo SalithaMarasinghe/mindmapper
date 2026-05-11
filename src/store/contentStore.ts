@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import type { NodeContent, Resource } from '../types';
 import { useMapsStore } from './mapsStore';
 import { useAuthStore } from './authStore';
+import { offlineStore } from '../lib/offlineStore';
+import { toast } from 'react-hot-toast';
 
 export type SaveStatus = 'saved' | 'unsaved' | 'saving' | 'failed';
 
@@ -54,6 +56,15 @@ export const useContentStore = create<ContentState>((set, get) => ({
   loadContent: async (mapId) => {
     set({ mapId, isLoading: true });
     try {
+      if (!navigator.onLine) {
+        const isOfflineSaved = await offlineStore.isMapOffline(mapId);
+        if (isOfflineSaved) {
+          const offlineContent = await offlineStore.getMapContent(mapId);
+          set({ content: offlineContent || {}, isLoading: false });
+          return;
+        }
+      }
+
       const { data, error } = await supabase.from('node_content').select('*').eq('map_id', mapId);
       if (error && error.code !== '42P01') throw error;
       
@@ -106,6 +117,20 @@ export const useContentStore = create<ContentState>((set, get) => ({
   fetchNodeContent: async (nodeId, mapId) => {
     const existing = get().content[nodeId];
     if (existing) return existing;
+
+    if (!navigator.onLine) {
+      const isOfflineSaved = await offlineStore.isMapOffline(mapId);
+      if (isOfflineSaved) {
+        const offlineContent = await offlineStore.getMapContent(mapId);
+        if (offlineContent && offlineContent[nodeId]) {
+          set(state => ({
+            content: { ...state.content, [nodeId]: offlineContent[nodeId] },
+            saveStatus: { ...state.saveStatus, [nodeId]: 'saved' },
+          }));
+          return offlineContent[nodeId];
+        }
+      }
+    }
 
     try {
       const { data, error } = await supabase
@@ -185,6 +210,10 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   updateContent: (nodeId, updates) => {
+    if (!navigator.onLine) {
+      toast.error('Cannot edit content while offline');
+      return;
+    }
     set(state => {
       const curr = state.content[nodeId] || emptyContent(nodeId, state.mapId || '');
       return {
@@ -243,6 +272,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   markComplete: async (nodeId) => {
+    if (!navigator.onLine) return;
     set(state => {
       const curr = state.content[nodeId];
       if (!curr) return state;
@@ -254,6 +284,7 @@ export const useContentStore = create<ContentState>((set, get) => ({
   },
 
   markIncomplete: async (nodeId) => {
+    if (!navigator.onLine) return;
     set(state => {
       const curr = state.content[nodeId];
       if (!curr) return state;

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { MindmapMeta } from '../types';
 import { useAuthStore } from './authStore';
+import { offlineStore } from '../lib/offlineStore';
 
 interface MapsState {
   maps: MindmapMeta[];
@@ -25,6 +26,22 @@ export const useMapsStore = create<MapsState>((set, get) => ({
     if (!user) return;
 
     set({ isLoading: true, error: null });
+
+    if (!navigator.onLine) {
+      try {
+        const offlineIds = await offlineStore.getOfflineMaps();
+        const offlineMapsList: MindmapMeta[] = [];
+        for (const id of offlineIds) {
+          const meta = await offlineStore.getMapMeta(id);
+          if (meta) offlineMapsList.push(meta);
+        }
+        set({ maps: offlineMapsList, isLoading: false });
+        return;
+      } catch (err) {
+        console.error('Failed to load offline maps', err);
+      }
+    }
+
     try {
       const { data, error } = await supabase
         .from('mindmaps')
