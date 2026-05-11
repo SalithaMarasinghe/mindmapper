@@ -4,6 +4,7 @@ import { Maximize, PlusCircle, Share, Edit2, Check, Link2Off } from 'lucide-reac
 import type { MindmapMeta } from '../../types';
 import { useMapsStore } from '../../store/mapsStore';
 import { toast } from 'react-hot-toast';
+import { useSettingsStore } from '../../store/settingsStore';
 import { supabase } from '../../lib/supabase';
 import { nanoid } from 'nanoid';
 
@@ -17,6 +18,7 @@ interface CanvasToolbarProps {
 export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasToolbarProps) {
   const navigate = useNavigate();
   const { updateMap } = useMapsStore();
+  const { isReadOnly } = useSettingsStore();
   
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -24,7 +26,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
   const [sharePopoverOpen, setSharePopoverOpen] = useState(false);
 
   const handleTitleClick = () => {
-    if (!map) return;
+    if (!map || isReadOnly) return;
     setEditTitle(map.title);
     setIsEditingTitle(true);
   };
@@ -120,7 +122,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
           >
             <span className="text-xl leading-none -mt-0.5">{map?.emoji}</span>
             <span className="truncate">{map?.title || 'Loading map...'}</span>
-            <Edit2 className="h-3.5 w-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition" />
+            {!isReadOnly && <Edit2 className="h-3.5 w-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition" />}
           </div>
         )}
       </div>
@@ -164,13 +166,15 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
           )}
         </div>
 
-        <button 
-          onClick={onAddBranch}
-          className="flex items-center gap-1.5 text-white bg-teal-600 hover:bg-teal-700 transition text-sm font-semibold px-3.5 py-1.5 rounded-lg border border-teal-700 shadow-sm whitespace-nowrap"
-        >
-          <PlusCircle className="h-4 w-4" />
-          <span>+ Add Branch</span>
-        </button>
+        {!isReadOnly && (
+          <button 
+            onClick={onAddBranch}
+            className="flex items-center gap-1.5 text-white bg-teal-600 hover:bg-teal-700 transition text-sm font-semibold px-3.5 py-1.5 rounded-lg border border-teal-700 shadow-sm whitespace-nowrap"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span>+ Add Branch</span>
+          </button>
+        )}
         <div className="w-px h-6 bg-gray-200 mx-1.5 shrink-0" />
         <button 
            onClick={onFitView}
@@ -182,13 +186,15 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
             Fit View ⊞
           </span>
         </button>
-        <button
-          onClick={onTidyUp}
-          className="px-3 py-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition whitespace-nowrap"
-          title="Tidy Up"
-        >
-          Tidy Up
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={onTidyUp}
+            className="px-3 py-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition whitespace-nowrap"
+            title="Tidy Up"
+          >
+            Tidy Up
+          </button>
+        )}
       </div>
     </div>
   );

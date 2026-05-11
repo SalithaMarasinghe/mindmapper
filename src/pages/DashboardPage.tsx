@@ -4,6 +4,7 @@ import { MapGrid } from '../components/dashboard/MapGrid';
 import { CreateMapModal } from '../components/dashboard/CreateMapModal';
 import { useMapsStore } from '../store/mapsStore';
 import { Plus } from 'lucide-react';
+import { useSettingsStore } from '../store/settingsStore';
 
 export function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,13 +34,15 @@ export function DashboardPage() {
             <p className="text-gray-500 mt-1.5 text-sm sm:text-base">Organize your thoughts and expand your knowledge.</p>
           </div>
           
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-teal-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-teal-700 transition shadow-sm hover:shadow active:scale-95 whitespace-nowrap"
-          >
-            <Plus className="h-5 w-5" />
-            New Mindmap
-          </button>
+          {!useSettingsStore().isReadOnly && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-teal-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-teal-700 transition shadow-sm hover:shadow active:scale-95 whitespace-nowrap"
+            >
+              <Plus className="h-5 w-5" />
+              New Mindmap
+            </button>
+          )}
         </div>
 
         <MapGrid 

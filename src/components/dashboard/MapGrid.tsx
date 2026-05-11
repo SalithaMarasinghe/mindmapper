@@ -4,6 +4,7 @@ import { MapCard } from './MapCard';
 import type { MindmapMeta } from '../../types';
 import { useMapsStore } from '../../store/mapsStore';
 import { toast } from 'react-hot-toast';
+import { useSettingsStore } from '../../store/settingsStore';
 
 interface MapGridProps {
   maps: MindmapMeta[];
@@ -14,6 +15,7 @@ interface MapGridProps {
 export function MapGrid({ maps, searchQuery, onNew }: MapGridProps) {
   const navigate = useNavigate();
   const { deleteMap, duplicateMap, updateMap, isLoading } = useMapsStore();
+  const { isReadOnly } = useSettingsStore();
 
   const filteredMaps = maps.filter(m => {
     const q = searchQuery.toLowerCase();
@@ -60,13 +62,15 @@ export function MapGrid({ maps, searchQuery, onNew }: MapGridProps) {
         <div className="text-6xl mb-4">🗺️</div>
         <h3 className="text-xl font-semibold text-gray-900 mb-2">No mindmaps yet</h3>
         <p className="text-gray-500 mb-6 max-w-sm">Capture your knowledge, visualize ideas, and build mental models layer by layer.</p>
-        <button 
-          onClick={onNew}
-          className="flex items-center gap-2 bg-teal-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-teal-700 transition hover:shadow-md"
-        >
-          <PlusCircle className="h-5 w-5" />
-          Create your first mindmap
-        </button>
+        {!isReadOnly && (
+          <button 
+            onClick={onNew}
+            className="flex items-center gap-2 bg-teal-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-teal-700 transition hover:shadow-md"
+          >
+            <PlusCircle className="h-5 w-5" />
+            Create your first mindmap
+          </button>
+        )}
       </div>
     );
   }

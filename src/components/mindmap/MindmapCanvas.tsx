@@ -67,7 +67,7 @@ export function MindmapCanvas() {
     saveBatchChanges 
   } = useMapStore();
   const { getMapById, fetchMaps } = useMapsStore();
-  const { getViewport, saveViewport } = useSettingsStore();
+  const { getViewport, saveViewport, isReadOnly } = useSettingsStore();
   const { loadContent, content, fetchNodeContent } = useContentStore();
 
   const [menuInfo, setMenuInfo] = useState<{ x: number, y: number, node: MindmapNode } | null>(null);
@@ -116,6 +116,7 @@ export function MindmapCanvas() {
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: MindmapNode) => {
     e.preventDefault();
+    if (useSettingsStore.getState().isReadOnly) return;
     setMenuInfo({ x: e.clientX, y: e.clientY, node });
     setPaneMenuInfo(null);
   }, []);
@@ -277,6 +278,7 @@ export function MindmapCanvas() {
 
   const onCanvasContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
     e.preventDefault();
+    if (useSettingsStore.getState().isReadOnly) return;
     const nodeData = (node.data as { node?: MindmapNode } | undefined)?.node;
     if (!nodeData) return;
     setMenuInfo({
@@ -289,6 +291,7 @@ export function MindmapCanvas() {
 
   const handlePaneContextMenu = useCallback((e: React.MouseEvent | MouseEvent) => {
     e.preventDefault();
+    if (useSettingsStore.getState().isReadOnly) return;
     setPaneMenuInfo({ x: e.clientX, y: e.clientY });
     setMenuInfo(null);
   }, []);
@@ -678,7 +681,7 @@ export function MindmapCanvas() {
           maxZoom={1.5}
           proOptions={{ hideAttribution: true }}
           elevateNodesOnSelect={false}
-          nodesDraggable
+          nodesDraggable={!isReadOnly}
           nodesConnectable={false}
           panOnDrag={[2]}
           selectionOnDrag
@@ -708,7 +711,7 @@ export function MindmapCanvas() {
           />
         </ReactFlow>
 
-        {rootNode && branchCount === 0 && (
+        {rootNode && branchCount === 0 && !isReadOnly && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <p className="text-gray-400 text-sm md:text-base font-medium">
               👆 Click &quot;+ Add Branch&quot; in the toolbar to start building your mindmap

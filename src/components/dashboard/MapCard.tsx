@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MoreVertical, Copy, Trash2, Edit2, CheckCircle2, CloudDownload, CloudOff } from 'lucide-react';
 import type { MindmapMeta } from '../../types';
 import { useOfflineStore } from '../../store/offlineStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 interface MapCardProps {
   map: MindmapMeta;
@@ -14,6 +15,7 @@ interface MapCardProps {
 export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { offlineMapIds } = useOfflineStore();
+  const { isReadOnly } = useSettingsStore();
   const isOffline = offlineMapIds.includes(map.id);
 
   const percent = map.nodeCount === 0 ? 0 : Math.round((map.completedCount / map.nodeCount) * 100);
@@ -90,18 +92,22 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
                 <div className="absolute right-0 bottom-8 w-48 bg-white rounded-lg shadow-lg shadow-gray-200/50 border border-gray-100 py-1.5 z-40">
-                  <button 
-                    onClick={() => { setMenuOpen(false); onRename(); }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <Edit2 className="h-3.5 w-3.5 text-gray-400" /> Rename
-                  </button>
-                  <button 
-                    onClick={() => { setMenuOpen(false); onDuplicate(); }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <Copy className="h-3.5 w-3.5 text-gray-400" /> Duplicate
-                  </button>
+                  {!isReadOnly && (
+                    <>
+                      <button 
+                        onClick={() => { setMenuOpen(false); onRename(); }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 text-gray-400" /> Rename
+                      </button>
+                      <button 
+                        onClick={() => { setMenuOpen(false); onDuplicate(); }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-gray-400" /> Duplicate
+                      </button>
+                    </>
+                  )}
                   <button 
                     onClick={async () => { 
                       setMenuOpen(false); 
@@ -112,18 +118,22 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
                     {isOffline ? <CloudOff className="h-3.5 w-3.5 text-gray-400" /> : <CloudDownload className="h-3.5 w-3.5 text-gray-400" />}
                     {isOffline ? 'Remove offline access' : 'Make available offline'}
                   </button>
-                  <div className="h-px bg-gray-100 my-1 font-medium" />
-                  <button 
-                    onClick={() => { 
-                      setMenuOpen(false); 
-                      if (window.confirm("Delete this mindmap? This cannot be undone.")) {
-                        onDelete();
-                      }
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-red-500" /> Delete
-                  </button>
+                  {!isReadOnly && (
+                    <>
+                      <div className="h-px bg-gray-100 my-1 font-medium" />
+                      <button 
+                        onClick={() => { 
+                          setMenuOpen(false); 
+                          if (window.confirm("Delete this mindmap? This cannot be undone.")) {
+                            onDelete();
+                          }
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 transition"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" /> Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}

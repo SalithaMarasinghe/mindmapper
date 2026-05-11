@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Sun, Moon, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Lock, Unlock, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useSettingsStore } from '../../store/settingsStore';
 
 export function AppHeader({
   searchQuery,
@@ -15,19 +16,10 @@ export function AppHeader({
   rightContent?: React.ReactNode,
 }) {
   const { profile, user, signOut } = useAuthStore();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const { isReadOnly, toggleReadOnly } = useSettingsStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const initial = profile?.displayName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U';
-
-  const toggleTheme = () => {
-    setTheme(t => t === 'light' ? 'dark' : 'light');
-    if (theme === 'light') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
 
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-50 px-4 sm:px-6">
@@ -62,8 +54,8 @@ export function AppHeader({
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
           {rightContent}
-          <button onClick={toggleTheme} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
-            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          <button onClick={toggleReadOnly} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition" title={isReadOnly ? "Read-only mode (click to unlock)" : "Edit mode (click to lock)"}>
+            {isReadOnly ? <Lock className="h-5 w-5 text-orange-500" /> : <Unlock className="h-5 w-5" />}
           </button>
           
           <div className="relative">

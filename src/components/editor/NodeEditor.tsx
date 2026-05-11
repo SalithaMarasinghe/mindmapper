@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useMapStore } from '../../store/mapStore';
 import { useContentStore } from '../../store/contentStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import RichEditor from '@/components/editor/RichEditor';
 
 const isEditingElementFocused = () => {
@@ -29,6 +30,7 @@ export function NodeEditor({
 }) {
   const { nodes } = useMapStore();
   const { getOrCreateContent, content, saveStatus, retrySave, updateContent, markComplete, markIncomplete } = useContentStore();
+  const { isReadOnly } = useSettingsStore();
   const [isNotesHidden, setIsNotesHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
 
@@ -138,19 +140,21 @@ export function NodeEditor({
             {isTestMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {isTestMode ? '📖 Study Mode' : '🧠 Test Mode'}
           </button>
-          <button
-            onClick={handleStudyToggle}
-            onKeyDown={(e) => {
-              if (e.target !== e.currentTarget) return;
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }}
-            className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'btn-completed bg-white text-green-700 border-green-200 hover:bg-green-50' : 'btn-mark-complete bg-green-600 text-white border-transparent hover:bg-green-700'}`}
-          >
-            {isCompleted ? '✓ Studied' : 'Mark as Studied'}
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={handleStudyToggle}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'btn-completed bg-white text-green-700 border-green-200 hover:bg-green-50' : 'btn-mark-complete bg-green-600 text-white border-transparent hover:bg-green-700'}`}
+            >
+              {isCompleted ? '✓ Studied' : 'Mark as Studied'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -173,7 +177,7 @@ export function NodeEditor({
           initialContent={initialContent}
           onDirty={() => setSaveStatus(nodeId, 'unsaved')}
           onSave={handleSave}
-          readOnly={isTestMode}
+          readOnly={isTestMode || isReadOnly}
         />
       </div>
     </div>
