@@ -15,7 +15,7 @@ interface LeafNodeProps {
 
 export function LeafNode({ data }: LeafNodeProps) {
   const navigate = useNavigate();
-  const { node, isCompleted, onContextMenu, onPreview, readOnly = false } = data;
+  const { node, isCompleted, onContextMenu, onPreview } = data;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (onContextMenu) {
