@@ -1,5 +1,5 @@
 import { get, set, del } from 'idb-keyval';
-import type { MindmapMeta, Node, NodeContent } from '../types';
+import type { MindmapMeta, MindmapNode, NodeContent } from '../types';
 
 const OFFLINE_MAPS_KEY = 'offline_maps';
 
@@ -18,7 +18,7 @@ export const offlineStore = {
   // Save map metadata, nodes, and content for offline use
   saveMapOffline: async (
     mapMeta: MindmapMeta, 
-    nodes: Node[], 
+    nodes: MindmapNode[], 
     content: Record<string, NodeContent>
   ) => {
     // Save map components
@@ -51,8 +51,8 @@ export const offlineStore = {
   },
 
   // Retrieve map nodes
-  getMapNodes: async (mapId: string): Promise<Node[] | undefined> => {
-    return await get<Node[]>(`map_nodes_${mapId}`);
+  getMapNodes: async (mapId: string): Promise<MindmapNode[] | undefined> => {
+    return await get<MindmapNode[]>(`map_nodes_${mapId}`);
   },
 
   // Retrieve map content

@@ -42,7 +42,7 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
             <h3 className="font-semibold text-gray-900 text-lg truncate tracking-tight" title={map.title}>
               {map.title}
             </h3>
-            {isOffline && <CloudDownload className="h-4 w-4 text-teal-600 flex-shrink-0" title="Available offline" />}
+            {isOffline && <span title="Available offline" className="flex items-center"><CloudDownload className="h-4 w-4 text-teal-600 flex-shrink-0" /></span>}
           </div>
           <div className="flex gap-1.5 mt-1 overflow-hidden">
             {map.tags?.slice(0, 3).map(tag => (
