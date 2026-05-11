@@ -254,9 +254,10 @@ export function MindmapCanvas() {
             fetchNodeContent(node.id, mapId).finally(() => setPreviewLoading(false));
           }
         },
+        readOnly: isReadOnly,
       }
     }));
-  }, [flowNodes, handleNodeContextMenu, handleAddDirectionalChild, content, mapId, fetchNodeContent]);
+  }, [flowNodes, handleNodeContextMenu, handleAddDirectionalChild, content, mapId, fetchNodeContent, isReadOnly]);
 
   const rootNode = useMemo(() => nodes.find((n) => n.type === 'root') || null, [nodes]);
   const branchCount = useMemo(() => nodes.filter((n) => n.type === 'branch').length, [nodes]);
@@ -685,6 +686,7 @@ export function MindmapCanvas() {
           nodesConnectable={false}
           panOnDrag={[2]}
           selectionOnDrag
+          deleteKeyCode={null}
           onKeyDown={(e) => {
             if (
               e.target instanceof HTMLElement &&

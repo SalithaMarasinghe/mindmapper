@@ -36,7 +36,7 @@ export function BranchNode({ data }: BranchNodeProps) {
   return (
     <div 
       onClick={() => {
-        if (!readOnly) navigate(`/map/${node.mapId}/node/${node.id}`);
+        navigate(`/map/${node.mapId}/node/${node.id}`);
       }}
       onContextMenu={handleContextMenu}
       className="group bg-white px-4 py-3 rounded-lg shadow-sm border-l-4 border-y border-r border-gray-200 min-w-[160px] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all relative"
