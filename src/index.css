@@ -264,15 +264,11 @@ body {
 
 /* Force BlockNote editor to be opaque inside the modal */
 .preview-modal-content .bn-container,
-.preview-modal-content .bn-editor,
-.preview-modal-content [class*="bn-"],
-.preview-modal-content .ProseMirror {
+.preview-modal-content .bn-editor {
   background: #ffffff !important;
 }
 
 [data-theme="dark"] .preview-modal-content .bn-container,
-[data-theme="dark"] .preview-modal-content .bn-editor,
-[data-theme="dark"] .preview-modal-content [class*="bn-"],
-[data-theme="dark"] .preview-modal-content .ProseMirror {
+[data-theme="dark"] .preview-modal-content .bn-editor {
   background: #1c1b19 !important;
 }
