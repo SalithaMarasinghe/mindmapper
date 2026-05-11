@@ -188,6 +188,20 @@ export const useContentStore = create<ContentState>((set, get) => ({
     const existing = get().content[nodeId];
     if (existing) return existing;
 
+    if (!navigator.onLine) {
+      const isOfflineSaved = await offlineStore.isMapOffline(mapId);
+      if (isOfflineSaved) {
+        const offlineContent = await offlineStore.getMapContent(mapId);
+        if (offlineContent && offlineContent[nodeId]) {
+          set(state => ({
+            content: { ...state.content, [nodeId]: offlineContent[nodeId] },
+            saveStatus: { ...state.saveStatus, [nodeId]: 'saved' },
+          }));
+          return offlineContent[nodeId];
+        }
+      }
+    }
+
     const newRec = emptyContent(nodeId, mapId);
     set(state => ({ 
       content: { ...state.content, [nodeId]: newRec },

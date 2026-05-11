@@ -72,6 +72,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
             contentMap[c.node_id] = {
               nodeId: c.node_id,
               mapId: c.map_id,
+              richContent: c.rich_content || [],
               definition: c.definition,
               keyPoints: c.key_points,
               mentalModel: c.mental_model,
