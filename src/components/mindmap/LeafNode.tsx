@@ -15,7 +15,7 @@ interface LeafNodeProps {
 
 export function LeafNode({ data }: LeafNodeProps) {
   const navigate = useNavigate();
-  const { node, isCompleted, onContextMenu, onPreview } = data;
+  const { node, isCompleted, onContextMenu, onPreview, readOnly = false } = data;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (onContextMenu) {
@@ -27,7 +27,11 @@ export function LeafNode({ data }: LeafNodeProps) {
   return (
     <div 
       onClick={() => {
-        navigate(`/map/${node.mapId}/node/${node.id}`);
+        if (readOnly) {
+          onPreview?.(node);
+        } else {
+          navigate(`/map/${node.mapId}/node/${node.id}`);
+        }
       }}
       onContextMenu={handleContextMenu}
       className="group relative bg-gray-50 border border-gray-200 px-3 py-2 rounded-full shadow-sm text-sm cursor-pointer hover:bg-white hover:border-teal-300 hover:shadow hover:-translate-x-0.5 transition-all min-w-[140px] flex justify-between items-center"

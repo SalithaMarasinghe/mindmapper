@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import { useNavigate } from 'react-router-dom';
 import type { MindmapNode, NodeDirection } from '../../types';
 
 interface RootNodeProps {
@@ -7,12 +8,14 @@ interface RootNodeProps {
     totalProgress: string;
     onContextMenu?: (e: React.MouseEvent, node: MindmapNode) => void;
     onAddDirectionalChild?: (node: MindmapNode, direction: NodeDirection) => void;
+    onPreview?: (node: MindmapNode) => void;
     readOnly?: boolean;
   };
 }
 
 export function RootNode({ data }: RootNodeProps) {
-  const { node, totalProgress, onContextMenu, onAddDirectionalChild, readOnly = false } = data;
+  const navigate = useNavigate();
+  const { node, totalProgress, onContextMenu, onAddDirectionalChild, onPreview, readOnly = false } = data;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (onContextMenu) {
@@ -29,8 +32,15 @@ export function RootNode({ data }: RootNodeProps) {
 
   return (
     <div 
+      onClick={() => {
+        if (readOnly) {
+          onPreview?.(node);
+        } else {
+          navigate(`/map/${node.mapId}/node/${node.id}`);
+        }
+      }}
       onContextMenu={handleContextMenu}
-      className="group bg-teal-700 text-white px-6 py-4 rounded-xl shadow-lg border border-teal-800 min-w-[200px] text-center relative"
+      className="group bg-teal-700 text-white px-6 py-4 rounded-xl shadow-lg border border-teal-800 min-w-[200px] text-center relative cursor-pointer"
     >
       <div className="font-bold text-lg mb-1">{node.label}</div>
       <div className="text-teal-200 text-xs font-medium">{totalProgress}</div>
