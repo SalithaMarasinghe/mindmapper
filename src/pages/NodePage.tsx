@@ -285,7 +285,14 @@ export function NodePage() {
         </aside>
 
         <main className="node-editor-full">
-          <NodeEditor nodeId={nodeId} mapId={mapId} isTestMode={isTestMode} onToggleTestMode={setIsTestMode} />
+          <NodeEditor
+            nodeId={nodeId}
+            mapId={mapId}
+            mapTitle={mapMeta?.title ?? 'Mind Map'}
+            parentLabel={parentNode?.label}
+            isTestMode={isTestMode}
+            onToggleTestMode={setIsTestMode}
+          />
         </main>
       </div>
     </div>

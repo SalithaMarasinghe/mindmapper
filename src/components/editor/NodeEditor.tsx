@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, FileDown, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useMapStore } from '../../store/mapStore';
 import { useContentStore } from '../../store/contentStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import RichEditor from '@/components/editor/RichEditor';
+import { exportBranchToPdf } from '../../utils/exportBranchToPdf';
 
 const isEditingElementFocused = () => {
   const active = document.activeElement as HTMLElement | null;
@@ -20,11 +21,15 @@ const isEditingElementFocused = () => {
 export function NodeEditor({ 
   nodeId, 
   mapId,
+  mapTitle = 'Mind Map',
+  parentLabel,
   isTestMode = false,
   onToggleTestMode
 }: { 
   nodeId: string; 
   mapId: string;
+  mapTitle?: string;
+  parentLabel?: string;
   isTestMode?: boolean;
   onToggleTestMode?: (val: boolean) => void;
 }) {
@@ -33,6 +38,7 @@ export function NodeEditor({
   const { isReadOnly } = useSettingsStore();
   const [isNotesHidden, setIsNotesHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     getOrCreateContent(nodeId, mapId);
@@ -98,6 +104,20 @@ export function NodeEditor({
     }
   };
 
+  const handleExportPdf = async () => {
+    if (!currentNode || !nodeContent) return;
+    setIsExporting(true);
+    try {
+      await exportBranchToPdf(currentNode, nodeContent, mapTitle, parentLabel);
+      toast.success('PDF downloaded!');
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      toast.error('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="node-study-page flex flex-col h-full bg-[#f8fafc] w-full pb-16">
       <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#f8fafc]/95 backdrop-blur z-10 border-b border-transparent mb-4">
@@ -139,6 +159,17 @@ export function NodeEditor({
           >
             {isTestMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {isTestMode ? '📖 Study Mode' : '🧠 Test Mode'}
+          </button>
+          <button
+            onClick={handleExportPdf}
+            disabled={isExporting}
+            title="Export this branch to PDF"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isExporting
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <FileDown className="w-4 h-4" />}
+            {isExporting ? 'Exporting…' : 'Export PDF'}
           </button>
           {!isReadOnly && (
             <button
