@@ -359,7 +359,6 @@ export async function exportBranchToPdf(
   document.body.removeChild(iframe);
 
   // 6. Build jsPDF and paginate
-  const imgData = canvas.toDataURL('image/png');
   const pdfWidth = 210; // A4 mm
   const pdfHeight = 297; // A4 mm
   const margin = 10; // mm
