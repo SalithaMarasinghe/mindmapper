@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, FileDown, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, FileDown, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useMapStore } from '../../store/mapStore';
 import { useContentStore } from '../../store/contentStore';
@@ -39,6 +39,7 @@ export function NodeEditor({
   const [isNotesHidden, setIsNotesHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
 
   useEffect(() => {
     getOrCreateContent(nodeId, mapId);
@@ -118,6 +119,14 @@ export function NodeEditor({
     }
   };
 
+  const handleClearContent = () => {
+    if (window.confirm('Are you sure you want to completely erase all content on this page? This cannot be undone.')) {
+      handleSave([]);
+      setEditorKey(k => k + 1);
+      toast.success('Content erased');
+    }
+  };
+
   return (
     <div className="node-study-page flex flex-col h-full bg-[#0f1117] w-full pb-16">
       <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#0f1117]/95 backdrop-blur z-10 border-b border-[#2d3748] mb-4">
@@ -164,13 +173,23 @@ export function NodeEditor({
             onClick={handleExportPdf}
             disabled={isExporting}
             title="Export this branch to PDF"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-teal-400 bg-teal-900/30 border border-teal-800 hover:bg-teal-900/50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isExporting
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : <FileDown className="w-4 h-4" />}
             {isExporting ? 'Exporting…' : 'Export PDF'}
           </button>
+          {!isReadOnly && (
+            <button
+              onClick={handleClearContent}
+              title="Erase all content"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-red-400 bg-red-900/10 border border-transparent hover:bg-red-900/30 hover:border-red-800/50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Erase
+            </button>
+          )}
           {!isReadOnly && (
             <button
               onClick={handleStudyToggle}
@@ -181,7 +200,7 @@ export function NodeEditor({
                   e.stopPropagation();
                 }
               }}
-              className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'btn-completed bg-white text-green-700 border-green-200 hover:bg-green-50' : 'btn-mark-complete bg-green-600 text-white border-transparent hover:bg-green-700'}`}
+              className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'bg-[#2d3748] text-green-400 border-green-800 hover:bg-[#3d4a60]' : 'bg-green-600 text-white border-transparent hover:bg-green-700'}`}
             >
               {isCompleted ? '✓ Studied' : 'Mark as Studied'}
             </button>
@@ -203,6 +222,7 @@ export function NodeEditor({
 
       <div className={`flex-1 w-full px-1 xl:px-4 ${isTestMode && isNotesHidden ? 'notes-hidden' : ''}`}>
         <RichEditor
+          key={`${nodeId}-${editorKey}`}
           nodeId={nodeId}
           mapId={mapId}
           initialContent={initialContent}
