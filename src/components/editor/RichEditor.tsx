@@ -111,6 +111,25 @@ export default function RichEditor({
     isDirty.current = true;
     if (onDirtyRef.current) onDirtyRef.current();
     
+    // Auto-format pasted code blocks to Python if they are not SQL or already Python
+    const fixBlocks = (blocksToFix: typeof editor.document) => {
+      for (const block of blocksToFix) {
+        if (block.type === 'codeBlock') {
+          const lang = block.props.language?.toLowerCase();
+          if (lang !== 'python' && lang !== 'py' && lang !== 'python3' && lang !== 'sql') {
+            editor.updateBlock(block.id, {
+              type: 'codeBlock',
+              props: { ...block.props, language: 'python' }
+            });
+          }
+        }
+        if (block.children && block.children.length > 0) {
+          fixBlocks(block.children);
+        }
+      }
+    };
+    fixBlocks(editor.document);
+
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       handleSaveFlush();
