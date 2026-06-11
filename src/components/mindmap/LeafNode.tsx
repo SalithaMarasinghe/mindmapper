@@ -34,7 +34,7 @@ export function LeafNode({ data }: LeafNodeProps) {
         }
       }}
       onContextMenu={handleContextMenu}
-      className="group relative bg-gray-50 border border-gray-200 px-3 py-2 rounded-full shadow-sm text-sm cursor-pointer hover:bg-white hover:border-teal-300 hover:shadow hover:-translate-x-0.5 transition-all min-w-[140px] flex justify-between items-center"
+      className="group relative bg-[#1e2433] border border-[#2d3748] px-3 py-2 rounded-full shadow-sm text-sm cursor-pointer hover:bg-[#2d3748] hover:border-teal-600 hover:shadow hover:-translate-x-0.5 transition-all min-w-[140px] flex justify-between items-center"
     >
       <Handle id="t-left" type="target" position={Position.Left} className="opacity-0" />
       <Handle id="t-right" type="target" position={Position.Right} className="opacity-0 w-0 h-0" />
@@ -45,7 +45,7 @@ export function LeafNode({ data }: LeafNodeProps) {
       <Handle id="s-top" type="source" position={Position.Top} className="opacity-0 w-0 h-0" />
       <Handle id="s-bottom" type="source" position={Position.Bottom} className="opacity-0 w-0 h-0" />
       
-      <span className="text-gray-700 font-medium truncate pr-3">{node.label}</span>
+      <span className="text-slate-300 font-medium truncate pr-3">{node.label}</span>
       
       <div className="flex items-center">
         {isCompleted && (

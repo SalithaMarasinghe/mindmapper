@@ -1,12 +1,57 @@
 @import "tailwindcss";
 
+/* =====================================================
+   DARK MODE GLOBAL DEFAULTS
+   ===================================================== */
+html, body {
+  background-color: #0f1117;
+  color: #e2e8f0;
+}
+
 body {
   font-family: 'Satoshi', sans-serif;
 }
 
-/* BlockNote editor customization */
+/* =====================================================
+   REACTFLOW DARK MODE OVERRIDES
+   ===================================================== */
+.react-flow__pane,
+.react-flow__renderer,
+.react-flow__background {
+  background-color: #0f1117 !important;
+}
+
+.react-flow__controls {
+  background: #1e2433 !important;
+  border: 1px solid #2d3748 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__controls-button {
+  background: #1e2433 !important;
+  border-bottom: 1px solid #2d3748 !important;
+  color: #94a3b8 !important;
+  fill: #94a3b8 !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #2d3748 !important;
+}
+
+.react-flow__controls-button svg {
+  fill: #94a3b8 !important;
+}
+
+.react-flow__minimap {
+  background: #1e2433 !important;
+}
+
+
+/* =====================================================
+   BLOCKNOTE EDITOR CUSTOMIZATION
+   ===================================================== */
 .rich-editor-wrapper {
-  /* Remove overflow:hidden to prevent side-menus from being clipped */
   min-height: 500px;
   border-radius: 0.5rem;
 }
@@ -15,16 +60,14 @@ body {
   font-family: 'Satoshi', sans-serif !important;
 }
 
-/* Match app theme surface */
 .bn-editor {
   background: transparent !important;
   padding: 1rem !important;
 }
 
-/* Slash menu and toolbar use app colors */
 .bn-menu-item:hover,
 .bn-suggestion-menu-item:hover {
-  background-color: #cedcd8 !important;
+  background-color: #1e293b !important;
 }
 
 .notes-hidden .bn-editor {
@@ -32,9 +75,9 @@ body {
   pointer-events: none;
 }
 
-/* -- BlockNote Image Fix -- */
-
-/* Force image blocks to be full width like code blocks */
+/* =====================================================
+   BLOCKNOTE IMAGE / VIDEO / FILE FIXES
+   ===================================================== */
 .bn-block-content[data-content-type="image"] {
   width: 100% !important;
 }
@@ -44,7 +87,6 @@ body {
   max-width: 100% !important;
 }
 
-/* The actual <img> tag inside BlockNote */
 .bn-visual-media-wrapper img,
 .bn-block-content img {
   width: 100% !important;
@@ -55,19 +97,15 @@ body {
   object-fit: cover !important;
 }
 
-/* Remove the broken icon / filename label */
 .bn-add-image-button {
   display: none !important;
 }
-
-/* -- BlockNote Video Fix -- */
 
 .bn-block-content[data-content-type="video"],
 .bn-block-content[data-content-type="file"] {
   width: 100% !important;
 }
 
-/* Force video element to be full width */
 .bn-block-content video {
   width: 100% !important;
   max-width: 100% !important;
@@ -78,12 +116,10 @@ body {
   background: #000 !important;
 }
 
-/* Hide the filename label shown above broken video */
 .bn-file-name {
   display: none !important;
 }
 
-/* Same max-width as code blocks for consistent sizing */
 .bn-block-content[data-content-type="codeBlock"],
 .bn-block-content[data-content-type="image"],
 .bn-block-content[data-content-type="video"],
@@ -93,7 +129,9 @@ body {
   overflow: hidden !important;
 }
 
-/* Toggle tab */
+/* =====================================================
+   PANEL TOGGLE TAB
+   ===================================================== */
 .panel-toggle-tab {
   position: fixed;
   left: 0;
@@ -101,7 +139,7 @@ body {
   transform: translateY(-50%);
   width: 24px;
   height: 80px;
-  background: #01696f;
+  background: #0d9488;
   border: none;
   border-radius: 0 8px 8px 0;
   cursor: pointer;
@@ -110,7 +148,7 @@ body {
   justify-content: center;
   color: white;
   z-index: 60;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.4);
   transition: width 150ms ease;
 }
 
@@ -126,11 +164,13 @@ body {
   transform: rotate(180deg);
 }
 
-/* Overlay */
+/* =====================================================
+   PANEL OVERLAY
+   ===================================================== */
 .panel-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(2px);
   z-index: 40;
   opacity: 0;
@@ -143,15 +183,18 @@ body {
   pointer-events: all;
 }
 
-/* Slide panel */
+/* =====================================================
+   SIDE PANEL (NODE INFO)
+   ===================================================== */
 .node-side-panel {
   position: fixed;
   left: 0;
   top: 0;
   height: 100vh;
   width: 300px;
-  background: var(--color-surface, #ffffff);
-  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.18);
+  background: #1e2433;
+  border-right: 1px solid #2d3748;
+  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.5);
   z-index: 50;
   padding: 1.5rem;
   display: flex;
@@ -166,7 +209,6 @@ body {
   transform: translateX(0);
 }
 
-/* Close button inside panel */
 .panel-close-btn {
   position: absolute;
   top: 1rem;
@@ -174,28 +216,31 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--color-text-muted, #6b7280);
+  color: #94a3b8;
   padding: 4px;
   border-radius: 4px;
 }
 
 .panel-close-btn:hover {
-  background: var(--color-surface-offset, #f3f4f6);
+  background: #2d3748;
 }
 
-/* Full width editor */
+/* =====================================================
+   FULL WIDTH EDITOR AREA
+   ===================================================== */
 .node-editor-full {
   width: 100%;
   padding: 1.5rem 2rem 1.5rem 2.5rem;
 }
 
-/* -- Preview Modal -- force full opacity on all layers -- */
-
+/* =====================================================
+   PREVIEW MODAL
+   ===================================================== */
 .preview-modal-backdrop {
   position: fixed !important;
   inset: 0 !important;
   z-index: 9998 !important;
-  background: rgba(0, 0, 0, 0.65) !important;
+  background: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(5px) !important;
 }
 
@@ -213,62 +258,38 @@ body {
   flex-direction: column !important;
   border-radius: 16px !important;
   overflow: hidden !important;
-  background: #ffffff !important;    /* hard hex, not a variable */
-  border: 1px solid #e0ddd8 !important;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3) !important;
-}
-
-[data-theme="dark"] .preview-modal-box {
-  background: #1c1b19 !important;
-  border-color: #393836 !important;
+  background: #1e2433 !important;
+  border: 1px solid #2d3748 !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6) !important;
 }
 
 .preview-modal-header {
-  background: #ffffff !important;
-  border-bottom: 1px solid #e0ddd8 !important;
+  background: #1e2433 !important;
+  border-bottom: 1px solid #2d3748 !important;
   padding: 1.25rem 1.5rem !important;
   flex-shrink: 0 !important;
-}
-
-[data-theme="dark"] .preview-modal-header {
-  background: #1c1b19 !important;
-  border-bottom-color: #393836 !important;
 }
 
 .preview-modal-content {
   flex: 1 !important;
   overflow-y: auto !important;
   min-height: 0 !important;
-  background: #ffffff !important;   /* hard hex */
+  background: #1a2030 !important;
   position: relative !important;
-  isolation: isolate !important;    /* creates new stacking context */
-}
-
-[data-theme="dark"] .preview-modal-content {
-  background: #1c1b19 !important;
+  isolation: isolate !important;
 }
 
 .preview-modal-footer {
-  background: #ffffff !important;
-  border-top: 1px solid #e0ddd8 !important;
+  background: #1e2433 !important;
+  border-top: 1px solid #2d3748 !important;
   padding: 1rem 1.5rem !important;
   flex-shrink: 0 !important;
   display: flex !important;
   justify-content: flex-end !important;
 }
 
-[data-theme="dark"] .preview-modal-footer {
-  background: #1c1b19 !important;
-  border-top-color: #393836 !important;
-}
-
 /* Force BlockNote editor to be opaque inside the modal */
 .preview-modal-content .bn-container,
 .preview-modal-content .bn-editor {
-  background: #ffffff !important;
-}
-
-[data-theme="dark"] .preview-modal-content .bn-container,
-[data-theme="dark"] .preview-modal-content .bn-editor {
-  background: #1c1b19 !important;
+  background: #1a2030 !important;
 }

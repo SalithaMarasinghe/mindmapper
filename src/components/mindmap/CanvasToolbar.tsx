@@ -90,11 +90,11 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
   };
 
   return (
-    <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-2 sm:px-4 gap-2 z-40 relative shadow-sm">
+    <div className="h-14 bg-[#1e2433] border-b border-[#2d3748] flex items-center justify-between px-2 sm:px-4 gap-2 z-40 relative shadow-lg">
       <div className="flex items-center gap-2 shrink-0">
         <button 
           onClick={() => navigate('/')}
-          className="flex items-center gap-1.5 text-gray-500 hover:text-gray-900 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-gray-100 active:scale-95"
+          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#2d3748] active:scale-95"
         >
           <span>← Dashboard</span>
         </button>
@@ -102,27 +102,27 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
 
       <div className="flex-1 min-w-0 flex justify-center items-center">
         {isEditingTitle ? (
-          <div className="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded-lg border border-teal-500 ring-4 ring-teal-50">
+          <div className="flex items-center gap-2 bg-[#0f1117] px-2 py-1 rounded-lg border border-teal-500 ring-4 ring-teal-900/40">
             <input 
               autoFocus
-              className="text-sm font-bold text-gray-900 bg-transparent px-1 focus:outline-none min-w-[200px]"
+              className="text-sm font-bold text-slate-100 bg-transparent px-1 focus:outline-none min-w-[200px]"
               value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
               onKeyDown={handleTitleKeyDown}
               onBlur={handleTitleSave}
             />
-            <button className="text-teal-600 p-1 hover:bg-teal-100 rounded-md transition" onClick={handleTitleSave}>
+            <button className="text-teal-400 p-1 hover:bg-teal-900/40 rounded-md transition" onClick={handleTitleSave}>
               <Check className="h-4 w-4" />
             </button>
           </div>
         ) : (
           <div 
             onClick={handleTitleClick}
-            className="flex items-center gap-2 text-base font-bold text-gray-900 group cursor-pointer hover:text-teal-700 transition max-w-[34vw] sm:max-w-[45vw]"
+            className="flex items-center gap-2 text-base font-bold text-slate-100 group cursor-pointer hover:text-teal-400 transition max-w-[34vw] sm:max-w-[45vw]"
           >
             <span className="text-xl leading-none -mt-0.5">{map?.emoji}</span>
             <span className="truncate">{map?.title || 'Loading map...'}</span>
-            {!isReadOnly && <Edit2 className="h-3.5 w-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition" />}
+            {!isReadOnly && <Edit2 className="h-3.5 w-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition" />}
           </div>
         )}
       </div>
@@ -140,24 +140,24 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
             </span>
           </button>
           {sharePopoverOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-50">
-              <p className="text-xs font-semibold text-gray-500 mb-2">Shareable link</p>
+            <div className="absolute right-0 mt-2 w-80 bg-[#1e2433] border border-[#2d3748] rounded-xl shadow-xl p-3 z-50">
+              <p className="text-xs font-semibold text-slate-400 mb-2">Shareable link</p>
               <input
                 readOnly
                 value={shareUrl}
-                className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700"
+                className="w-full text-sm bg-[#0f1117] border border-[#2d3748] rounded-lg px-3 py-2 text-slate-300"
               />
               <div className="mt-3 flex justify-between items-center">
                 <button
                   onClick={handleRevoke}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-400 hover:text-red-300"
                 >
                   <Link2Off className="w-4 h-4" />
                   Revoke link
                 </button>
                 <button
                   onClick={() => setSharePopoverOpen(false)}
-                  className="text-sm font-semibold text-gray-500 hover:text-gray-700"
+                  className="text-sm font-semibold text-slate-400 hover:text-slate-200"
                 >
                   Close
                 </button>
@@ -175,10 +175,10 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
             <span>+ Add Branch</span>
           </button>
         )}
-        <div className="w-px h-6 bg-gray-200 mx-1.5 shrink-0" />
+        <div className="w-px h-6 bg-[#2d3748] mx-1.5 shrink-0" />
         <button 
            onClick={onFitView}
-          className="px-3 py-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition whitespace-nowrap"
+          className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#2d3748] rounded-lg transition whitespace-nowrap"
           title="Fit View"
         >
           <span className="inline-flex items-center gap-1.5">
@@ -189,7 +189,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
         {!isReadOnly && (
           <button
             onClick={onTidyUp}
-            className="px-3 py-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition whitespace-nowrap"
+            className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#2d3748] rounded-lg transition whitespace-nowrap"
             title="Tidy Up"
           >
             Tidy Up

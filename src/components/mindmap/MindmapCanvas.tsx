@@ -610,7 +610,7 @@ export function MindmapCanvas() {
             <button
               onClick={handleExportPDF}
               disabled={isExporting}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-teal-700 bg-transparent border border-teal-600 hover:bg-teal-50 rounded-lg transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-teal-400 bg-transparent border border-teal-600 hover:bg-teal-900/30 rounded-lg transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
               title="Export as PDF"
             >
               {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
@@ -626,24 +626,24 @@ export function MindmapCanvas() {
                 Share
               </button>
             {sharePopoverOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-[120]">
-                <p className="text-xs font-semibold text-gray-500 mb-2">Shareable link</p>
+              <div className="absolute right-0 mt-2 w-80 bg-[#1e2433] border border-[#2d3748] rounded-xl shadow-xl p-3 z-[120]">
+                <p className="text-xs font-semibold text-slate-400 mb-2">Shareable link</p>
                 <input
                   readOnly
                   value={shareUrl}
-                  className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-700"
+                  className="w-full text-sm bg-[#0f1117] border border-[#2d3748] rounded-lg px-3 py-2 text-slate-300"
                 />
                 <div className="mt-3 flex justify-between items-center">
                   <button
                     onClick={handleRevokeShare}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-400 hover:text-red-300"
                   >
                     <Link2Off className="w-4 h-4" />
                     Revoke link
                   </button>
                   <button
                     onClick={() => setSharePopoverOpen(false)}
-                    className="text-sm font-semibold text-gray-500 hover:text-gray-700"
+                    className="text-sm font-semibold text-slate-400 hover:text-slate-200"
                   >
                     Close
                   </button>
@@ -660,7 +660,7 @@ export function MindmapCanvas() {
         onAddBranch={handleAddBranch}
         onTidyUp={handleTidyUp}
       />
-      <div className="flex-1 w-full bg-[#f8fafc] relative">
+      <div className="flex-1 w-full bg-[#0f1117] relative">
         <ReactFlow
           nodes={interactiveFlowNodes}
           edges={flowEdges}
@@ -700,22 +700,23 @@ export function MindmapCanvas() {
             }
           }}
         >
-          <Background color="#ccd4e0" gap={16} size={2} />
+          <Background color="#2d3748" gap={16} size={2} />
           <Controls className="mb-4 ml-4" showInteractive={false} />
           <MiniMap 
             nodeColor={(n) => {
               if (n.type === 'root') return '#0f766e';
               if (n.type === 'branch') return (n.data?.node as MindmapNode)?.color || '#94a3b8';
-              return '#f1f5f9';
+              return '#2d3748';
             }}
-            maskColor="rgba(248, 250, 252, 0.7)"
-            className="rounded-lg shadow-md border border-gray-200"
+            maskColor="rgba(15, 17, 23, 0.75)"
+            style={{ background: '#1e2433', border: '1px solid #2d3748' }}
+            className="rounded-lg shadow-md"
           />
         </ReactFlow>
 
         {rootNode && branchCount === 0 && !isReadOnly && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <p className="text-gray-400 text-sm md:text-base font-medium">
+            <p className="text-slate-600 text-sm md:text-base font-medium">
               👆 Click &quot;+ Add Branch&quot; in the toolbar to start building your mindmap
             </p>
           </div>
@@ -724,11 +725,11 @@ export function MindmapCanvas() {
         {paneMenuInfo && (
           <div
             style={{ top: paneMenuInfo.y, left: paneMenuInfo.x }}
-            className="fixed z-[100] min-w-44 bg-white rounded-lg border border-gray-200 shadow-lg py-1"
+            className="fixed z-[100] min-w-44 bg-[#1e2433] rounded-lg border border-[#2d3748] shadow-xl py-1"
           >
             <button
               onClick={handleAddBranchFromPane}
-              className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition"
+              className="w-full text-left px-3 py-2 text-sm font-medium text-slate-300 hover:bg-teal-900/40 hover:text-teal-300 transition"
             >
               ➕ Add Branch here
             </button>

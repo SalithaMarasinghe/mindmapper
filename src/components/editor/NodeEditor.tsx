@@ -83,7 +83,7 @@ export function NodeEditor({
   if (!nodeContent) {
     return (
       <div className="flex justify-center p-12">
-        <div className="w-8 h-8 rounded-full border-4 border-gray-200 border-t-teal-500 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-4 border-slate-700 border-t-teal-500 animate-spin" />
       </div>
     );
   }
@@ -119,25 +119,25 @@ export function NodeEditor({
   };
 
   return (
-    <div className="node-study-page flex flex-col h-full bg-[#f8fafc] w-full pb-16">
-      <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#f8fafc]/95 backdrop-blur z-10 border-b border-transparent mb-4">
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+    <div className="node-study-page flex flex-col h-full bg-[#0f1117] w-full pb-16">
+      <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#0f1117]/95 backdrop-blur z-10 border-b border-[#2d3748] mb-4">
+        <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-3">
           {currentNode?.label || 'Study Material'}
           <div className="text-sm font-semibold flex items-center gap-1.5 transition-colors">
             {(status === 'unsaved' || status === 'saving') && (
-              <span className="text-teal-600 flex items-center gap-1.5 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 shadow-sm ml-2">
+              <span className="text-teal-400 flex items-center gap-1.5 bg-teal-900/30 px-2 py-0.5 rounded border border-teal-800 shadow-sm ml-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Saving...
               </span>
             )}
             {status === 'saved' && showSaved && (
-              <span className="text-green-600 flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded border border-green-100 shadow-sm transition-opacity duration-300 ml-2">
+              <span className="text-green-400 flex items-center gap-1 bg-green-900/30 px-2 py-0.5 rounded border border-green-800 shadow-sm transition-opacity duration-300 ml-2">
                 Saved ✓
               </span>
             )}
             {status === 'failed' && (
               <button 
                 onClick={() => retrySave(nodeId)}
-                className="text-red-600 flex items-center gap-1 bg-red-50 px-2 py-0.5 rounded border border-red-100 shadow-sm hover:bg-red-100 transition-colors ml-2"
+                className="text-red-400 flex items-center gap-1 bg-red-900/30 px-2 py-0.5 rounded border border-red-800 shadow-sm hover:bg-red-900/50 transition-colors ml-2"
               >
                 ⚠ Save failed — Retry
               </button>
@@ -155,7 +155,7 @@ export function NodeEditor({
               }
             }}
             title="Toggle with Cmd/Ctrl + T"
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${isTestMode ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'text-gray-600 hover:bg-gray-100'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${isTestMode ? 'bg-orange-900/40 text-orange-300 hover:bg-orange-900/60' : 'text-slate-400 hover:bg-[#2d3748]'}`}
           >
             {isTestMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {isTestMode ? '📖 Study Mode' : '🧠 Test Mode'}

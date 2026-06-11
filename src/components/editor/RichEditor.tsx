@@ -5,6 +5,33 @@ import '@blocknote/mantine/style.css';
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { BlockNoteSchema, createCodeBlockSpec } from '@blocknote/core';
+import {
+  codeBlockOptions,
+} from '@blocknote/code-block';
+
+// Custom code block options: Python (default) + SQL only
+const customCodeBlockOptions = {
+  ...codeBlockOptions,
+  defaultLanguage: 'python',
+  supportedLanguages: {
+    python: {
+      name: 'Python',
+      aliases: ['py', 'python3'],
+    },
+    sql: {
+      name: 'SQL',
+      aliases: ['sql'],
+    },
+  },
+};
+
+const schema = BlockNoteSchema.create({
+  blockSpecs: {
+    ...BlockNoteSchema.create().blockSpecs,
+    codeBlock: createCodeBlockSpec(customCodeBlockOptions),
+  },
+});
 
 interface RichEditorProps {
   nodeId: string;
@@ -60,6 +87,7 @@ export default function RichEditor({
   }
 
   const editor = useCreateBlockNote({
+    schema,
     initialContent: initialContent?.length ? (initialContent as any) : undefined,
     uploadFile,
   });

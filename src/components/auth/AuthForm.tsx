@@ -16,11 +16,13 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const inputClass = "w-full rounded-md border border-[#2d3748] bg-[#0f1117] text-slate-200 placeholder:text-slate-500 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500";
+  const labelClass = "block text-sm font-medium mb-1 text-slate-300";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Client-side validation
     if (!email.includes('@')) {
       setError('Please enter a valid email address');
       return;
@@ -58,14 +60,12 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {mode === 'register' && (
         <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="displayName">
-            Display Name
-          </label>
+          <label className={labelClass} htmlFor="displayName">Display Name</label>
           <input
             id="displayName"
             type="text"
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className={inputClass}
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
           />
@@ -73,28 +73,24 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1" htmlFor="email">
-          Email
-        </label>
+        <label className={labelClass} htmlFor="email">Email</label>
         <input
           id="email"
           type="email"
           required
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className={inputClass}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1" htmlFor="password">
-          Password
-        </label>
+        <label className={labelClass} htmlFor="password">Password</label>
         <input
           id="password"
           type="password"
           required
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className={inputClass}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -102,14 +98,12 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
 
       {mode === 'register' && (
         <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="confirmPassword">
-            Confirm Password
-          </label>
+          <label className={labelClass} htmlFor="confirmPassword">Confirm Password</label>
           <input
             id="confirmPassword"
             type="password"
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className={inputClass}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
@@ -117,7 +111,7 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
       )}
 
       {error && (
-        <div className="text-sm border border-red-200 text-red-600 bg-red-50 p-3 rounded-md">
+        <div className="text-sm border border-red-800/60 text-red-400 bg-red-900/20 p-3 rounded-md">
           {error}
         </div>
       )}

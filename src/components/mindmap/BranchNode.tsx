@@ -43,7 +43,7 @@ export function BranchNode({ data }: BranchNodeProps) {
         }
       }}
       onContextMenu={handleContextMenu}
-      className="group bg-white px-4 py-3 rounded-lg shadow-sm border-l-4 border-y border-r border-gray-200 min-w-[160px] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all relative"
+      className="group bg-[#1e2433] px-4 py-3 rounded-lg shadow-sm border-l-4 border-y border-r border-[#2d3748] min-w-[160px] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all relative"
       style={{ borderLeftColor: node.color || '#0d9488' }}
     >
       <Handle id="t-left" type="target" position={Position.Left} className="opacity-0" />
@@ -52,7 +52,7 @@ export function BranchNode({ data }: BranchNodeProps) {
       <Handle id="t-bottom" type="target" position={Position.Bottom} className="opacity-0 w-0 h-0" />
       
       <div className="flex items-center justify-between gap-3">
-        <span className="font-semibold text-gray-800 text-sm pr-4">{node.label}</span>
+        <span className="font-semibold text-slate-200 text-sm pr-4">{node.label}</span>
         {isCompleted && (
           <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm flex-shrink-0" />
         )}

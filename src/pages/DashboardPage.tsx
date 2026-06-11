@@ -16,22 +16,22 @@ export function DashboardPage() {
   }, [fetchMaps]);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
+    <div className="min-h-screen bg-[#0f1117] pb-20 font-sans">
       <AppHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Your Mindmaps</h1>
+            <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Your Mindmaps</h1>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-900/60 text-teal-300">
                 {maps.length} {maps.length === 1 ? 'map' : 'maps'}
               </span>
-              <span className="text-gray-400 text-xs">
+              <span className="text-slate-500 text-xs">
                 · Last updated {maps.length > 0 ? new Date(Math.max(...maps.map(m => new Date(m.updatedAt).getTime()))).toLocaleDateString() : 'never'}
               </span>
             </div>
-            <p className="text-gray-500 mt-1.5 text-sm sm:text-base">Organize your thoughts and expand your knowledge.</p>
+            <p className="text-slate-400 mt-1.5 text-sm sm:text-base">Organize your thoughts and expand your knowledge.</p>
           </div>
           
           {!useSettingsStore().isReadOnly && (

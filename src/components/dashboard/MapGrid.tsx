@@ -50,7 +50,7 @@ export function MapGrid({ maps, searchQuery, onNew }: MapGridProps) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse border border-gray-200" />
+          <div key={i} className="h-48 bg-[#1e2433] rounded-xl animate-pulse border border-[#2d3748]" />
         ))}
       </div>
     );
@@ -58,10 +58,10 @@ export function MapGrid({ maps, searchQuery, onNew }: MapGridProps) {
 
   if (maps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-2xl border border-dashed border-gray-300 shadow-sm mt-8">
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-[#1e2433] rounded-2xl border border-dashed border-[#2d3748] shadow-sm mt-8">
         <div className="text-6xl mb-4">🗺️</div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">No mindmaps yet</h3>
-        <p className="text-gray-500 mb-6 max-w-sm">Capture your knowledge, visualize ideas, and build mental models layer by layer.</p>
+        <h3 className="text-xl font-semibold text-slate-100 mb-2">No mindmaps yet</h3>
+        <p className="text-slate-400 mb-6 max-w-sm">Capture your knowledge, visualize ideas, and build mental models layer by layer.</p>
         {!isReadOnly && (
           <button 
             onClick={onNew}
@@ -78,9 +78,9 @@ export function MapGrid({ maps, searchQuery, onNew }: MapGridProps) {
   if (filteredMaps.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-16 text-center">
-        <SearchX className="h-16 w-16 text-gray-300 mb-4" />
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">No results found</h3>
-        <p className="text-gray-500">We couldn't find anything matching "{searchQuery}".</p>
+        <SearchX className="h-16 w-16 text-slate-600 mb-4" />
+        <h3 className="text-xl font-semibold text-slate-100 mb-2">No results found</h3>
+        <p className="text-slate-400">We couldn't find anything matching "{searchQuery}".</p>
       </div>
     );
   }

@@ -14,7 +14,7 @@ export function SettingsPage() {
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   
-  const [theme, setTheme] = useState<'light'|'dark'|'system'>('system');
+  const [theme, setTheme] = useState<'light'|'dark'|'system'>('dark');
   const [fontSize, setFontSize] = useState<'normal'|'large'>('normal');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,7 +24,6 @@ export function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    // Sync local states if missing
     if (profile?.displayName && !displayName) {
       setDisplayName(profile.displayName);
     }
@@ -72,7 +71,7 @@ export function SettingsPage() {
       const { imported, errors } = await importMaps(file);
       if (imported > 0) {
         toast.success(`Successfully imported ${imported} map(s)!`, { id: 'import' });
-        await fetchMaps(); // Refresh dashboard
+        await fetchMaps();
       } else {
         toast.error(`Import failed. ${errors[0] || ''}`, { id: 'import' });
       }
@@ -87,13 +86,10 @@ export function SettingsPage() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      // Depending on Supabase configuration, standard auth.admin API might be locked
-      // We will securely default to a Client-level RPC or fallback warning gracefully
       const { error } = await supabase.rpc('delete_user');
       
       if (error) {
-        console.warn('RPC delete failed natively, attempting standard client removal (likely blocked by RLS):', error);
-        // Fallback for demonstration if RPC missing
+        console.warn('RPC delete failed natively:', error);
         toast.error('Account deletion block: Your Supabase instance lacks the delete_user RPC privileges internally. Please delete manually in the dashboard for now.');
       } else {
         toast.success('Account deleted completely. Goodbye!');
@@ -110,14 +106,14 @@ export function SettingsPage() {
   const initial = displayName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U';
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0f1117] flex flex-col font-sans">
       
-      <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-50 px-4 sm:px-6 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-[#1e2433] border-b border-[#2d3748] z-50 px-4 sm:px-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/" className="p-2 -ml-2 text-gray-500 hover:text-gray-900 transition hover:bg-gray-100 rounded-full active:scale-95">
+          <Link to="/" className="p-2 -ml-2 text-slate-400 hover:text-slate-100 transition hover:bg-[#2d3748] rounded-full active:scale-95">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="font-bold text-lg text-gray-900 tracking-tight">Settings</h1>
+          <h1 className="font-bold text-lg text-slate-100 tracking-tight">Settings</h1>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">{initial}</div>
@@ -128,8 +124,8 @@ export function SettingsPage() {
         
         {/* 1. Profile Section */}
         <section className="mb-8">
-          <h2 className="text-sm font-bold text-teal-700 uppercase tracking-widest mb-3 flex items-center gap-2"><User className="w-4 h-4" /> Profile</h2>
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2"><User className="w-4 h-4" /> Profile</h2>
+          <div className="bg-[#1e2433] border border-[#2d3748] rounded-2xl p-5 sm:p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row gap-6">
                <div className="shrink-0 flex justify-center sm:block">
                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 text-white font-extrabold text-3xl flex items-center justify-center shadow-md">
@@ -138,30 +134,30 @@ export function SettingsPage() {
                </div>
                <div className="flex-1 flex flex-col gap-4">
                  <div>
-                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Display Name</label>
+                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Display Name</label>
                    <div className="flex gap-2">
                      <input 
                        type="text" 
                        value={displayName}
                        onChange={e => setDisplayName(e.target.value)}
-                       className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all outline-none"
+                       className="flex-1 bg-[#0f1117] border border-[#2d3748] rounded-lg px-4 py-2 text-sm font-medium text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-[#1a2030] transition-all outline-none"
                      />
                      <button
                        onClick={handleSaveProfile}
                        disabled={isSavingProfile || displayName === profile?.displayName}
-                       className="bg-teal-600 hover:bg-teal-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95"
+                       className="bg-teal-600 hover:bg-teal-700 disabled:bg-[#2d3748] disabled:text-slate-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95"
                      >
                        {isSavingProfile ? 'Saving...' : 'Save'}
                      </button>
                    </div>
                  </div>
                  <div>
-                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Email (Read Only)</label>
+                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Email (Read Only)</label>
                    <input 
                      type="text" 
                      readOnly
                      value={user?.email || ''}
-                     className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-500 cursor-not-allowed"
+                     className="w-full bg-[#0f1117] border border-[#2d3748] rounded-lg px-4 py-2 text-sm font-medium text-slate-500 cursor-not-allowed"
                    />
                  </div>
                </div>
@@ -171,20 +167,20 @@ export function SettingsPage() {
 
         {/* 2. Appearance */}
         <section className="mb-8">
-          <h2 className="text-sm font-bold text-teal-700 uppercase tracking-widest mb-3 flex items-center gap-2"><Palette className="w-4 h-4" /> Appearance</h2>
-          <div className="bg-white border border-gray-200 rounded-2xl p-0 overflow-hidden shadow-sm divide-y divide-gray-100">
+          <h2 className="text-sm font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Palette className="w-4 h-4" /> Appearance</h2>
+          <div className="bg-[#1e2433] border border-[#2d3748] rounded-2xl p-0 overflow-hidden shadow-sm divide-y divide-[#2d3748]">
              
              <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                <div>
-                 <div className="font-bold text-gray-900">Color Theme</div>
-                 <div className="text-sm text-gray-500 font-medium">Choose your workspace lighting.</div>
+                 <div className="font-bold text-slate-100">Color Theme</div>
+                 <div className="text-sm text-slate-400 font-medium">Choose your workspace lighting.</div>
                </div>
-               <div className="flex bg-gray-100 p-1 rounded-xl">
+               <div className="flex bg-[#0f1117] p-1 rounded-xl border border-[#2d3748]">
                   {(['light', 'dark', 'system'] as const).map(t => (
                     <button 
                       key={t}
                       onClick={() => setTheme(t)}
-                      className={`px-4 py-1.5 rounded-lg text-sm font-bold capitalize transition-all ${theme === t ? 'bg-white shadow-sm text-teal-700' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-bold capitalize transition-all ${theme === t ? 'bg-[#2d3748] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                       {t}
                     </button>
@@ -194,19 +190,19 @@ export function SettingsPage() {
 
              <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                <div>
-                 <div className="font-bold text-gray-900">Typography Scaling</div>
-                 <div className="text-sm text-gray-500 font-medium">Increase font size for better readability globally.</div>
+                 <div className="font-bold text-slate-100">Typography Scaling</div>
+                 <div className="text-sm text-slate-400 font-medium">Increase font size for better readability globally.</div>
                </div>
-               <div className="flex bg-gray-100 p-1 rounded-xl">
+               <div className="flex bg-[#0f1117] p-1 rounded-xl border border-[#2d3748]">
                   <button 
                     onClick={() => handleFontChange('normal')}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'normal' ? 'bg-white shadow-sm text-teal-700' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'normal' ? 'bg-[#2d3748] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
                   >
                     Normal
                   </button>
                   <button 
                     onClick={() => handleFontChange('large')}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'large' ? 'bg-white shadow-sm text-teal-700' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'large' ? 'bg-[#2d3748] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
                   >
                     Large
                   </button>
@@ -218,13 +214,13 @@ export function SettingsPage() {
 
         {/* 3. Data Management */}
         <section className="mb-8">
-          <h2 className="text-sm font-bold text-teal-700 uppercase tracking-widest mb-3 flex items-center gap-2"><Database className="w-4 h-4" /> Data & Storage</h2>
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col gap-6">
+          <h2 className="text-sm font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Database className="w-4 h-4" /> Data & Storage</h2>
+          <div className="bg-[#1e2433] border border-[#2d3748] rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col gap-6">
             
-            <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center p-4 bg-teal-50 border border-teal-100 rounded-xl">
+            <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center p-4 bg-teal-900/20 border border-teal-800/50 rounded-xl">
                <div>
-                 <div className="font-bold text-teal-900 mb-0.5">Export Backup</div>
-                 <div className="text-sm text-teal-700/80 font-medium leading-snug">Download a JSON bundle of all your mindmaps and active recall notes.</div>
+                 <div className="font-bold text-teal-300 mb-0.5">Export Backup</div>
+                 <div className="text-sm text-teal-400/70 font-medium leading-snug">Download a JSON bundle of all your mindmaps and active recall notes.</div>
                </div>
                <button 
                  onClick={handleExportAll}
@@ -234,10 +230,10 @@ export function SettingsPage() {
                </button>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center p-4 bg-blue-50 border border-blue-100 rounded-xl">
+            <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center p-4 bg-blue-900/20 border border-blue-800/50 rounded-xl">
                <div>
-                 <div className="font-bold text-blue-900 mb-0.5">Import Backup</div>
-                 <div className="text-sm text-blue-700/80 font-medium leading-snug">Restore maps from a previous JSON bundle. This merges, it won't delete existing maps.</div>
+                 <div className="font-bold text-blue-300 mb-0.5">Import Backup</div>
+                 <div className="text-sm text-blue-400/70 font-medium leading-snug">Restore maps from a previous JSON bundle. This merges, it won't delete existing maps.</div>
                </div>
                <div>
                  <input 
@@ -259,13 +255,13 @@ export function SettingsPage() {
 
             <div>
                <div className="flex justify-between items-end mb-2">
-                 <div className="font-bold text-gray-900 text-sm">Storage Usage Estimate</div>
-                 <div className="text-xs font-bold text-teal-600">{maps.length} Maps Synced</div>
+                 <div className="font-bold text-slate-200 text-sm">Storage Usage Estimate</div>
+                 <div className="text-xs font-bold text-teal-400">{maps.length} Maps Synced</div>
                </div>
-               <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+               <div className="w-full bg-[#2d3748] rounded-full h-3 overflow-hidden">
                  <div className="bg-teal-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((maps.length / 500) * 100, 100)}%` }} />
                </div>
-               <div className="text-xs text-gray-400 font-semibold mt-2 text-right">Free Tier Limit: ~500 Maps</div>
+               <div className="text-xs text-slate-500 font-semibold mt-2 text-right">Free Tier Limit: ~500 Maps</div>
             </div>
 
           </div>
@@ -273,25 +269,24 @@ export function SettingsPage() {
 
         {/* 4. Danger Zone */}
         <section className="mb-0">
-          <h2 className="text-sm font-bold text-red-600 uppercase tracking-widest mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Danger Zone</h2>
-          <div className="bg-white border text-red-600 border-red-200 rounded-2xl p-5 sm:p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Danger Zone</h2>
+          <div className="bg-[#1e2433] border border-red-900/60 rounded-2xl p-5 sm:p-6 shadow-sm">
              <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
                <div>
-                 <div className="font-bold mb-0.5 text-red-700">Delete Account</div>
-                 <div className="text-sm text-red-600/80 font-medium leading-snug max-w-md">Permanently wipe your account, settings, and all mindmap data from the database servers. This cannot be undone.</div>
+                 <div className="font-bold mb-0.5 text-red-400">Delete Account</div>
+                 <div className="text-sm text-red-400/70 font-medium leading-snug max-w-md">Permanently wipe your account, settings, and all mindmap data from the database servers. This cannot be undone.</div>
                </div>
                <button 
                  onClick={() => setShowDeleteConfirm(true)}
-                 className="shrink-0 flex items-center justify-center gap-2 bg-white border-2 border-red-100 hover:bg-red-50 text-red-600 px-5 py-2.5 rounded-lg font-bold transition-all active:scale-95 text-sm"
+                 className="shrink-0 flex items-center justify-center gap-2 bg-[#1e2433] border-2 border-red-900/60 hover:bg-red-900/20 text-red-400 px-5 py-2.5 rounded-lg font-bold transition-all active:scale-95 text-sm"
                >
                  <Trash2 className="w-4 h-4" /> Delete Everything
                </button>
              </div>
 
-             {/* Inline Delete Confirm Hook */}
              {showDeleteConfirm && (
-               <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl animate-in slide-in-from-top-2">
-                  <p className="font-bold text-red-900 text-sm mb-4">Are you absolutely sure? Type 'DELETE' to confirm, or click cancel.</p>
+               <div className="mt-6 p-4 bg-red-900/20 border border-red-800/50 rounded-xl animate-in slide-in-from-top-2">
+                  <p className="font-bold text-red-300 text-sm mb-4">Are you absolutely sure? Type 'DELETE' to confirm, or click cancel.</p>
                   <div className="flex gap-3">
                     <button 
                       onClick={handleDeleteAccount}
@@ -303,7 +298,7 @@ export function SettingsPage() {
                     <button 
                       onClick={() => setShowDeleteConfirm(false)}
                       disabled={isDeleting}
-                      className="bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 px-5 py-2 rounded-lg font-bold transition text-sm flex-1 sm:max-w-max"
+                      className="bg-[#2d3748] text-slate-300 border border-[#3d4a60] hover:bg-[#364155] px-5 py-2 rounded-lg font-bold transition text-sm flex-1 sm:max-w-max"
                     >
                       Cancel
                     </button>

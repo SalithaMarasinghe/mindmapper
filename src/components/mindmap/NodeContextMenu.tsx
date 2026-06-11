@@ -38,38 +38,38 @@ export function NodeContextMenu({ x, y, node, onClose, onAddChild, onAddSibling,
     <div 
       ref={ref}
       style={{ top: y, left: x }}
-      className="fixed z-[100] w-56 bg-white rounded-xl shadow-xl shadow-gray-200/50 border border-gray-200 py-1.5 animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-[100] w-56 bg-[#1e2433] rounded-xl shadow-xl shadow-black/50 border border-[#2d3748] py-1.5 animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="px-3 py-2 border-b border-gray-100 mb-1">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{node.type} Node Settings</span>
+      <div className="px-3 py-2 border-b border-[#2d3748] mb-1">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{node.type} Node Settings</span>
       </div>
 
-      <button onClick={() => { onAddChild(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition">
+      <button onClick={() => { onAddChild(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-slate-300 hover:bg-teal-900/40 hover:text-teal-300 transition">
         <Plus className="h-4 w-4" /> Add branch
       </button>
       
       {!isRoot && (
-        <button onClick={() => { onAddSibling(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition">
+        <button onClick={() => { onAddSibling(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-slate-300 hover:bg-teal-900/40 hover:text-teal-300 transition">
           <GitMerge className="h-4 w-4" /> Add sibling node
         </button>
       )}
       
-      <button onClick={() => { onRename(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition">
+      <button onClick={() => { onRename(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-slate-300 hover:bg-teal-900/40 hover:text-teal-300 transition">
         <Edit2 className="h-4 w-4" /> Rename
       </button>
 
       {!isRoot && (
-        <div className="px-3 py-2.5 my-1 bg-gray-50/50 border-y border-gray-100">
+        <div className="px-3 py-2.5 my-1 bg-[#0f1117]/60 border-y border-[#2d3748]">
           <div className="flex items-center gap-2 mb-2">
-            <Palette className="h-4 w-4 text-gray-500" />
-            <span className="text-xs text-gray-500 font-semibold">Change color</span>
+            <Palette className="h-4 w-4 text-slate-500" />
+            <span className="text-xs text-slate-500 font-semibold">Change color</span>
           </div>
           <div className="flex flex-wrap gap-1.5 pl-6">
             {DEFAULT_BRANCH_COLORS.map(c => (
               <button 
                 key={c}
                 onClick={() => { onChangeColor(node, c); onClose(); }}
-                className={`w-5 h-5 rounded-full hover:scale-110 transition-transform shadow-sm ${node.color === c ? 'ring-2 ring-offset-2 ring-gray-600 scale-110' : ''}`}
+                className={`w-5 h-5 rounded-full hover:scale-110 transition-transform shadow-sm ${node.color === c ? 'ring-2 ring-offset-2 ring-offset-[#1e2433] ring-slate-300 scale-110' : ''}`}
                 style={{ backgroundColor: c }}
               />
             ))}
@@ -78,7 +78,7 @@ export function NodeContextMenu({ x, y, node, onClose, onAddChild, onAddSibling,
       )}
 
       {!isRoot && (
-        <button onClick={() => { onDelete(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition mt-1">
+        <button onClick={() => { onDelete(node); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-sm font-semibold text-red-400 hover:bg-red-900/30 transition mt-1">
           <Trash2 className="h-4 w-4" /> Delete node
         </button>
       )}

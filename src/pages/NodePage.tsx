@@ -114,16 +114,16 @@ export function NodePage() {
   }, []);
 
   if (!isLoaded || !mapId || !nodeId) return (
-    <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-       <div className="w-8 h-8 rounded-full border-4 border-gray-200 border-t-teal-500 animate-spin" />
+    <div className="min-h-screen bg-[#0f1117] flex justify-center items-center">
+       <div className="w-8 h-8 rounded-full border-4 border-slate-700 border-t-teal-500 animate-spin" />
     </div>
   );
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white border border-gray-200 rounded-2xl shadow-sm p-6 text-center">
-          <p className="text-gray-800 font-semibold mb-4">Could not load this node. Check your connection.</p>
+      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-[#1e2433] border border-[#2d3748] rounded-2xl shadow-xl p-6 text-center">
+          <p className="text-slate-200 font-semibold mb-4">Could not load this node. Check your connection.</p>
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => { void loadNodeData(); }}
@@ -133,7 +133,7 @@ export function NodePage() {
             </button>
             <button
               onClick={() => navigate(mapId ? `/map/${mapId}` : '/')}
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold transition"
+              className="px-4 py-2 rounded-lg border border-[#2d3748] bg-[#0f1117] hover:bg-[#1a2030] text-slate-300 font-semibold transition"
             >
               Go Back
             </button>
@@ -144,7 +144,7 @@ export function NodePage() {
   }
 
   const node = nodes.find(n => n.id === nodeId);
-  if (!node) return <div className="p-12 text-center text-gray-500 font-semibold text-lg">Node missing or deleted.</div>;
+  if (!node) return <div className="p-12 text-center text-slate-400 font-semibold text-lg">Node missing or deleted.</div>;
 
   const parentNode = nodes.find(n => n.id === node.parentId);
   const mapMeta = getMapById(mapId);
@@ -169,7 +169,7 @@ export function NodePage() {
   const LeftContent = (
     <button 
       onClick={() => navigate(`/map/${mapId}`, { state: { focusRoot: true } })}
-      className="flex items-center gap-1.5 text-gray-500 hover:text-gray-900 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-gray-100 active:scale-95 border border-transparent"
+      className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#2d3748] active:scale-95 border border-transparent"
     >
       <ChevronLeft className="h-4 w-4" />
       Back to Map
@@ -178,7 +178,7 @@ export function NodePage() {
 
   return (
     <div
-      className="nodrag nowheel nopan flex flex-col min-h-screen bg-[#f8fafc] font-sans"
+      className="nodrag nowheel nopan flex flex-col min-h-screen bg-[#0f1117] font-sans"
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
@@ -211,36 +211,36 @@ export function NodePage() {
             <X size={18} />
           </button>
 
-          <nav className="panel-breadcrumb text-[11px] text-gray-400 font-bold tracking-widest uppercase flex flex-wrap items-center gap-1 pt-6">
-            <Link to="/" className="hover:text-teal-600 transition truncate max-w-[80px]">Dashboard</Link>
+          <nav className="panel-breadcrumb text-[11px] text-slate-500 font-bold tracking-widest uppercase flex flex-wrap items-center gap-1 pt-6">
+            <Link to="/" className="hover:text-teal-400 transition truncate max-w-[80px]">Dashboard</Link>
             <ChevronRight className="h-3 w-3 flex-shrink-0" />
-            <Link to={`/map/${mapId}`} state={{ focusRoot: true }} className="hover:text-teal-600 transition truncate max-w-[120px]">{mapMeta?.title || 'Map'}</Link>
+            <Link to={`/map/${mapId}`} state={{ focusRoot: true }} className="hover:text-teal-400 transition truncate max-w-[120px]">{mapMeta?.title || 'Map'}</Link>
             {parentNode && (
               <>
                 <ChevronRight className="h-3 w-3 flex-shrink-0 opacity-50" />
-                <Link to={`/map/${mapId}/node/${parentNode.id}`} className="hover:text-teal-600 transition truncate max-w-[80px]">{parentNode.label}</Link>
+                <Link to={`/map/${mapId}/node/${parentNode.id}`} className="hover:text-teal-400 transition truncate max-w-[80px]">{parentNode.label}</Link>
               </>
             )}
           </nav>
 
-          <span className="node-type-badge inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-gray-100 text-gray-600 border border-gray-200 w-fit">
+          <span className="node-type-badge inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-[#2d3748] text-slate-400 border border-[#3d4a60] w-fit">
             {node.type} Node
           </span>
 
-          <h2 className="panel-node-title text-3xl font-bold text-gray-900 leading-tight tracking-tight transition-colors border-b-4 border-transparent w-max" style={{ borderBottomColor: node.type !== 'root' ? (node.color || DEFAULT_BRANCH_COLORS[0]) : 'transparent', paddingBottom: 4 }}>
+          <h2 className="panel-node-title text-3xl font-bold text-slate-100 leading-tight tracking-tight transition-colors border-b-4 border-transparent w-max" style={{ borderBottomColor: node.type !== 'root' ? (node.color || DEFAULT_BRANCH_COLORS[0]) : 'transparent', paddingBottom: 4 }}>
             {node.emoji && <span className="mr-2">{node.emoji}</span>}
             {node.label}
           </h2>
 
-          <p className="panel-parent text-sm text-gray-500 font-semibold mt-1">
-            Child of: <span className="text-gray-800">{parentNode?.label || 'None'}</span>
+          <p className="panel-parent text-sm text-slate-400 font-semibold mt-1">
+            Child of: <span className="text-slate-200">{parentNode?.label || 'None'}</span>
           </p>
 
-          <hr className="border-gray-200" />
+          <hr className="border-[#2d3748]" />
 
           <button
             onClick={() => setIsTestMode(!isTestMode)}
-            className={`btn-test-yourself w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isTestMode ? 'bg-orange-600 text-white border-transparent hover:bg-orange-700' : 'bg-white text-orange-600 border-orange-200 hover:bg-orange-50'}`}
+            className={`btn-test-yourself w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isTestMode ? 'bg-orange-600 text-white border-transparent hover:bg-orange-700' : 'bg-[#2d3748] text-orange-400 border-[#3d4a60] hover:bg-[#364155]'}`}
           >
             <Brain className="h-5 w-5" />
             {isTestMode ? 'Exit Test Mode' : '🧠 Test Yourself'}
@@ -248,13 +248,13 @@ export function NodePage() {
 
           <button
             onClick={handleStudyToggle}
-            className={`btn-mark-studied w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isCompleted ? 'bg-white text-green-700 border-green-200 hover:bg-green-50' : 'bg-green-600 text-white border-transparent hover:bg-green-700 hover:shadow'}`}
+            className={`btn-mark-studied w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isCompleted ? 'bg-[#2d3748] text-green-400 border-[#3d4a60] hover:bg-[#364155]' : 'bg-green-600 text-white border-transparent hover:bg-green-700 hover:shadow'}`}
           >
             <Check className="h-5 w-5" />
             {isCompleted ? '✓ Studied' : 'Mark as Studied'}
           </button>
 
-          <div className="panel-sibling-nav mt-auto pt-6 border-t border-gray-100 flex items-center justify-between gap-3">
+          <div className="panel-sibling-nav mt-auto pt-6 border-t border-[#2d3748] flex items-center justify-between gap-3">
             <button
               disabled={!prevSibling}
               onClick={() => {
@@ -263,10 +263,10 @@ export function NodePage() {
                   setPanelOpen(false);
                 }
               }}
-              className="flex-1 flex flex-col items-start px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-gray-50 transition border border-gray-200 text-left active:scale-95 disabled:active:scale-100"
+              className="flex-1 flex flex-col items-start px-3 py-2 rounded-xl bg-[#0f1117] hover:bg-[#1a2030] disabled:opacity-30 disabled:hover:bg-[#0f1117] transition border border-[#2d3748] text-left active:scale-95 disabled:active:scale-100"
             >
-              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-0.5">← Previous</span>
-              <span className="text-sm font-bold text-gray-800 truncate w-full">{prevSibling ? prevSibling.label : '-'}</span>
+              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-0.5">← Previous</span>
+              <span className="text-sm font-bold text-slate-200 truncate w-full">{prevSibling ? prevSibling.label : '-'}</span>
             </button>
             <button
               disabled={!nextSibling}
@@ -276,10 +276,10 @@ export function NodePage() {
                   setPanelOpen(false);
                 }
               }}
-              className="flex-1 flex flex-col items-end px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-gray-50 transition border border-gray-200 text-right active:scale-95 disabled:active:scale-100"
+              className="flex-1 flex flex-col items-end px-3 py-2 rounded-xl bg-[#0f1117] hover:bg-[#1a2030] disabled:opacity-30 disabled:hover:bg-[#0f1117] transition border border-[#2d3748] text-right active:scale-95 disabled:active:scale-100"
             >
-              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-0.5">Next →</span>
-              <span className="text-sm font-bold text-gray-800 truncate w-full">{nextSibling ? nextSibling.label : '-'}</span>
+              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-0.5">Next →</span>
+              <span className="text-sm font-bold text-slate-200 truncate w-full">{nextSibling ? nextSibling.label : '-'}</span>
             </button>
           </div>
         </aside>
