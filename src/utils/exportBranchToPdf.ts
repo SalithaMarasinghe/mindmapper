@@ -562,26 +562,36 @@ function renderBlock(ctx: Ctx, block: Block, imageCache: Map<string, ImgData>, d
     // ── Blockquote / callout ──────────────────────────────────────────────────
     case 'quote':
     case 'blockquote': {
-      guard(ctx, 8);
       const txt = flatText(items);
-      pdf.setFont('helvetica', 'normal');
+      pdf.setFont('helvetica', 'italic');
       pdf.setFontSize(10);
-      const wrapped = pdf.splitTextToSize(txt, CW - 8);
-      const blockH = (wrapped as string[]).length * 5.5 + 4;
-      const top = ctx.y - 3.5;
+      const wrapped = pdf.splitTextToSize(txt, CW - 10) as string[];
+      const lineLH = 5.5;
+      const padV = 4;
+      const blockH = wrapped.length * lineLH + padV * 2;
+
+      ctx.y += 3;
+      // Keep block together on one page when it fits; otherwise start fresh page
+      if (blockH <= PH - MY * 2) {
+        guard(ctx, blockH);
+      } else {
+        guard(ctx, lineLH + padV); // at least room for first line
+      }
+
+      const top = ctx.y;
       pdf.setFillColor(...C.quote);
       pdf.rect(MX, top, CW, blockH, 'F');
       pdf.setFillColor(...ctx.accent);
       pdf.rect(MX, top, 2.5, blockH, 'F');
+
       pdf.setFont('helvetica', 'italic');
       pdf.setTextColor(19, 78, 74);
-      ctx.y = top + 3.5;
-      for (const line of wrapped as string[]) {
-        guard(ctx, 5.5);
-        pdf.text(line, MX + 6, ctx.y);
-        ctx.y += 5.5;
+      ctx.y = top + padV;
+      for (const line of wrapped) {
+        pdf.text(line, MX + 7, ctx.y);
+        ctx.y += lineLH;
       }
-      ctx.y += 3;
+      ctx.y += padV + 3;
       break;
     }
 
