@@ -59,18 +59,52 @@ export default function RichEditor({
     onDirtyRef.current = onDirty;
   }, [onSave, onDirty]);
 
+  // ── WebP conversion ─────────────────────────────────────────────────────────
+  async function convertToWebP(file: File, quality = 0.85): Promise<File> {
+    if (!file.type.startsWith('image/')) return file;     // non-image, skip
+    if (file.type === 'image/webp') return file;          // already WebP
+
+    return new Promise<File>((resolve) => {
+      const img = new Image();
+      const objUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d')!.drawImage(img, 0, 0);
+        URL.revokeObjectURL(objUrl);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const newName = file.name.replace(/\.[^.]+$/, '.webp');
+              resolve(new File([blob], newName, { type: 'image/webp' }));
+            } else {
+              resolve(file); // fallback
+            }
+          },
+          'image/webp',
+          quality
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(objUrl); resolve(file); };
+      img.src = objUrl;
+    });
+  }
+
   async function uploadFile(file: File): Promise<string> {
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
+    // Convert to WebP for efficient storage (reduces size 30–70%)
+    const processed = await convertToWebP(file);
+    const ext = processed.name.split('.').pop()?.toLowerCase() ?? 'bin';
     const userId = user?.id ?? 'anonymous';
     const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const storagePath = `${userId}/${nodeId}/${uniqueName}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('study-assets')
-      .upload(storagePath, file, {
+      .upload(storagePath, processed, {
         cacheControl: '3600',
         upsert: false,
-        contentType: file.type,
+        contentType: processed.type,
       });
 
     if (uploadError) {
