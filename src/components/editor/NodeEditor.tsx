@@ -6,6 +6,7 @@ import { useContentStore } from '../../store/contentStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import RichEditor from '@/components/editor/RichEditor';
 import { exportBranchToPdf } from '../../utils/exportBranchToPdf';
+import { exportBranchToMarkdown } from '../../utils/exportBranchToMarkdown';
 
 const isEditingElementFocused = () => {
   const active = document.activeElement as HTMLElement | null;
@@ -39,6 +40,7 @@ export function NodeEditor({
   const [isNotesHidden, setIsNotesHidden] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingMd, setIsExportingMd] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
 
   useEffect(() => {
@@ -119,6 +121,20 @@ export function NodeEditor({
     }
   };
 
+  const handleExportMd = () => {
+    if (!currentNode || !nodeContent) return;
+    setIsExportingMd(true);
+    try {
+      exportBranchToMarkdown(currentNode, nodeContent, mapTitle, parentLabel);
+      toast.success('Markdown downloaded!');
+    } catch (err) {
+      console.error('Markdown export failed:', err);
+      toast.error('Failed to export Markdown.');
+    } finally {
+      setIsExportingMd(false);
+    }
+  };
+
   const handleClearContent = () => {
     if (window.confirm('Are you sure you want to completely erase all content on this page? This cannot be undone.')) {
       handleSave([]);
@@ -179,6 +195,17 @@ export function NodeEditor({
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : <FileDown className="w-4 h-4" />}
             {isExporting ? 'Exporting…' : 'Export PDF'}
+          </button>
+          <button
+            onClick={handleExportMd}
+            disabled={isExportingMd}
+            title="Export this branch to Markdown"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-violet-400 bg-violet-900/30 border border-violet-800 hover:bg-violet-900/50 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isExportingMd
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <FileDown className="w-4 h-4" />}
+            {isExportingMd ? 'Exporting…' : 'Export MD'}
           </button>
           {!isReadOnly && (
             <button

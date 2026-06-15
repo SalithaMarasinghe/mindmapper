@@ -191,12 +191,30 @@ function tokenizeSQL(code: string): Tok[] {
 }
 
 // ── Inline content helpers ────────────────────────────────────────────────────
+function cleanString(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/[\u2018\u2019]/g, "'") // Smart single quotes
+    .replace(/[\u201C\u201D]/g, '"') // Smart double quotes
+    .replace(/[\u2013\u2014]/g, '-') // En and Em dashes
+    .replace(/[\u2026]/g, '...')     // Ellipsis
+    .replace(/[\u2192]/g, '->')      // Right arrow →
+    .replace(/[\u2190]/g, '<-')      // Left arrow ←
+    .replace(/[\u2502]/g, '|')       // Box drawing vertical │
+    .replace(/[\u2500]/g, '-')       // Box drawing horizontal ─
+    .replace(/[\u251C]/g, '|')       // Box drawing branch ├
+    .replace(/[\u2514]/g, 'L')       // Box drawing corner └
+    .replace(/[\u250C\u2510\u2518\u2524\u252C\u2534\u253C]/g, '+') // Other box corners
+    .replace(/[^\x00-\xFF]/g, '');   // Strip emojis and non-latin1 chars (unsupported by jsPDF)
+}
+
 function flatText(items: InlineContent[]): string {
-  return items.map(it =>
+  if (!Array.isArray(items)) return '';  // runtime guard – BlockNote content may vary
+  return cleanString(items.map(it =>
     it.type === 'link'
-      ? (it.content ? flatText(it.content) : (it.text ?? ''))
+      ? (Array.isArray(it.content) ? flatText(it.content) : (it.text ?? ''))
       : (it.text ?? '')
-  ).join('');
+  ).join(''));
 }
 
 interface Segment {
@@ -208,13 +226,14 @@ interface Segment {
 }
 
 function toSegments(items: InlineContent[]): Segment[] {
+  if (!Array.isArray(items)) return [];  // runtime guard
   return items.flatMap((it): Segment[] => {
     if (it.type === 'link') {
-      const inner = it.content ? flatText(it.content) : (it.text ?? '');
+      const inner = Array.isArray(it.content) ? flatText(it.content) : cleanString(it.text ?? '');
       return inner ? [{ text: inner, bold: false, italic: false, code: false, link: true }] : [];
     }
     const s = it.styles ?? {};
-    const txt = it.text ?? '';
+    const txt = cleanString(it.text ?? '');
     if (!txt) return [];
     return [{ text: txt, bold: !!s.bold, italic: !!s.italic, code: !!s.code, link: false }];
   });
@@ -404,6 +423,7 @@ function renderBlock(ctx: Ctx, block: Block, imageCache: Map<string, ImgData>, d
       } else if (typeof block.content === 'string') {
         rawCode = block.content as string;
       }
+      rawCode = cleanString(rawCode);
 
       const codeLines = rawCode.split('\n');
       const codeLH = 4.6;
@@ -610,7 +630,7 @@ function renderBlock(ctx: Ctx, block: Block, imageCache: Map<string, ImgData>, d
     // ── Image ───────────────────────────────────────────────────────────────
     case 'image': {
       const url = (props.url as string) ?? '';
-      const caption = (props.caption as string) ?? '';
+      const caption = cleanString((props.caption as string) ?? '');
       const imgData = imageCache.get(url);
 
       ctx.y += 4;
@@ -698,7 +718,8 @@ function renderHeader(ctx: Ctx, node: MindmapNode, nodeContent: NodeContent, map
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(20);
   pdf.setTextColor(...C.heading);
-  const titleTxt = `${node.emoji ? node.emoji + ' ' : ''}${node.label}`;
+  // Title — strip emoji (jsPDF built-in fonts can't encode them)
+  const titleTxt = cleanString(`${node.emoji ? node.emoji + ' ' : ''}${node.label}`);
   const titleWrapped = pdf.splitTextToSize(titleTxt, CW - 8) as string[];
   pdf.text(titleWrapped[0], MX + 7, ctx.y + 13);
   ctx.y += 18;
@@ -717,7 +738,7 @@ function renderHeader(ctx: Ctx, node: MindmapNode, nodeContent: NodeContent, map
   pdf.text(dateTxt, MX + 7, ctx.y);
   if (nodeContent.isCompleted) {
     pdf.setTextColor(...accent);
-    pdf.text('  ✓ Studied', MX + 7 + pdf.getTextWidth(dateTxt) + 2, ctx.y);
+    pdf.text('  [Studied]', MX + 7 + pdf.getTextWidth(dateTxt) + 2, ctx.y);
   }
   ctx.y += 5;
 
@@ -759,7 +780,7 @@ function renderKeyPoints(ctx: Ctx, points: { text: string }[]): void {
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8.5);
     pdf.setTextColor(...ctx.accent);
-    pdf.text('✦', MX + 2.5, ctx.y);
+    pdf.text('*', MX + 2.5, ctx.y);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(...C.text);
     for (let i = 0; i < wrapped.length; i++) {
@@ -802,7 +823,7 @@ function renderResources(ctx: Ctx, resources: { title: string; url?: string; not
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(7.5);
       pdf.setTextColor(...C.muted);
-      const truncUrl = res.url.length > 80 ? res.url.slice(0, 78) + '…' : res.url;
+      const truncUrl = res.url.length > 80 ? res.url.slice(0, 78) + '...' : res.url;
       pdf.text(truncUrl, MX + 3, ctx.y + 4);
     }
     ctx.y += 12;
@@ -854,7 +875,7 @@ export async function exportBranchToPdf(
   const ctx: Ctx = { pdf, y: MY + 4, accent: hexToRgb(accentHex) };
 
   // ── Page 1 header ──────────────────────────────────────────────────────────
-  renderHeader(ctx, node, nodeContent, mapTitle, parentLabel);
+  renderHeader(ctx, node, nodeContent, cleanString(mapTitle), parentLabel ? cleanString(parentLabel) : undefined);
 
   // ── Rich content ──────────────────────────────────────────────────────────────
   if (blocks.length > 0) {
