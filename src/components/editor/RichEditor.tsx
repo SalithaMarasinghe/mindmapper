@@ -2,13 +2,15 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { BlockNoteSchema, createCodeBlockSpec } from '@blocknote/core';
 import {
   codeBlockOptions,
 } from '@blocknote/code-block';
+import { Copy, Check } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // Custom code block options: Python (default) + SQL only
 const customCodeBlockOptions = {
@@ -53,11 +55,85 @@ export default function RichEditor({
   const isDirty = useRef(false);
   const onSaveRef = useRef(onSave);
   const onDirtyRef = useRef(onDirty);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const [copyButtonState, setCopyButtonState] = useState<{
+    top: number;
+    right: number;
+    block: HTMLElement;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     onSaveRef.current = onSave;
     onDirtyRef.current = onDirty;
   }, [onSave, onDirty]);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.code-copy-btn')) return;
+
+      const codeBlock = target.closest('[data-content-type="codeBlock"]') as HTMLElement;
+      if (codeBlock) {
+        const rect = codeBlock.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        
+        let top = rect.top - wrapperRect.top;
+        let right = wrapperRect.right - rect.right;
+        
+        top += wrapper.scrollTop;
+
+        setCopyButtonState(prev => {
+          const newTop = top + 12;
+          const newRight = right + 12;
+          if (prev && prev.block === codeBlock && Math.abs(prev.top - newTop) < 2 && Math.abs(prev.right - newRight) < 2) {
+            return prev;
+          }
+          return { top: newTop, right: newRight, block: codeBlock };
+        });
+      } else {
+        setCopyButtonState(null);
+        setCopied(false);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setCopyButtonState(null);
+      setCopied(false);
+    };
+
+    wrapper.addEventListener('mousemove', handleMouseMove);
+    wrapper.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      wrapper.removeEventListener('mousemove', handleMouseMove);
+      wrapper.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
+  const handleCopyClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!copyButtonState) return;
+    
+    const codeElement = copyButtonState.block.querySelector('code');
+    const textToCopy = codeElement ? codeElement.textContent : copyButtonState.block.textContent;
+    
+    if (textToCopy) {
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+        toast.success('Copied to clipboard');
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        toast.error('Failed to copy');
+      }
+    }
+  };
 
   // ── WebP conversion ─────────────────────────────────────────────────────────
   async function convertToWebP(file: File, quality = 0.85): Promise<File> {
@@ -184,6 +260,7 @@ export default function RichEditor({
       onKeyDown={handleKeyDown}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
+      ref={wrapperRef}
     >
       <BlockNoteView
         editor={editor}
@@ -191,6 +268,16 @@ export default function RichEditor({
         editable={!readOnly}
         theme={isDark ? 'dark' : 'light'}
       />
+      {copyButtonState && (
+        <button
+          className="code-copy-btn absolute z-10 p-1.5 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          style={{ top: copyButtonState.top, right: copyButtonState.right }}
+          onClick={handleCopyClick}
+          title="Copy code"
+        >
+          {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+        </button>
+      )}
     </div>
   );
 }
