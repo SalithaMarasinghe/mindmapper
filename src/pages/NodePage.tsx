@@ -212,7 +212,7 @@ export function NodePage() {
           </button>
 
           <nav className="panel-breadcrumb text-[11px] text-slate-500 font-bold tracking-widest uppercase flex flex-wrap items-center gap-1 pt-6">
-            <Link to="/" className="hover:text-teal-400 transition truncate max-w-[80px]">Dashboard</Link>
+            <Link to="/dashboard" className="hover:text-teal-400 transition truncate max-w-[80px]">Dashboard</Link>
             <ChevronRight className="h-3 w-3 flex-shrink-0" />
             <Link to={`/map/${mapId}`} state={{ focusRoot: true }} className="hover:text-teal-400 transition truncate max-w-[120px]">{mapMeta?.title || 'Map'}</Link>
             {parentNode && (

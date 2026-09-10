@@ -110,7 +110,7 @@ export function SettingsPage() {
       
       <header className="fixed top-0 left-0 right-0 h-14 bg-[#1e2433] border-b border-[#2d3748] z-50 px-4 sm:px-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/" className="p-2 -ml-2 text-slate-400 hover:text-slate-100 transition hover:bg-[#2d3748] rounded-full active:scale-95">
+          <Link to="/dashboard" className="p-2 -ml-2 text-slate-400 hover:text-slate-100 transition hover:bg-[#2d3748] rounded-full active:scale-95">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="font-bold text-lg text-slate-100 tracking-tight">Settings</h1>

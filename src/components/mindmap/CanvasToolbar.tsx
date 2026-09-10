@@ -93,7 +93,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
     <div className="h-14 bg-[#1e2433] border-b border-[#2d3748] flex items-center justify-between px-2 sm:px-4 gap-2 z-40 relative shadow-lg">
       <div className="flex items-center gap-2 shrink-0">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
           className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#2d3748] active:scale-95"
         >
           <span>← Dashboard</span>

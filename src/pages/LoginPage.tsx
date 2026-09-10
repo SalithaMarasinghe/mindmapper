@@ -10,7 +10,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
 
@@ -35,7 +35,7 @@ export function LoginPage() {
           <h2 className="mt-4 text-2xl font-semibold text-slate-200">Sign in to your account</h2>
         </div>
 
-        <AuthForm mode="login" onSuccess={() => navigate('/')} />
+        <AuthForm mode="login" onSuccess={() => navigate('/dashboard')} />
 
         <div className="mt-6">
           <div className="relative">

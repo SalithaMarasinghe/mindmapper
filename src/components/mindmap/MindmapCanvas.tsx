@@ -599,7 +599,7 @@ export function MindmapCanvas() {
         setSearchQuery={() => {}}
         leftContent={(
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             className="flex items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-surface-2)] active:scale-95"
           >
             ← Dashboard

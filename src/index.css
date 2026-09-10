@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@theme {
+  --color-paper: #F3F1EC;
+  --color-ink: #1C2230;
+  --color-ink-soft: #5B6472;
+  --color-root: #E8A33D;
+  --color-branch: #2F8F84;
+  --color-leaf: #6E6ADE;
+}
+
 /* =====================================================
    DARK MODE GLOBAL DEFAULTS
    ===================================================== */

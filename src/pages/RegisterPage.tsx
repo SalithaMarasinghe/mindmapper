@@ -5,19 +5,19 @@ export function RegisterPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0f1117] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8 bg-[#1e2433] p-8 rounded-xl shadow-xl border border-[#2d3748]">
         <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900">🧠 MindMap</h1>
-          <h2 className="mt-4 text-2xl font-semibold text-gray-800">Create a new account</h2>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-100">🧠 MindMap</h1>
+          <h2 className="mt-4 text-2xl font-semibold text-slate-200">Create a new account</h2>
         </div>
 
-        <AuthForm mode="register" onSuccess={() => navigate('/')} />
+        <AuthForm mode="register" onSuccess={() => navigate('/dashboard')} />
 
         <div className="mt-6 flex justify-center text-sm">
-          <span className="text-gray-600">
+          <span className="text-slate-400">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-teal-600 hover:text-teal-500">
+            <Link to="/login" className="font-semibold text-teal-400 hover:text-teal-300">
               Login
             </Link>
           </span>

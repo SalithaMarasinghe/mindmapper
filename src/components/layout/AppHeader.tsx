@@ -29,9 +29,9 @@ export function AppHeader({
         {leftContent ? (
           leftContent
         ) : (
-          <div className="flex items-center gap-2 font-bold text-teal-400 text-xl tracking-tight">
+          <Link to="/dashboard" className="flex items-center gap-2 font-bold text-teal-400 text-xl tracking-tight">
             <span className="text-2xl">🧠</span> MindMap
-          </div>
+          </Link>
         )}
 
         {/* Center: Search */}
