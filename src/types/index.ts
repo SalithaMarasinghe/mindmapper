@@ -128,3 +128,66 @@ export const DEFAULT_BRANCH_COLORS = [
 export function isApiError(e: unknown): e is Error {
   return e instanceof Error;
 }
+
+// ─── Timeline Feature ────────────────────────────────────────────────────────
+
+export type EventType = 'work' | 'meeting';
+export type WorkStatus = 'done' | 'in_progress' | 'blocked';
+
+export interface EventLink {
+  label: string;
+  url: string;
+}
+
+export interface TimelineEvent {
+  id: string;
+  userId: string;
+  date: string;            // ISO date string — YYYY-MM-DD
+  startTime: string | null; // HH:MM
+  endTime: string | null;   // HH:MM
+  type: EventType;
+  title: string;
+  projectTag: string | null;
+  chainId: string | null;
+  previousEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkDetails {
+  eventId: string;
+  description: string;
+  implementationNotes: string;
+  status: WorkStatus;
+  links: EventLink[];
+}
+
+export interface MeetingDetails {
+  eventId: string;
+  isOptional: boolean;
+  discussionSummary: string;
+  tasksAssigned: TaskItem[];
+  decisions: string;
+  links: EventLink[];
+}
+
+export interface TaskItem {
+  text: string;
+  done: boolean;
+}
+
+export interface WeeklySummary {
+  id: string;
+  userId: string;
+  weekStartDate: string;   // ISO date string — YYYY-MM-DD (always a Monday)
+  generatedText: string;
+  sourceEventIds: string[];
+  createdAt: string;
+}
+
+// Discriminated union — narrow with `event.type === 'work'` or `'meeting'`
+export type TimelineEventFull =
+  | (TimelineEvent & { type: 'work' } & WorkDetails)
+  | (TimelineEvent & { type: 'meeting' } & MeetingDetails);
+
+

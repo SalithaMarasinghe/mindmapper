@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Lock, Unlock, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Lock, Unlock, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useSettingsStore } from '../../store/settingsStore';
 
 export function AppHeader({
-  searchQuery,
-  setSearchQuery,
   leftContent,
+  centerContent,
   rightContent,
 }: {
-  searchQuery: string,
-  setSearchQuery: (q: string) => void,
   leftContent?: React.ReactNode,
+  centerContent?: React.ReactNode,
   rightContent?: React.ReactNode,
 }) {
   const { profile, user, signOut } = useAuthStore();
@@ -34,21 +32,9 @@ export function AppHeader({
           </Link>
         )}
 
-        {/* Center: Search */}
-        <div className="flex-1 max-w-md px-4 hidden sm:block relative text-slate-400 hover:text-slate-300 transition">
-          <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-4 w-4" />
-          <input 
-            type="text" 
-            placeholder="Search mindmaps..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-[#0f1117] rounded-full py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-[#1a2030] transition-all text-slate-200 border border-[#2d3748] placeholder:text-slate-500"
-          />
-        </div>
-        <div className="sm:hidden flex items-center justify-end flex-1 pr-4">
-           <button className="p-2 text-slate-400 hover:text-slate-200 rounded-full transition">
-              <Search className="h-5 w-5" />
-           </button>
+        {/* Center: Content */}
+        <div className="flex-1 flex justify-center items-center px-4">
+          {centerContent}
         </div>
 
         {/* Right: Actions */}
@@ -88,3 +74,4 @@ export function AppHeader({
     </header>
   );
 }
+

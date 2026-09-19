@@ -595,8 +595,6 @@ export function MindmapCanvas() {
   return (
     <div className="flex flex-col h-screen w-full select-none">
       <AppHeader
-        searchQuery=""
-        setSearchQuery={() => {}}
         leftContent={(
           <button
             onClick={() => navigate('/dashboard')}

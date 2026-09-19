@@ -182,7 +182,7 @@ export function NodePage() {
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <AppHeader searchQuery="" setSearchQuery={() => {}} leftContent={LeftContent} />
+      <AppHeader leftContent={LeftContent} />
 
       <div className="node-page-fullwidth pt-14 min-h-screen relative">
         <button
