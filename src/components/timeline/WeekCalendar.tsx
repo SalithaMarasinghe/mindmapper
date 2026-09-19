@@ -11,7 +11,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 const HOUR_PX = 64;
 
 /** px width of the left time gutter */
-const GUTTER_PX = 52;
+const GUTTER_PX = 60;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -320,7 +320,7 @@ export function WeekCalendar({
 
   return (
     <>
-      <div className="flex flex-col select-none bg-[#0f1117] rounded-xl border border-[#2d3748] overflow-hidden h-full">
+      <div className="flex flex-col select-none bg-[#0f1117] overflow-hidden h-full">
 
         {/* Day headers */}
         <div className="flex border-b border-[#2d3748] bg-[#1e2433] flex-shrink-0">
@@ -350,11 +350,11 @@ export function WeekCalendar({
               {hourLabels.map((h) => (
                 <div
                   key={h}
-                  className="absolute right-2 flex items-end justify-end"
+                  className="absolute right-2.5 flex items-end justify-end"
                   style={{ top: (h - startHour) * HOUR_PX - 9, height: 18 }}
                 >
                   {h < endHour && (
-                    <span className="text-[10px] text-slate-600 whitespace-nowrap font-medium leading-none">
+                    <span className="text-xs text-slate-200 whitespace-nowrap font-medium leading-none">
                       {hourLabel(h)}
                     </span>
                   )}

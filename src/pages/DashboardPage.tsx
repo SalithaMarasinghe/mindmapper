@@ -44,16 +44,16 @@ export function DashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0f1117] pb-20 font-sans">
+    <div className={`min-h-screen bg-[#0f1117] font-sans ${activeTab === 'work-journal' ? 'h-screen flex flex-col overflow-hidden' : 'pb-20'}`}>
       <AppHeader centerContent={tabs} />
       
-      <main className={`mx-auto pt-24 ${
+      <main className={`${
         activeTab === 'work-journal' 
-          ? 'w-full px-2 sm:px-4' 
-          : 'max-w-7xl px-4 sm:px-6 lg:px-8'
+          ? 'w-full flex-1 flex flex-col min-h-0 pt-14 px-0' 
+          : 'max-w-7xl mx-auto pt-24 px-4 sm:px-6 lg:px-8'
       }`}>
         {activeTab === 'work-journal' ? (
-          <div className="work-journal-container">
+          <div className="flex-1 flex flex-col min-h-0 w-full h-full">
             <WorkJournal />
           </div>
         ) : (

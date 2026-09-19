@@ -246,11 +246,11 @@ export function WorkJournal() {
   };
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-140px)]">
+    <div className="flex flex-col w-full h-full min-h-0 flex-1">
       {/* Main Calendar View */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#0f1117] border border-[#2d3748] rounded-xl overflow-hidden shadow-sm">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#0f1117] overflow-hidden">
         {/* Calendar Header / Nav */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#2d3748] bg-[#1e2433]">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2d3748] bg-[#1e2433] flex-shrink-0">
           <div className="flex items-center gap-2">
             <button 
               onClick={handlePrevWeek}
@@ -291,7 +291,7 @@ export function WorkJournal() {
         </div>
 
         {/* The Grid */}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative min-h-0">
           <WeekCalendar
             weekStart={weekStart}
             eventsByDate={eventsByDate}
