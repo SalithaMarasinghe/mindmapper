@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, ExternalLink, Link2, Briefcase, Users, CheckCircle2, Circle, Edit2 } from 'lucide-react';
 import { useTimelineStore } from '../../store/timelineStore';
 import type { TimelineEventFull } from '../../types';
+import { MarkdownViewer } from '../common/MarkdownViewer';
 
 export interface EventDetailViewProps {
   event: TimelineEventFull;
@@ -57,7 +58,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
       <div className="absolute inset-0 bg-[#0f1117]/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-2xl bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-[#2d3748] bg-[#0f1117]/30">
@@ -154,15 +155,15 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
               {event.description && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Description</h3>
-                  <p className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{event.description}</p>
+                  <MarkdownViewer content={event.description} />
                 </div>
               )}
 
               {event.implementationNotes && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Implementation Notes</h3>
-                  <div className="p-3 rounded-lg bg-slate-900/50 border border-[#2d3748]">
-                    <p className="text-slate-300 text-sm whitespace-pre-wrap font-mono text-[13px] leading-relaxed">{event.implementationNotes}</p>
+                  <div className="p-3.5 rounded-lg bg-slate-900/50 border border-[#2d3748]">
+                    <MarkdownViewer content={event.implementationNotes} />
                   </div>
                 </div>
               )}
@@ -196,15 +197,15 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
               {event.discussionSummary && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Discussion Summary</h3>
-                  <p className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">{event.discussionSummary}</p>
+                  <MarkdownViewer content={event.discussionSummary} />
                 </div>
               )}
 
               {event.decisions && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Decisions Made</h3>
-                  <div className="p-3 rounded-lg bg-violet-950/20 border border-violet-900/30">
-                    <p className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{event.decisions}</p>
+                  <div className="p-3.5 rounded-lg bg-violet-950/20 border border-violet-900/30">
+                    <MarkdownViewer content={event.decisions} />
                   </div>
                 </div>
               )}

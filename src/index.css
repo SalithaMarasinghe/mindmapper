@@ -323,3 +323,120 @@ body {
 .preview-modal-content .bn-editor {
   background: #1a2030 !important;
 }
+
+/* =====================================================
+   NOTION-STYLE MARKDOWN STYLES
+   ===================================================== */
+.notion-markdown h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+.notion-markdown h1:first-child {
+  margin-top: 0;
+}
+.notion-markdown h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-top: 0.85rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.4;
+}
+.notion-markdown h2:first-child {
+  margin-top: 0;
+}
+.notion-markdown h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.4;
+}
+.notion-markdown h3:first-child {
+  margin-top: 0;
+}
+.notion-markdown p {
+  margin-bottom: 0.6rem;
+  line-height: 1.6;
+}
+.notion-markdown p:last-child {
+  margin-bottom: 0;
+}
+.notion-markdown ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.6rem;
+}
+.notion-markdown ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.6rem;
+}
+.notion-markdown li {
+  margin-bottom: 0.25rem;
+  line-height: 1.5;
+}
+.notion-markdown li:last-child {
+  margin-bottom: 0;
+}
+.notion-markdown blockquote {
+  border-left: 3px solid #14b8a6;
+  background-color: rgba(15, 23, 42, 0.5);
+  padding: 0.4rem 0.75rem;
+  margin: 0.6rem 0;
+  color: #cbd5e1;
+  font-style: italic;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+.notion-markdown pre {
+  background-color: #0b0e14;
+  border: 1px solid #2d3748;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.6rem 0;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+}
+.notion-markdown code {
+  background-color: #1a202c;
+  color: #5eead4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(45, 55, 72, 0.6);
+}
+.notion-markdown pre code {
+  background-color: transparent;
+  color: #e2e8f0;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+}
+.notion-markdown hr {
+  border: 0;
+  border-top: 1px solid #2d3748;
+  margin: 1rem 0;
+}
+.notion-markdown a {
+  color: #2dd4bf;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+.notion-markdown a:hover {
+  color: #5eead4;
+}
+.notion-markdown input[type="checkbox"] {
+  accent-color: #0d9488;
+  margin-right: 0.5rem;
+  cursor: default;
+  vertical-align: middle;
+}
+

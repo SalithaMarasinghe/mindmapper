@@ -5,14 +5,9 @@ import {
   Briefcase, Users,
 } from 'lucide-react';
 import { useTimelineStore } from '../../store/timelineStore';
-import type {
-  TimelineEventFull,
-  EventLink,
-  TaskItem,
-  WorkStatus,
-  EventType,
-} from '../../types';
+import type { TimelineEventFull, EventLink, TaskItem, WorkStatus, EventType } from '../../types';
 import type { NewEventDraft } from './WeekCalendar';
+import { MarkdownEditor } from '../common/MarkdownEditor';
 
 // ─── Shared input/label class tokens ─────────────────────────────────────────
 
@@ -277,7 +272,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
       aria-label={isEditing ? 'Edit event' : 'New event'}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] w-full max-w-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] w-full max-w-4xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="px-6 py-4 border-b border-[#2d3748] flex items-center justify-between">
@@ -295,7 +290,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
         </div>
 
         {/* ── Scrollable body ──────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[72vh] flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[82vh] flex flex-col gap-6">
 
           {/* Type toggle — only shown when creating */}
           {!isEditing && (
@@ -394,24 +389,22 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
               {/* Description */}
               <div className={SECTION_CLS}>
                 <FieldLabel>What did you work on?</FieldLabel>
-                <textarea
-                  rows={3}
-                  className={`${INPUT_CLS} resize-none`}
-                  placeholder="Describe what you worked on..."
+                <MarkdownEditor
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
+                  onChange={setDescription}
+                  placeholder="Describe what you worked on... (Markdown supported: # headings, **bold**, - lists, `code`)"
+                  minHeight="170px"
                 />
               </div>
 
               {/* Implementation notes */}
               <div className={SECTION_CLS}>
                 <FieldLabel optional>Implementation Notes</FieldLabel>
-                <textarea
-                  rows={3}
-                  className={`${INPUT_CLS} resize-none`}
-                  placeholder="Technical details, decisions made, gotchas..."
+                <MarkdownEditor
                   value={implementationNotes}
-                  onChange={e => setImplNotes(e.target.value)}
+                  onChange={setImplNotes}
+                  placeholder="Technical details, decisions made, architecture, code snippets, gotchas... (Markdown supported)"
+                  minHeight="170px"
                 />
               </div>
 
@@ -461,12 +454,11 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
               {/* Discussion summary */}
               <div className={SECTION_CLS}>
                 <FieldLabel optional>Discussion Summary</FieldLabel>
-                <textarea
-                  rows={3}
-                  className={`${INPUT_CLS} resize-none`}
-                  placeholder="What was discussed?"
+                <MarkdownEditor
                   value={discussionSummary}
-                  onChange={e => setDiscussion(e.target.value)}
+                  onChange={setDiscussion}
+                  placeholder="What was discussed, key topics, feedback... (Markdown supported: # headings, - lists, - [ ] tasks)"
+                  minHeight="170px"
                 />
               </div>
 
@@ -476,12 +468,11 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
               {/* Decisions */}
               <div className={SECTION_CLS}>
                 <FieldLabel optional>Decisions Made</FieldLabel>
-                <textarea
-                  rows={2}
-                  className={`${INPUT_CLS} resize-none`}
-                  placeholder="Key decisions reached..."
+                <MarkdownEditor
                   value={decisions}
-                  onChange={e => setDecisions(e.target.value)}
+                  onChange={setDecisions}
+                  placeholder="Key decisions reached, consensus, next steps... (Markdown supported)"
+                  minHeight="150px"
                 />
               </div>
 
