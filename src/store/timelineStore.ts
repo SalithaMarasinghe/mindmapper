@@ -9,6 +9,7 @@ import type {
   EventLink,
   TaskItem,
   WorkStatus,
+  Project,
 } from '../types';
 import { nanoid } from 'nanoid';
 
@@ -40,9 +41,12 @@ interface RawEvent {
   end_time: string | null;
   type: 'work' | 'meeting';
   title: string;
+  project_id?: string | null;
   project_tag: string | null;
   chain_id: string | null;
   previous_event_id: string | null;
+  source_segment_id?: string | null;
+  source_task_id?: string | null;
   created_at: string;
   updated_at: string;
   work_details: RawWorkDetails | null;
@@ -60,9 +64,12 @@ function toTimelineEvent(row: RawEvent): TimelineEvent {
     endTime: row.end_time,
     type: row.type,
     title: row.title,
+    projectId: row.project_id ?? null,
     projectTag: row.project_tag,
     chainId: row.chain_id,
     previousEventId: row.previous_event_id,
+    sourceSegmentId: row.source_segment_id ?? null,
+    sourceTaskId: row.source_task_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -108,26 +115,46 @@ function toTimelineEventFull(row: RawEvent): TimelineEventFull {
 interface TimelineState {
   // Primary event store keyed by date (YYYY-MM-DD) for O(1) calendar lookup
   eventsByDate: Record<string, TimelineEventFull[]>;
+  projects: Project[];
   isLoading: boolean;
   error: string | null;
 
+  // Projects
+  fetchProjects: () => Promise<Project[]>;
+  createProject: (
+    name: string,
+    description?: string,
+    status?: 'active' | 'completed' | 'on_hold' | 'planning'
+  ) => Promise<Project | null>;
+
   // Fetch all events in a date range (inclusive), with details joined
   fetchWeek: (weekStart: string, weekEnd: string) => Promise<void>;
+  fetchRange: (startDate: string, endDate: string) => Promise<TimelineEventFull[]>;
 
   // Mutations
   createWorkEvent: (
     payload: Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag'> &
-      Pick<WorkDetails, 'description' | 'implementationNotes' | 'status' | 'links'>
+      Pick<WorkDetails, 'description' | 'implementationNotes' | 'status' | 'links'> & {
+        projectId?: string | null;
+        sourceSegmentId?: string | null;
+        sourceTaskId?: string | null;
+        previousEventId?: string | null;
+        chainId?: string | null;
+      }
   ) => Promise<string | null>;
 
   createMeetingEvent: (
     payload: Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag'> &
-      Pick<MeetingDetails, 'isOptional' | 'discussionSummary' | 'tasksAssigned' | 'decisions' | 'links'>
+      Pick<MeetingDetails, 'isOptional' | 'discussionSummary' | 'tasksAssigned' | 'decisions' | 'links'> & {
+        projectId?: string | null;
+        previousEventId?: string | null;
+        chainId?: string | null;
+      }
   ) => Promise<string | null>;
 
   updateEvent: (
     eventId: string,
-    eventUpdates: Partial<Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag'>>,
+    eventUpdates: Partial<Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag' | 'projectId'>>,
     detailUpdates: Partial<WorkDetails> | Partial<MeetingDetails>
   ) => Promise<void>;
 
@@ -145,8 +172,72 @@ interface TimelineState {
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
   eventsByDate: {},
+  projects: [],
   isLoading: false,
   error: null,
+
+  // ── fetchProjects ────────────────────────────────────────────────────────
+  fetchProjects: async () => {
+    const { user } = useAuthStore.getState();
+    if (!user) return [];
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      const projects: Project[] = (data || []).map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        description: row.description,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+      set({ projects });
+      return projects;
+    } catch (err: unknown) {
+      console.error('Failed to fetch projects:', err);
+      return [];
+    }
+  },
+
+  // ── createProject ────────────────────────────────────────────────────────
+  createProject: async (name, description, status = 'active') => {
+    const { user } = useAuthStore.getState();
+    if (!user) return null;
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          user_id: user.id,
+          name: name.trim(),
+          description: description?.trim() || null,
+          status,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      const newProj: Project = {
+        id: data.id,
+        userId: data.user_id,
+        name: data.name,
+        description: data.description,
+        status: data.status,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      };
+      set((state) => ({ projects: [...state.projects, newProj] }));
+      return newProj;
+    } catch (err: unknown) {
+      console.error('Failed to create project:', err);
+      return null;
+    }
+  },
 
   // ── fetchWeek ────────────────────────────────────────────────────────────
   fetchWeek: async (weekStart, weekEnd) => {
@@ -197,6 +288,29 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     }
   },
 
+  // ── fetchRange ───────────────────────────────────────────────────────────
+  fetchRange: async (startDate: string, endDate: string): Promise<TimelineEventFull[]> => {
+    const { user } = useAuthStore.getState();
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*, work_details(*), meeting_details(*)')
+        .eq('user_id', user.id)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true, nullsFirst: true });
+
+      if (error) throw error;
+      return (data as RawEvent[]).map(toTimelineEventFull);
+    } catch (err: unknown) {
+      console.error('Failed to fetch events in range:', err);
+      return [];
+    }
+  },
+
   // ── createWorkEvent ──────────────────────────────────────────────────────
   createWorkEvent: async (payload) => {
     const { user } = useAuthStore.getState();
@@ -210,6 +324,56 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
+      // Idempotency check: if sourceSegmentId is present, avoid duplicate creation
+      if (payload.sourceSegmentId) {
+        const { data: existing } = await supabase
+          .from('events')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('source_segment_id', payload.sourceSegmentId)
+          .maybeSingle();
+
+        if (existing) {
+          set({ isLoading: false });
+          return existing.id;
+        }
+      }
+
+      let chainId: string | null = payload.chainId ?? null;
+      let prevDate: string | null = null;
+
+      if (payload.previousEventId) {
+        const allEvents = Object.values(get().eventsByDate).flat();
+        const prev = allEvents.find((e) => e.id === payload.previousEventId);
+        if (prev) {
+          prevDate = prev.date;
+          chainId = prev.chainId ?? nanoid();
+          if (!prev.chainId) {
+            await supabase
+              .from('events')
+              .update({ chain_id: chainId })
+              .eq('id', payload.previousEventId);
+          }
+        } else {
+          const { data: dbPrev } = await supabase
+            .from('events')
+            .select('chain_id, date')
+            .eq('id', payload.previousEventId)
+            .maybeSingle();
+
+          if (dbPrev) {
+            prevDate = dbPrev.date;
+            chainId = dbPrev.chain_id ?? nanoid();
+            if (!dbPrev.chain_id) {
+              await supabase
+                .from('events')
+                .update({ chain_id: chainId })
+                .eq('id', payload.previousEventId);
+            }
+          }
+        }
+      }
+
       const { data: eventRow, error: eventError } = await supabase
         .from('events')
         .insert({
@@ -219,7 +383,12 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
           end_time: payload.endTime,
           type: 'work',
           title: payload.title,
+          project_id: payload.projectId ?? null,
           project_tag: payload.projectTag,
+          source_segment_id: payload.sourceSegmentId ?? null,
+          source_task_id: payload.sourceTaskId ?? null,
+          previous_event_id: payload.previousEventId ?? null,
+          chain_id: chainId,
         })
         .select('id')
         .single();
@@ -240,8 +409,11 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
       if (detailError) throw detailError;
 
-      // Refresh the date this event lands on
+      // Refresh the date this event lands on (and prevDate if different)
       await get().fetchWeek(payload.date, payload.date);
+      if (prevDate && prevDate !== payload.date) {
+        await get().fetchWeek(prevDate, prevDate);
+      }
       return eventId;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -263,6 +435,41 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
+      let chainId: string | null = payload.chainId ?? null;
+      let prevDate: string | null = null;
+
+      if (payload.previousEventId) {
+        const allEvents = Object.values(get().eventsByDate).flat();
+        const prev = allEvents.find((e) => e.id === payload.previousEventId);
+        if (prev) {
+          prevDate = prev.date;
+          chainId = prev.chainId ?? nanoid();
+          if (!prev.chainId) {
+            await supabase
+              .from('events')
+              .update({ chain_id: chainId })
+              .eq('id', payload.previousEventId);
+          }
+        } else {
+          const { data: dbPrev } = await supabase
+            .from('events')
+            .select('chain_id, date')
+            .eq('id', payload.previousEventId)
+            .maybeSingle();
+
+          if (dbPrev) {
+            prevDate = dbPrev.date;
+            chainId = dbPrev.chain_id ?? nanoid();
+            if (!dbPrev.chain_id) {
+              await supabase
+                .from('events')
+                .update({ chain_id: chainId })
+                .eq('id', payload.previousEventId);
+            }
+          }
+        }
+      }
+
       const { data: eventRow, error: eventError } = await supabase
         .from('events')
         .insert({
@@ -272,7 +479,10 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
           end_time: payload.endTime,
           type: 'meeting',
           title: payload.title,
+          project_id: payload.projectId ?? null,
           project_tag: payload.projectTag,
+          previous_event_id: payload.previousEventId ?? null,
+          chain_id: chainId,
         })
         .select('id')
         .single();
@@ -295,6 +505,9 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       if (detailError) throw detailError;
 
       await get().fetchWeek(payload.date, payload.date);
+      if (prevDate && prevDate !== payload.date) {
+        await get().fetchWeek(prevDate, prevDate);
+      }
       return eventId;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -325,6 +538,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         if (eventUpdates.startTime !== undefined)  dbEventUpdates.start_time  = eventUpdates.startTime;
         if (eventUpdates.endTime !== undefined)    dbEventUpdates.end_time    = eventUpdates.endTime;
         if (eventUpdates.title !== undefined)      dbEventUpdates.title       = eventUpdates.title;
+        if (eventUpdates.projectId !== undefined)  dbEventUpdates.project_id  = eventUpdates.projectId;
         if (eventUpdates.projectTag !== undefined) dbEventUpdates.project_tag = eventUpdates.projectTag;
 
         const { error } = await supabase

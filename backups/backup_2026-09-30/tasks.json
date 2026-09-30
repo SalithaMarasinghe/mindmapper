@@ -1,0 +1,50 @@
+[
+  {
+    "completed_at": null,
+    "created_at": "2026-09-30T13:43:29.450782+00:00",
+    "description": "Audit what the current system supports, pinpoint gaps for RAG chat agents and AI calling agents, and define the additional components needed to meet client demands.",
+    "id": "dca805b5-d1a0-4745-b269-04cf3ac96414",
+    "is_paused": false,
+    "order_index": 1,
+    "planned_date": "2026-09-30",
+    "priority": "medium",
+    "started_at": null,
+    "status": "todo",
+    "title": "Identify expansion requirements for RAG and calling agents",
+    "tracked_seconds": 0,
+    "updated_at": "2026-09-30T13:43:29.450782+00:00",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "completed_at": "2026-09-30T14:52:50.901+00:00",
+    "created_at": "2026-09-30T13:43:29.118123+00:00",
+    "description": "Review the Principal Engineer’s hierarchical codebase, understand key design decisions, and examine component implementations to get a solid grasp of the current system.\n\n---\n### Work Summary\n- Hierarchical orchestrator routes context cleanly down the tree – great for RAG retrieval.\n- Middleware slot in the resolver ready for embedding lookups.\n- Calling agent webhooks support bidirectional streaming – only payload normalization needed.\n- **Key Gaps**:\n  - Vector store is mocked – needs a pgvector adapter.\n  - Session timeout hard‑coded to 30 min – should use leasing for calls.\n\n---\n### Work Summary\n### Findings from codebase review\n\n- **Hierarchical orchestrator** routes context cleanly down the tree – ideal for RAG retrieval.\n- Identified middleware slot in the resolver where embedding lookups can intercept queries.\n- **Calling agent webhooks** already support bidirectional streaming; only payload normalization is needed.\n- **Key gaps**:\n  - Vector store is currently mocked – requires a pgvector adapter.\n  - Session timeout is hard‑coded to 30 minutes – should be replaced with a leasing mechanism for calls.\n\n\n---\n### Work Summary\n**Summary:**\nCompleted a full walkthrough of the hierarchical RAG codebase.\n\n**Implementation Notes:**\n- Hierarchical orchestrator routes context cleanly down the tree, ideal for RAG retrieval.\n- Identified middleware slot in resolver for embedding lookups.\n- Calling agent webhooks support bidirectional streaming; need payload normalization.\n- **Key Gaps**:\n  * Vector store mocked out – requires pgvector adapter.\n  * Session timeout hard‑coded to 30 min – needs leasing for calls.\n\n---\n### Work Summary\n* **Problem / Initiative**: Needed to assess the existing hierarchical orchestrator to determine its suitability for extending RAG retrieval and AI calling agents.\n* **My Contribution & Implementation**:\n  - **Analyzed**: Reviewed the hierarchical orchestrator code, identified the middleware slot where embedding lookups can intercept queries, and examined the calling‑agent webhook implementation supporting bidirectional streaming.\n  - **Documented Gaps**: Noted that the vector store is currently mocked (requires a pgvector adapter) and the session timeout is hard‑coded to 30 minutes (needs leasing for calls).\n* **Engineering Judgment & Decisions**:\n  - Chose to focus on a thorough code review rather than building new components, confirming that the existing architecture provides clean extension points for both RAG and calling agents.\n  - Prioritized identifying concrete integration gaps to inform the next prototype sprint.\n* **Impact & Results**:\n  - Confirmed that the orchestrator routes context cleanly, enabling straightforward RAG retrieval integration.\n  - Verified that calling‑agent webhooks already support streaming, reducing future implementation effort.\n  - Produced a clear list of actionable gaps (pgvector adapter, session‑timeout leasing) to guide upcoming development.",
+    "id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "is_paused": false,
+    "order_index": 0,
+    "planned_date": "2026-09-30",
+    "priority": "medium",
+    "started_at": "2026-09-30T13:46:00+00:00",
+    "status": "done",
+    "title": "Understand existing system: review codebase and architecture",
+    "tracked_seconds": 82,
+    "updated_at": "2026-09-30T14:52:57.099752+00:00",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "completed_at": null,
+    "created_at": "2026-09-30T16:49:19.119044+00:00",
+    "description": "*Action item from meeting: \"AI Prototype Roadmap Discussion with Tech Lead\" (2026-09-30)*",
+    "id": "49209c92-a28a-4fc3-8ce5-ef3612020470",
+    "is_paused": false,
+    "order_index": 2,
+    "planned_date": "2026-09-30",
+    "priority": "medium",
+    "started_at": null,
+    "status": "todo",
+    "title": "Salitha Marasinghe: Test embedding APIs and build the first RAG prototype by Friday",
+    "tracked_seconds": 0,
+    "updated_at": "2026-09-30T16:49:19.119044+00:00",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  }
+]

@@ -1,0 +1,157 @@
+[
+  {
+    "decisions": "Initiate formal evaluation of Spec-Driven Development (SDD) frameworks comparing open-source options against Amazon Kiro; prepare React frontend foundation for upcoming accounting AI prototype.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nExplore the emergence of Spec-Driven Development (SDD) methodologies and assess upcoming client prototype requirements for an AI-powered accounting concept.\n\n### ⚖️ Agreed Decisions & Direction\n* **SDD Evaluation**: Evaluate SDD frameworks to establish studio best practices, comparing open-source spec frameworks against managed IDE tools like Amazon Kiro.\n* **Frontend Prototype Scope**: Prepare for building a frontend prototype based on Figma UI/UX designs to support an upcoming investor pitch to an accounting firm.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Methodology Options**: Discussed whether an open-source workflow (Spec Kit, OpenSpec) provides better flexibility and lower vendor lock-in than an integrated tool like Amazon Kiro.\n* **Client Concept Requirements**: Reviewed early Figma designs for the accounting AI platform to understand required UI capabilities.\n\n### 📌 Action Items & Next Steps\n* [ ] Research Spec-Driven Development principles and compare candidate frameworks.\n* [ ] Refresh React fundamentals and modern component patterns ahead of prototyping.",
+    "event_id": "2f8c63b4-b250-4c6a-b2fc-d0d13bbc37d4",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": [
+      {
+        "done": false,
+        "text": "Undserstand Spec-Driven Development and It's Frameworks"
+      },
+      {
+        "done": false,
+        "text": "Refresh React Fundamentals"
+      }
+    ]
+  },
+  {
+    "decisions": "1. Use a database containing realistic dummy accounting data instead of directly connecting to live accounting software.\n2. Build a functional, polished prototype focused on agent UX and financial analytics rather than a full production platform.\n3. Architect a central orchestrator agent coordinating specialized sub-agents (AP, AR, invoicing, analytics).\n4. Scaffold backend and agent workflow before completing frontend UI.\n5. Prioritize initial prototype delivery for Thursday demo.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nKick-off alignment for Apollo Books, an agentic AI platform designed to simplify accounting operations for Australian SMBs through natural language interactions.\n\n### ⚖️ Agreed Decisions & Direction\n* **Decoupled Architecture**: Utilize a realistic dummy accounting database (accounts, bills, transactions) for rapid validation rather than integrating complex third-party ERP platforms immediately.\n* **Multi-Agent Orchestration**: Implement a central orchestrator agent that interprets natural language and delegates tasks to specialized sub-agents (invoicing, accounts payable, accounts receivable, analytics).\n* **Delivery Milestone**: Target Thursday for a functional demonstration of the conversational UI, analytics dashboard, and agent coordination.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Core Platform Sections**: Agreed on three key functional areas: Financial Analytics Dashboard, Always-Visible Conversational AI Side Panel, and Accounting Operations.\n* **Agent Capabilities**: Outlined natural language commands to support (e.g., *\"Why did my profit drop?\"*, *\"Which invoices are overdue?\"*, *\"Generate an invoice\"*).\n* **Evolution Path**: Confirmed the prototype architecture must allow seamless future replacement of the dummy database with real accounting software APIs.\n\n### 📌 Action Items & Next Steps\n* [ ] Model the dummy accounting database schema and seed realistic business data.\n* [ ] Scaffold the backend API and conversational agent routing workflow.\n* [ ] Define supported prototype interactions and prepare for frontend integration.",
+    "event_id": "4b388730-50ff-4605-aba1-6e427cf395cb",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": [
+      {
+        "done": false,
+        "text": "Understand the database architecture"
+      },
+      {
+        "done": false,
+        "text": "Build the dummy accounting database"
+      },
+      {
+        "done": false,
+        "text": " Scaffold the backend"
+      },
+      {
+        "done": false,
+        "text": "Implement the conversational agent workflow"
+      },
+      {
+        "done": false,
+        "text": " Define supported prototype interactions"
+      },
+      {
+        "done": false,
+        "text": "Prepare for frontend implementation"
+      }
+    ]
+  },
+  {
+    "decisions": "1. Expand the existing Agent prototype deployed on Vercel rather than rebuilding from scratch.\n2. Connect the database to Figma MCP to extract layout tokens and workflows.\n3. Implement sections in sequential order: Desk section first, then Home section.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nDetailed walkthrough of existing Apollo Books designs with the Research UX Implementer to review completed features and plan the implementation of Desk and Home sections.\n\n### ⚖️ Agreed Decisions & Direction\n* **Iterative Expansion**: Preserve and build upon the existing hard-coded Agent prototype deployed on Vercel.\n* **Component Extraction**: Connect the project database to Figma MCP to automate layout, spacing, and typography token extraction.\n* **Build Sequence**: Prioritize the Desk section (bills, transactions, accounting tools) before implementing the Home performance dashboard.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Desk Receipt Reconciliation Flow**: Walked through the automated flow: email receipt notification → transaction verification against bank records → bill generation → side panel drawer inspection.\n* **Home Dashboard Metrics**: Defined critical KPI cards (Safe to Spend, Liabilities, Revenue, Profit, Needs You action feed).\n* **Conversational Chase Drawer**: Reviewed the conversational diagnostic flow explaining profit dips and turning recommendations into action items.\n\n### 📌 Action Items & Next Steps\n* [x] Connect database to Figma MCP and extract workflow assets.\n* [ ] Build the Desk section (Actions, Activity, Accounts, Transactions, Bills, Drawer).\n* [ ] Build the Home section (KPI cards, Chase drawer, Needs You feed).",
+    "event_id": "82343629-e6c4-467a-83b2-88cbd4a1c8ff",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": [
+      {
+        "done": true,
+        "text": "Connect the existing database to the Figma MCP."
+      },
+      {
+        "done": true,
+        "text": "Extract the workflow from Figma."
+      },
+      {
+        "done": false,
+        "text": "Build the desk section (Actions, Activity, Accounts, Transactions, Bills, Payroll, Invoicing, Directory, Taxes, Accounting)."
+      },
+      {
+        "done": true,
+        "text": "Build the home section (KPIs, orchestrator agent chat, \"Needs You\" action items)."
+      }
+    ]
+  },
+  {
+    "decisions": "Formally adopt breadth-first approach using the Principal Engineer’s hierarchical architecture; prioritize reusable MVP prototypes; shortlist candidate APIs for implementation.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nConduct technical planning for client-requested AI capabilities (RAG chat over enterprise manuals/policies and automated calling agents), finalizing architecture and API selections.\n\n### ⚖️ Agreed Decisions & Direction\n* **Architecture Strategy**: Formally adopt breadth-first strategy building upon the existing hierarchical architecture.\n* **API Selections**: Finalized shortlisted model backends and service providers balancing latency, cost, and reliability.\n* **Modular Milestones**: Structure prototypes into modular phases allowing immediate client demonstration followed by incremental production hardening.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Component Reusability**: Analyzed document ingestion pipelines, vector storage options, and conversational state persistence.\n* **Execution Alignment**: Aligned on dividing research tasks between architecture review and interface prototyping.\n\n### 📌 Action Items & Next Steps\n* [ ] Review Principal Engineer's codebase and document hierarchical architecture decisions.\n* [ ] Audit current capabilities and specify needed features for RAG and calling agents.",
+    "event_id": "dbb3fc5c-a503-4c28-a14e-5532f5657897",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": [
+      {
+        "done": false,
+        "text": "Understand the existing system: review the Principal Engineer’s codebase, hierarchical architecture, key design decisions, and component implementation."
+      },
+      {
+        "done": false,
+        "text": "Identify expansion requirements: audit current system capabilities, find gaps, and define needed features for RAG and calling agents."
+      }
+    ]
+  },
+  {
+    "decisions": "Adopt an offline blueprint workflow to circumvent Figma MCP rate limits; utilize direct .figma files for AI-assisted layout corrections; resolve specific UI differences in Home section.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nConduct a UI/UX review of the Apollo Books Home section implementation and optimize developer workflow around Figma API limitations with the Tech Lead and UX Researcher.\n\n### ⚖️ Agreed Decisions & Direction\n* **Figma Rate Limit Strategy**: Transition away from repeated Figma MCP API calls to an offline blueprint approach that captures all content and demo flows in local Markdown cache.\n* **Direct File Usage**: Experiment with importing raw `.figma` files directly into AI tools for layout adjustments.\n* **UI Discrepancy Remediation**: Address specific Home section layout, animation depth, and typography defects identified during review.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Visual Audit Points**: Identified section height differences, floating AI agent bar opening animation depth, and text alignment discrepancies.\n* **Tooling Constraints**: Evaluated the Figma MCP rate limit bottleneck (HTTP 429) and agreed that an offline cached blueprint preserves engineering velocity without API interruptions.\n\n### 📌 Action Items & Next Steps\n* [ ] Fix Home section visual defects: section heights, AI bar animation depth, text placement.\n* [ ] Continue refining the offline blueprint approach for demo flows.",
+    "event_id": "f755bec9-0958-4152-9cdb-5c40d019df3e",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": [
+      {
+        "done": false,
+        "text": "Fix home section issues: section heights, floating AI agent bar opening animation depth, text placement, and layout differences."
+      },
+      {
+        "done": false,
+        "text": "Continue refining the blueprint approach for the demo flow."
+      }
+    ]
+  },
+  {
+    "decisions": "Hand over Apollo Books prototype and documentation to team; initiate participation in studio Spec-Driven Development working group and upcoming reusable RAG framework initiative.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nHand over the completed Apollo Books prototype, testing documentation, and video walkthroughs to the team, and align on upcoming SDD and reusable RAG initiatives.\n\n### ⚖️ Agreed Decisions & Direction\n* **Prototype Handover**: Transition completed Apollo Books prototype and testing documentation to the team for stakeholder demonstrations.\n* **SDD Working Group**: Join studio WhatsApp groups and communication channels to coordinate on Spec-Driven Development standards.\n* **RAG Framework Collaboration**: Participate in the studio initiative to build a reusable, cross-industry Retrieval-Augmented Generation (RAG) platform.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Documentation Review**: Walked through the complete testing guide, demo flows (Home Chase drawer, Desk 5-second demo), and embedded video links.\n* **Reusable RAG Concept**: Discussed the business need for a plug-and-play RAG framework that can be rapidly pitched and deployed to enterprise clients by updating domain documents.\n\n### 📌 Action Items & Next Steps\n* [x] Deliver complete prototype documentation and video links to team.\n* [ ] Join SDD communication threads and prepare for framework evaluation experiments.",
+    "event_id": "700bd6f7-7f86-47e7-b057-c5c297df0e1e",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": []
+  },
+  {
+    "decisions": "Apply UI/UX engineer change requests to chat agent styling, deploy updated build to Netlify, and update client-facing PDF walkthrough guide.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nReview and implement visual refinements requested by the UI/UX engineer for the Apollo Books chat agent interface, ensuring alignment with client demonstration standards.\n\n### ⚖️ Agreed Decisions & Direction\n* **Visual Styling Updates**: Remove redundant container borders, update chat agent avatars, and add an accent frame around the active agent.\n* **Feedback Animations**: Enhance the thinking pulse animation displayed while the AI assistant generates responses.\n* **Documentation Synchronization**: Re-generate and deploy the client PDF guide to match the updated visual interface.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Agent Differentiation**: Reviewed avatar designs to ensure clear visual distinction between specialized financial sub-agents.\n* **Deployment Workflow**: Agreed on immediate verification on Netlify post-push to confirm production layout consistency.\n\n### 📌 Action Items & Next Steps\n* [x] Remove border, update avatars, and add active selection frame.\n* [x] Update thinking pulse animation.\n* [x] Push to GitHub, deploy to Netlify, and update PDF walkthrough guide.",
+    "event_id": "ca1f900b-14f1-4aff-b896-1e0e4b0f6dee",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": []
+  },
+  {
+    "decisions": "Proceed to Phase 3 fresh greenfield implementation using updated Business Requirements; address specification ambiguity around persistence layers in future benchmarks.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nPresent empirical findings and comparative benchmarks from Phase 1 (Greenfield SPA) and Phase 2 (Brownfield Migration) across BMAD, OpenSpec, and GitHub Spec Kit to the software architect and technology leadership.\n\n### ⚖️ Agreed Decisions & Direction\n* **Specification Precision**: Identified that ambiguous specifications (e.g., \"persistent database\") caused models to default to client-side IndexedDB; agreed that future requirements must explicitly specify server-side architecture.\n* **Phase 3 Authorization**: Proceed with Phase 3 greenfield full-stack implementation with updated, unambiguous Business Requirements (FastAPI, SQLite, SQLAlchemy 2.0).\n* **Portal Sharing**: Publish the findings portal to stakeholders for interactive review.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Comparative Strengths**: Walked through BMAD Method's high visual fidelity (97.1%) and OpenSpec's strong test discipline (94.1%).\n* **Architect Feedback**: Reviewed the architect's input on database contracts, Alembic migrations, and backend authentication gating.\n\n### 📌 Action Items & Next Steps\n* [ ] Share the live evaluation portal link with leadership stakeholders.\n* [ ] Execute Phase 3 fresh greenfield evaluation with updated full-stack specifications.",
+    "event_id": "9183750d-b12d-4257-8f34-ce6b14f8cdc6",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": [
+      {
+        "done": false,
+        "text": "Complete Fresh Greenfield Implementation With the Updated BR"
+      }
+    ]
+  },
+  {
+    "decisions": "1. Adopt a breadth-first prototyping strategy: build lightweight, reusable MVP demos before committing to deep production builds.\n2. Build on the existing hierarchical architecture developed by the Principal Engineer rather than starting from scratch.\n3. Prioritize architectural expandability so demo prototypes evolve into client production deployments without rewrites.\n4. Shortlist preferred APIs for RAG pipelines and calling agents.",
+    "discussion_summary": "### 🎯 Purpose & Alignment\nFormulate a studio strategy for reusable, client-facing AI prototypes (RAG document intelligence, AI calling agents) and establish architectural foundation principles.\n\n### ⚖️ Agreed Decisions & Direction\n* **Breadth-First Strategy**: Prioritize rapid, modular MVP demos to validate client demand; upon client sign-off, deepen into production architectures.\n* **Architectural Inheritance**: Build directly upon the hierarchical system designed by the Principal Engineer to leverage proven patterns.\n* **Expandable Design**: Enforce strict modularity so demonstration prototypes can scale into enterprise environments without costly rewrites.\n* **API Shortlist**: Evaluate and shortlist candidate AI and LLM APIs based on latency, cost, and tool-calling support.\n\n### 💡 Discussion Breakdown & Trade-offs\n* **Market Demand**: Analyzed client demand trends centering on internal policy/manual RAG agents and voice calling agents.\n* **Codebase Reuse vs Greenfield**: Evaluated whether to create independent micro-repos or extend the Principal Engineer's framework; agreed that leveraging the existing framework accelerates time-to-market.\n\n### 📌 Action Items & Next Steps\n* [ ] Review the Principal Engineer's codebase, hierarchical architecture, and component implementations.\n* [ ] Identify expansion requirements and capability gaps for RAG pipelines and calling agents.",
+    "event_id": "2837fc9a-8e71-4349-a16b-dd2f530b679d",
+    "is_optional": false,
+    "links": [],
+    "tasks_assigned": [
+      {
+        "done": false,
+        "text": "Understand the existing system: Review the Principal Engineer's implementation, including the architecture, the hierarchical structure, key design decisions, and how the components are implemented."
+      },
+      {
+        "done": false,
+        "text": "Identify expansion requirements: Determine what the current system supports and where gaps exist, then define the requirements to build on (for example, RAG and calling-agent capabilities)."
+      }
+    ]
+  }
+]

@@ -1,0 +1,182 @@
+[
+  {
+    "changed_at": "2026-09-30T13:43:29.284433+00:00",
+    "from_status": "created",
+    "id": "714994c7-2be8-458f-96ac-0d97706f5822",
+    "is_manual_edit": false,
+    "notes": "Task created",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "todo",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:43:29.622413+00:00",
+    "from_status": "created",
+    "id": "186e4dae-ba8a-4449-8bd6-6eb511cd8c62",
+    "is_manual_edit": false,
+    "notes": "Task created",
+    "task_id": "dca805b5-d1a0-4745-b269-04cf3ac96414",
+    "to_status": "todo",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:46:00+00:00",
+    "from_status": "todo",
+    "id": "9a112b82-57da-42b4-a275-4d1fed800f66",
+    "is_manual_edit": false,
+    "notes": "Started task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "in_progress",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:46:00+00:00",
+    "from_status": "in_progress",
+    "id": "9df81cc6-bd50-494a-8cde-495f5f71f9a4",
+    "is_manual_edit": false,
+    "notes": "Paused task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "paused",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:46:18.786+00:00",
+    "from_status": "in_progress",
+    "id": "aa0d7184-63f2-4cb7-b4c1-540b36b7f41b",
+    "is_manual_edit": true,
+    "notes": "Moved back to To Do (started_at cleared, segments preserved)",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "todo",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:46:34.157+00:00",
+    "from_status": "todo",
+    "id": "5dfcb8ef-125a-4bc1-9f86-7681efb31650",
+    "is_manual_edit": false,
+    "notes": "Started task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "in_progress",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:46:56.342+00:00",
+    "from_status": "in_progress",
+    "id": "40bac2de-b935-432f-b541-b852bb562bca",
+    "is_manual_edit": false,
+    "notes": "Paused task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "paused",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:47:28.596+00:00",
+    "from_status": "paused",
+    "id": "d52a44e2-abb7-471b-ade3-4367a011bc0f",
+    "is_manual_edit": false,
+    "notes": "Resumed task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "in_progress",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:48:00+00:00",
+    "from_status": "in_progress",
+    "id": "a263d16f-5e4b-4a43-b136-677baaa1842a",
+    "is_manual_edit": false,
+    "notes": "Completed task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "done",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:59:27.709+00:00",
+    "from_status": "done",
+    "id": "305dd9a5-59ac-409a-834c-961dd84cfcda",
+    "is_manual_edit": true,
+    "notes": "Reopened to In Progress",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "in_progress",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T13:59:40.879+00:00",
+    "from_status": "in_progress",
+    "id": "00be1b8f-f4e8-475b-9bcf-69c66dd54790",
+    "is_manual_edit": false,
+    "notes": "Completed task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "done",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T14:06:56.107+00:00",
+    "from_status": "done",
+    "id": "fd167c60-e69d-4022-b600-ab4ee5b2a28f",
+    "is_manual_edit": true,
+    "notes": "Reopened to In Progress",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "in_progress",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T14:07:06.104+00:00",
+    "from_status": "in_progress",
+    "id": "07b6f9df-aa52-4142-bd45-e9598ddc187d",
+    "is_manual_edit": false,
+    "notes": "Completed task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "done",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T14:49:55.009+00:00",
+    "from_status": "done",
+    "id": "47ab93df-e5db-4fee-927a-75c613911135",
+    "is_manual_edit": true,
+    "notes": "Reopened to In Progress",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "in_progress",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T14:50:00.013+00:00",
+    "from_status": "in_progress",
+    "id": "a64dc0d1-d44a-42c6-8da7-8546e3675df5",
+    "is_manual_edit": false,
+    "notes": "Completed task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "done",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T14:51:55.981+00:00",
+    "from_status": "in_progress",
+    "id": "b674572d-6569-4db2-a0bf-684fc34ecaa6",
+    "is_manual_edit": false,
+    "notes": "Completed task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "done",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T14:52:50.901+00:00",
+    "from_status": "in_progress",
+    "id": "340a762a-f4c5-48c3-bca9-5c96929f27dd",
+    "is_manual_edit": false,
+    "notes": "Completed task",
+    "task_id": "60ab8e5f-c0c3-4a09-8e5f-05e091c32104",
+    "to_status": "done",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  },
+  {
+    "changed_at": "2026-09-30T16:49:19.279028+00:00",
+    "from_status": "created",
+    "id": "9495bff6-1fdf-49af-9050-2dac18604bde",
+    "is_manual_edit": false,
+    "notes": "Task created",
+    "task_id": "49209c92-a28a-4fc3-8ce5-ef3612020470",
+    "to_status": "todo",
+    "user_id": "3e9e3dd3-a59b-4b02-968a-ee95e7317583"
+  }
+]

@@ -1,0 +1,597 @@
+import { useState, useMemo } from 'react';
+import {
+  Calendar,
+  Users,
+  Clock,
+  Tag,
+  CheckSquare,
+  Sparkles,
+  FileText,
+  Briefcase,
+  User,
+  Link2,
+} from 'lucide-react';
+import type {
+  CreateWorkEventProposal,
+  CreateMeetingEventProposal,
+  TaskItem,
+  MeetingActionItem,
+} from '../../../types';
+import { ProposalCard } from './ProposalCard';
+import { MarkdownViewer } from '../../common/MarkdownViewer';
+import { useTimelineStore } from '../../../store/timelineStore';
+
+type JournalProposal = CreateWorkEventProposal | CreateMeetingEventProposal;
+
+interface WorkJournalCardProps {
+  proposal: JournalProposal;
+  onApprove: (updatedProposal?: JournalProposal) => void;
+  onReject: () => void;
+  isSubmitting?: boolean;
+}
+
+export function WorkJournalCard({
+  proposal,
+  onApprove,
+  onReject,
+  isSubmitting,
+}: WorkJournalCardProps) {
+  const isMeeting = proposal.type === 'create_meeting_event';
+
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Common editable state
+  const [title, setTitle] = useState(proposal.payload.title);
+  const [date, setDate] = useState(proposal.payload.date);
+  const [startTime, setStartTime] = useState(proposal.payload.startTime || '');
+  const [endTime, setEndTime] = useState(proposal.payload.endTime || '');
+  const [projectTag, setProjectTag] = useState(proposal.payload.projectTag || '');
+
+  // Lineage / Chaining state
+  const eventsByDate = useTimelineStore((state) => state.eventsByDate);
+  const availableEvents = useMemo(() => {
+    return Object.values(eventsByDate)
+      .flat()
+      .filter((ev) => ev.id !== (proposal.payload as { id?: string }).id)
+      .sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return (b.startTime || '').localeCompare(a.startTime || '');
+      });
+  }, [eventsByDate, proposal]);
+
+  const [previousEventId, setPreviousEventId] = useState<string | null>(
+    (proposal.payload as { previousEventId?: string | null }).previousEventId ?? null
+  );
+  const [previousEventTitle, setPreviousEventTitle] = useState<string | null>(
+    (proposal.payload as { previousEventTitle?: string | null }).previousEventTitle ?? null
+  );
+
+  const resolvedPreviousTitle = useMemo(() => {
+    if (previousEventTitle) return previousEventTitle;
+    if (!previousEventId) return null;
+    const found = availableEvents.find((e) => e.id === previousEventId);
+    return found ? found.title : null;
+  }, [previousEventTitle, previousEventId, availableEvents]);
+
+  // Meeting specific editable state
+  const meetingPayload = isMeeting ? (proposal as CreateMeetingEventProposal).payload : null;
+  const [discussionSummary, setDiscussionSummary] = useState(
+    meetingPayload?.discussionSummary || ''
+  );
+  const [decisions, setDecisions] = useState(meetingPayload?.decisions || '');
+  const [actionItemsText, setActionItemsText] = useState(() =>
+    meetingPayload?.tasksAssigned?.map((t) => t.text).join('\n') || ''
+  );
+  const [addTasksToKanban, setAddTasksToKanban] = useState(
+    meetingPayload?.addTasksToKanban ?? true
+  );
+
+  const rawActionItems: MeetingActionItem[] =
+    meetingPayload?.actionItems && meetingPayload.actionItems.length > 0
+      ? meetingPayload.actionItems
+      : (meetingPayload?.tasksAssigned || []).map((t) => {
+          const text = t.text;
+          const isSalitha = /salitha|you|trainee/i.test(text);
+          const matchOther = text.match(/^\[(.*?)\]/);
+          const assignee = isSalitha ? 'Salitha Marasinghe' : matchOther ? matchOther[1] : undefined;
+          return {
+            text,
+            assignee,
+            isForUser: isSalitha || !matchOther,
+            deadlineDate: meetingPayload?.date,
+            done: false,
+          };
+        });
+
+  const salithaTasksCount = rawActionItems.filter((i) => i.isForUser !== false).length;
+
+  // Work specific editable state
+  const workPayload = !isMeeting ? (proposal as CreateWorkEventProposal).payload : null;
+  const isLinkedToTask = !isMeeting && !!(workPayload?.linkedTaskId || workPayload?.sourceTaskId);
+  const [description, setDescription] = useState(workPayload?.description || '');
+  const [implementationNotes, setImplementationNotes] = useState(
+    workPayload?.implementationNotes || ''
+  );
+  const [syncToTaskLog, setSyncToTaskLog] = useState(
+    workPayload?.syncToTaskLog ?? isLinkedToTask
+  );
+
+  const handleApprove = () => {
+    if (isMeeting) {
+      const assignedTasks: TaskItem[] = actionItemsText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((text) => ({ text, done: false }));
+
+      const updatedActionItems: MeetingActionItem[] = assignedTasks.map((t) => {
+        const existing = rawActionItems.find((a) => a.text === t.text);
+        if (existing) return existing;
+
+        const text = t.text;
+        const isSalitha = /salitha|you|trainee/i.test(text);
+        const matchOther = text.match(/^\[(.*?)\]/);
+        const assignee = isSalitha ? 'Salitha Marasinghe' : matchOther ? matchOther[1] : undefined;
+        return {
+          text,
+          assignee,
+          isForUser: isSalitha || !matchOther,
+          deadlineDate: date,
+          done: false,
+        };
+      });
+
+      const updated: CreateMeetingEventProposal = {
+        ...(proposal as CreateMeetingEventProposal),
+        payload: {
+          ...(proposal as CreateMeetingEventProposal).payload,
+          title,
+          date,
+          startTime: startTime || null,
+          endTime: endTime || null,
+          projectTag: projectTag.trim() || null,
+          discussionSummary,
+          decisions,
+          tasksAssigned: assignedTasks,
+          actionItems: updatedActionItems,
+          addTasksToKanban,
+          previousEventId: previousEventId || null,
+          previousEventTitle: resolvedPreviousTitle || null,
+        },
+      };
+      onApprove(updated);
+    } else {
+      const updated: CreateWorkEventProposal = {
+        ...(proposal as CreateWorkEventProposal),
+        payload: {
+          ...(proposal as CreateWorkEventProposal).payload,
+          title,
+          date,
+          startTime: startTime || null,
+          endTime: endTime || null,
+          projectTag: projectTag.trim() || null,
+          description,
+          implementationNotes,
+          syncToTaskLog,
+          previousEventId: previousEventId || null,
+          previousEventTitle: resolvedPreviousTitle || null,
+        },
+      };
+      onApprove(updated);
+    }
+  };
+
+  return (
+    <ProposalCard
+      proposal={proposal}
+      title={isMeeting ? 'Proposed Meeting Entry' : 'Proposed Work Journal Entry'}
+      icon={
+        isMeeting ? (
+          <Users className="w-4 h-4 text-purple-400" />
+        ) : (
+          <Briefcase className="w-4 h-4 text-teal-400" />
+        )
+      }
+      onApprove={handleApprove}
+      onReject={onReject}
+      onEdit={() => setIsEditing(!isEditing)}
+      isSubmitting={isSubmitting}
+    >
+      <div className="flex flex-col gap-2.5">
+        {/* View Mode */}
+        {!isEditing ? (
+          <div className="p-3.5 bg-[#0e121a] rounded-xl border border-[#232b3b] flex flex-col gap-2.5">
+            {/* Header / Type & Title */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                      isMeeting
+                        ? 'bg-purple-950/60 text-purple-300 border-purple-800/60'
+                        : 'bg-teal-950/60 text-teal-300 border-teal-800/60'
+                    }`}
+                  >
+                    {isMeeting ? 'Meeting Log' : 'Work Log'}
+                  </span>
+                  {projectTag && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a2130] text-slate-300 border border-[#2d3748]">
+                      <Tag className="w-3 h-3 text-teal-400" />
+                      {projectTag}
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-semibold text-sm text-slate-100">{title}</h4>
+                {isMeeting && meetingPayload?.attendees && meetingPayload.attendees.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
+                    <Users className="w-3 h-3 text-purple-400 shrink-0" />
+                    <span>Attendees: {meetingPayload.attendees.join(', ')}</span>
+                  </div>
+                )}
+                {isLinkedToTask && (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-teal-300">
+                    <span className="px-1.5 py-0.5 rounded bg-teal-950/60 border border-teal-800/60 font-semibold">
+                      Linked Task
+                    </span>
+                    <span className="text-slate-400">
+                      {syncToTaskLog
+                        ? '• Will update Task Log description on approval'
+                        : '• Work Journal only'}
+                    </span>
+                  </div>
+                )}
+                {previousEventId && (
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-teal-300">
+                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-950/70 border border-teal-800/60 font-semibold">
+                      <Link2 className="w-3 h-3 text-teal-400" />
+                      Chained from
+                    </span>
+                    <span className="text-slate-300 font-medium truncate max-w-xs sm:max-w-md">
+                      {resolvedPreviousTitle || 'Predecessor Event'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Date & Time pill */}
+              <div className="flex flex-col items-end shrink-0 text-xs font-mono text-slate-400">
+                <span className="flex items-center gap-1 text-slate-300 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                  {date}
+                </span>
+                {(startTime || endTime) && (
+                  <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                    <Clock className="w-3 h-3 text-slate-500" />
+                    {startTime || '??'} – {endTime || '??'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Meeting View */}
+            {isMeeting && (
+              <div className="flex flex-col gap-2.5 mt-1 text-xs">
+                {discussionSummary && (
+                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                      <FileText className="w-3 h-3 text-purple-400" />
+                      Discussion Summary
+                    </div>
+                    <MarkdownViewer content={discussionSummary} className="text-xs" />
+                  </div>
+                )}
+
+                {decisions && (
+                  <div className="bg-emerald-950/25 p-3 rounded-lg border border-emerald-800/40 text-emerald-200">
+                    <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                      <Sparkles className="w-3 h-3 text-emerald-400" />
+                      Key Decisions
+                    </div>
+                    <MarkdownViewer content={decisions} className="text-xs text-emerald-200" />
+                  </div>
+                )}
+
+                {actionItemsText && (
+                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                        <CheckSquare className="w-3 h-3 text-teal-400" />
+                        Action Items ({rawActionItems.length})
+                      </div>
+                      {salithaTasksCount > 0 && (
+                        <span className="text-[10px] font-semibold text-teal-400 bg-teal-950/70 border border-teal-800/60 px-2 py-0.5 rounded">
+                          {salithaTasksCount} assigned to Salitha
+                        </span>
+                      )}
+                    </div>
+
+                    <ul className="space-y-2 pl-0.5">
+                      {rawActionItems.map((item, i) => (
+                        <li key={i} className="flex flex-col gap-1 text-slate-300 text-xs">
+                          <div className="flex items-start gap-2">
+                            <span className="text-teal-400 mt-0.5">•</span>
+                            <span className="flex-1 text-slate-200">
+                              {item.text.replace(/^\[.*?\]\s*/, '')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 pl-3.5 flex-wrap">
+                            {item.isForUser ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-950/70 text-teal-300 border border-teal-800/60">
+                                <User className="w-2.5 h-2.5 text-teal-400" />
+                                Salitha (You)
+                              </span>
+                            ) : item.assignee ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-950/60 text-purple-300 border border-purple-800/60">
+                                <User className="w-2.5 h-2.5 text-purple-400" />
+                                {item.assignee}
+                              </span>
+                            ) : null}
+
+                            {(item.deadlineDisplay || item.deadlineDate) && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono text-amber-300 bg-amber-950/40 border border-amber-800/50">
+                                <Calendar className="w-2.5 h-2.5 text-amber-400" />
+                                Due: {item.deadlineDisplay || item.deadlineDate}
+                              </span>
+                            )}
+
+                            {item.priority === 'high' && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider text-rose-300 bg-rose-950/50 border border-rose-800/60">
+                                High Priority
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {salithaTasksCount > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer pt-2.5 mt-2.5 border-t border-[#1e2638] text-slate-300 select-none">
+                        <input
+                          type="checkbox"
+                          checked={addTasksToKanban}
+                          onChange={(e) => setAddTasksToKanban(e.target.checked)}
+                          className="rounded bg-[#141a24] border-[#2d3748] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                        />
+                        <span className="text-[11px] text-teal-300 font-medium">
+                          Automatically add Salitha's action items ({salithaTasksCount}) to Kanban To Do upon approval
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Work View */}
+            {!isMeeting && (
+              <div className="flex flex-col gap-2 mt-1 text-xs">
+                {description && (
+                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                    <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                      Description
+                    </div>
+                    <MarkdownViewer content={description} className="text-xs" />
+                  </div>
+                )}
+                {implementationNotes && (
+                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                    <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                      Implementation Notes
+                    </div>
+                    <MarkdownViewer content={implementationNotes} className="text-xs font-mono" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Edit Mode Form */
+          <div className="p-3.5 bg-[#0b0e14] rounded-xl border border-teal-800/50 flex flex-col gap-3 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-[#1e2638]">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">
+                Edit {isMeeting ? 'Meeting' : 'Work'} Entry
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="text-xs text-slate-400 hover:text-slate-200"
+              >
+                Close Form
+              </button>
+            </div>
+
+            {/* Title & Tag */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="sm:col-span-2 flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  Project Tag
+                </label>
+                <input
+                  type="text"
+                  value={projectTag}
+                  placeholder="e.g. Auth, Frontend"
+                  onChange={(e) => setProjectTag(e.target.value)}
+                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+            </div>
+
+            {/* Date, Start, End */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Chained Predecessor Event Selector */}
+            <div className="flex flex-col gap-1.5 p-2.5 bg-[#121622] rounded-lg border border-[#232b3b]">
+              <label className="text-[10px] text-teal-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Link2 className="w-3.5 h-3.5 text-teal-400" />
+                Chained from Previous Event (Lineage & Audit Trail)
+              </label>
+              <select
+                value={previousEventId || ''}
+                onChange={(e) => {
+                  const id = e.target.value || null;
+                  setPreviousEventId(id);
+                  const match = availableEvents.find((ev) => ev.id === id);
+                  setPreviousEventTitle(match ? match.title : null);
+                }}
+                className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 cursor-pointer"
+              >
+                <option value="">None (Independent / Standalone)</option>
+                {availableEvents.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    [{ev.type === 'meeting' ? 'Meeting' : 'Work'}] {ev.date} {ev.startTime ? `(${ev.startTime}) ` : ''}— {ev.title}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500">
+                {previousEventId
+                  ? 'This event will be visually chained to the selected predecessor in your timeline.'
+                  : 'Connect this event to an earlier meeting or workload for complete audit lineage.'}
+              </p>
+            </div>
+
+            {/* Content Fields for Meeting */}
+            {isMeeting && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                    Discussion Summary
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={discussionSummary}
+                    onChange={(e) => setDiscussionSummary(e.target.value)}
+                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                    Key Decisions
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={decisions}
+                    onChange={(e) => setDecisions(e.target.value)}
+                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                    Action Items (one per line)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionItemsText}
+                    onChange={(e) => setActionItemsText(e.target.value)}
+                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed"
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer pt-1 text-slate-300 select-none">
+                  <input
+                    type="checkbox"
+                    checked={addTasksToKanban}
+                    onChange={(e) => setAddTasksToKanban(e.target.checked)}
+                    className="rounded bg-[#141a24] border-[#2d3748] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                  />
+                  <span className="text-xs text-teal-300">
+                    Also add Salitha's action items to Kanban To Do upon approval
+                  </span>
+                </label>
+              </>
+            )}
+
+            {/* Content Fields for Work */}
+            {!isMeeting && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                    Description
+                  </label>
+                  <textarea
+                    rows={7}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                    Implementation Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={implementationNotes}
+                    onChange={(e) => setImplementationNotes(e.target.value)}
+                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                  />
+                </div>
+
+                {isLinkedToTask && (
+                  <label className="flex items-center gap-2 cursor-pointer pt-1 text-slate-300 select-none">
+                    <input
+                      type="checkbox"
+                      checked={syncToTaskLog}
+                      onChange={(e) => setSyncToTaskLog(e.target.checked)}
+                      className="rounded bg-[#141a24] border-[#2d3748] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    <span className="text-xs">
+                      Also update completed task description in Task Log upon approval
+                    </span>
+                  </label>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </ProposalCard>
+  );
+}

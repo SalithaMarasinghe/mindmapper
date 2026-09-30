@@ -3,14 +3,19 @@ import { AppHeader } from '../components/layout/AppHeader';
 import { MapGrid } from '../components/dashboard/MapGrid';
 import { CreateMapModal } from '../components/dashboard/CreateMapModal';
 import { useMapsStore } from '../store/mapsStore';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Sparkles, FileText } from 'lucide-react';
 import { useSettingsStore } from '../store/settingsStore';
 import { WorkJournal } from '../components/timeline/WorkJournal';
+import { TaskLog } from '../components/tasklog/TaskLog';
+import { AIAssistant } from '../components/assistant/AIAssistant';
+import { CareerLedgerModal } from '../components/ledger/CareerLedgerModal';
+import { JarvisActionHUD } from '../components/jarvis/JarvisActionHUD';
 
 export function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<'work-journal' | 'mind-maps'>('work-journal');
+  const [activeTab, setActiveTab] = useState<'task-log' | 'work-journal' | 'mind-maps' | 'ai-assistant'>('task-log');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
   const { maps, fetchMaps } = useMapsStore();
   const { isReadOnly } = useSettingsStore();
 
@@ -21,8 +26,18 @@ export function DashboardPage() {
   const tabs = (
     <div className="flex bg-[#0f1117] p-1 rounded-lg border border-[#2d3748]">
       <button
+        onClick={() => setActiveTab('task-log')}
+        className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
+          activeTab === 'task-log' 
+            ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        Task Log
+      </button>
+      <button
         onClick={() => setActiveTab('work-journal')}
-        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
+        className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
           activeTab === 'work-journal' 
             ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
             : 'text-slate-400 hover:text-slate-200'
@@ -32,7 +47,7 @@ export function DashboardPage() {
       </button>
       <button
         onClick={() => setActiveTab('mind-maps')}
-        className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
+        className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
           activeTab === 'mind-maps' 
             ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
             : 'text-slate-400 hover:text-slate-200'
@@ -40,23 +55,57 @@ export function DashboardPage() {
       >
         Mind Maps
       </button>
+      <button
+        onClick={() => setActiveTab('ai-assistant')}
+        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
+          activeTab === 'ai-assistant' 
+            ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+        <span>AI Assistant</span>
+      </button>
     </div>
   );
 
   return (
-    <div className={`min-h-screen bg-[#0f1117] font-sans ${activeTab === 'work-journal' ? 'h-screen flex flex-col overflow-hidden' : 'pb-20'}`}>
-      <AppHeader centerContent={tabs} />
+    <div className={`min-h-screen bg-[#0f1117] font-sans ${activeTab !== 'mind-maps' ? 'h-screen flex flex-col overflow-hidden' : 'pb-20'}`}>
+      <AppHeader
+        centerContent={tabs}
+        rightContent={
+          <button
+            onClick={() => setIsLedgerOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900/80 hover:text-indigo-100 border border-indigo-700/50 transition shadow-sm mr-1"
+            title="Continuous Career Ledger & Markdown Compiler"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden md:inline">Career Ledger</span>
+          </button>
+        }
+      />
       
       <main className={`${
-        activeTab === 'work-journal' 
+        activeTab !== 'mind-maps' 
           ? 'w-full flex-1 flex flex-col min-h-0 pt-14 px-0' 
           : 'max-w-7xl mx-auto pt-24 px-4 sm:px-6 lg:px-8'
       }`}>
-        {activeTab === 'work-journal' ? (
+        {activeTab === 'task-log' && (
+          <div className="flex-1 flex flex-col min-h-0 w-full h-full">
+            <TaskLog />
+          </div>
+        )}
+        {activeTab === 'work-journal' && (
           <div className="flex-1 flex flex-col min-h-0 w-full h-full">
             <WorkJournal />
           </div>
-        ) : (
+        )}
+        {activeTab === 'ai-assistant' && (
+          <div className="flex-1 flex flex-col min-h-0 w-full h-full">
+            <AIAssistant />
+          </div>
+        )}
+        {activeTab === 'mind-maps' && (
           <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div className="flex flex-col gap-2">
@@ -104,6 +153,8 @@ export function DashboardPage() {
       </main>
 
       {isModalOpen && <CreateMapModal onClose={() => setIsModalOpen(false)} />}
+      {isLedgerOpen && <CareerLedgerModal isOpen={isLedgerOpen} onClose={() => setIsLedgerOpen(false)} />}
+      <JarvisActionHUD />
     </div>
   );
 }

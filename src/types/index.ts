@@ -139,6 +139,16 @@ export interface EventLink {
   url: string;
 }
 
+export interface Project {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string | null;
+  status: 'active' | 'completed' | 'on_hold' | 'planning';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TimelineEvent {
   id: string;
   userId: string;
@@ -147,9 +157,12 @@ export interface TimelineEvent {
   endTime: string | null;   // HH:MM
   type: EventType;
   title: string;
+  projectId?: string | null;
   projectTag: string | null;
   chainId: string | null;
   previousEventId: string | null;
+  sourceSegmentId?: string | null;
+  sourceTaskId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -189,5 +202,302 @@ export interface WeeklySummary {
 export type TimelineEventFull =
   | (TimelineEvent & { type: 'work' } & WorkDetails)
   | (TimelineEvent & { type: 'meeting' } & MeetingDetails);
+
+// ─── Kanban Work Task Log Feature ───────────────────────────────────────────
+
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskPriority = 'low' | 'medium' | 'high';
+export type SegmentEndReason = 'paused' | 'done' | 'auto_closed' | 'manual';
+
+export interface TaskTimeEntry {
+  id: string;
+  taskId: string;
+  userId: string;
+  startedAt: string; // ISO timestamp
+  endedAt: string | null; // ISO timestamp (null = currently running)
+  endReason: SegmentEndReason | null;
+  createdAt: string; // ISO timestamp
+}
+
+export interface WorkTask {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  plannedDate: string; // YYYY-MM-DD
+  startedAt: string | null; // ISO timestamp (first segment start)
+  completedAt: string | null; // ISO timestamp (final segment end)
+  isPaused: boolean; // true if status is in_progress but currently paused
+  trackedSeconds: number; // cached sum of closed segments in seconds
+  activeSegmentStartedAt?: string | null; // ISO timestamp if segment is currently running
+  orderIndex: number;
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+}
+
+export interface TaskStatusHistory {
+  id: string;
+  taskId: string;
+  userId: string;
+  fromStatus: string;
+  toStatus: string;
+  changedAt: string; // ISO timestamp
+  isManualEdit: boolean;
+  notes: string | null;
+}
+
+// ─── AI Assistant Feature ───────────────────────────────────────────────────
+
+export type ProposalType =
+  | 'create_tasks'
+  | 'start_task'
+  | 'pause_task'
+  | 'resume_task'
+  | 'finish_task'
+  | 'pause_all'
+  | 'resume_last_paused'
+  | 'attach_work_summary'
+  | 'create_project'
+  | 'create_work_event'
+  | 'create_meeting_event'
+  | 'carry_over_tasks'
+  | 'daily_wrap_up';
+
+export type ProposalStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'failed'
+  | 'auto_executed'
+  | 'undone';
+
+export interface BaseProposal {
+  id: string;
+  type: ProposalType;
+  summary: string;
+  status: ProposalStatus;
+  error?: string;
+  executedAt?: string;
+  previousState?: {
+    status: string;
+    isPaused: boolean;
+    startedAt?: string | null;
+    description?: string;
+  };
+  createdRecordIds?: {
+    taskIds?: string[];
+    eventIds?: string[];
+    projectIds?: string[];
+  };
+}
+
+export interface CreateTasksProposal extends BaseProposal {
+  type: 'create_tasks';
+  payload: {
+    tasks: Array<{
+      tempId?: string;
+      title: string;
+      description: string;
+      priority: TaskPriority;
+      plannedDate: string;
+      isLikelyDuplicate?: boolean;
+    }>;
+  };
+}
+
+export interface StartTaskProposal extends BaseProposal {
+  type: 'start_task';
+  payload: {
+    taskId: string;
+    taskTitle: string;
+    timestampISO: string;
+    timeDisplay: string;
+    autoPauseTaskId?: string | null;
+    autoPauseTaskTitle?: string | null;
+  };
+}
+
+export interface PauseTaskProposal extends BaseProposal {
+  type: 'pause_task';
+  payload: {
+    taskId: string;
+    taskTitle: string;
+    timestampISO: string;
+    timeDisplay: string;
+    reason: SegmentEndReason;
+  };
+}
+
+export interface ResumeTaskProposal extends BaseProposal {
+  type: 'resume_task';
+  payload: {
+    taskId: string;
+    taskTitle: string;
+    timestampISO: string;
+    timeDisplay: string;
+    autoPauseTaskId?: string | null;
+  };
+}
+
+export interface FinishTaskProposal extends BaseProposal {
+  type: 'finish_task';
+  payload: {
+    taskId: string;
+    taskTitle: string;
+    timestampISO: string;
+    timeDisplay: string;
+    trackedDurationDisplay?: string;
+  };
+}
+
+export interface PauseAllProposal extends BaseProposal {
+  type: 'pause_all';
+  payload: {
+    taskId?: string;
+    taskTitle?: string;
+    timestampISO: string;
+    timeDisplay: string;
+  };
+}
+
+export interface ResumeLastPausedProposal extends BaseProposal {
+  type: 'resume_last_paused';
+  payload: {
+    taskId?: string;
+    taskTitle?: string;
+    timestampISO: string;
+    timeDisplay: string;
+  };
+}
+
+export interface AttachWorkSummaryProposal extends BaseProposal {
+  type: 'attach_work_summary';
+  payload: {
+    taskId: string;
+    taskTitle: string;
+    summaryMarkdown: string;
+    mode: 'append' | 'replace';
+  };
+}
+
+export interface CreateWorkEventProposal extends BaseProposal {
+  type: 'create_work_event';
+  payload: {
+    date: string;
+    startTime: string | null;
+    endTime: string | null;
+    title: string;
+    projectId?: string | null;
+    projectTag: string | null;
+    description: string;
+    implementationNotes: string;
+    status: WorkStatus;
+    linkedTaskId?: string;
+    sourceSegmentId?: string;
+    sourceTaskId?: string;
+    syncToTaskLog?: boolean;
+    previousEventId?: string | null;
+    previousEventTitle?: string | null;
+  };
+}
+
+export interface MeetingActionItem {
+  text: string;
+  assignee?: string;
+  isForUser?: boolean;
+  deadlineDate?: string;
+  deadlineDisplay?: string;
+  priority?: TaskPriority;
+  done?: boolean;
+}
+
+export interface CreateMeetingEventProposal extends BaseProposal {
+  type: 'create_meeting_event';
+  payload: {
+    date: string;
+    startTime: string | null;
+    endTime: string | null;
+    title: string;
+    projectId?: string | null;
+    projectTag: string | null;
+    isOptional: boolean;
+    discussionSummary: string;
+    decisions: string;
+    tasksAssigned: TaskItem[];
+    actionItems?: MeetingActionItem[];
+    addTasksToKanban?: boolean;
+    attendees?: string[];
+    previousEventId?: string | null;
+    previousEventTitle?: string | null;
+  };
+}
+
+export interface CarryOverTasksProposal extends BaseProposal {
+  type: 'carry_over_tasks';
+  payload: {
+    taskIds: string[];
+    taskTitles?: string[];
+    carryoverTasks?: Array<{ id: string; title: string; priority?: string }>;
+    targetDate: string;
+  };
+}
+
+export interface DailyWrapUpProposal extends BaseProposal {
+  type: 'daily_wrap_up';
+  payload: {
+    completedTasksCount: number;
+    totalTrackedSeconds: number;
+    summaryNarrative: string;
+    carryoverTaskIds: string[];
+    carryoverTasks?: Array<{ id: string; title: string; priority?: string }>;
+    targetCarryoverDate: string;
+    proposedJournalEvents: Array<CreateWorkEventProposal['payload']>;
+  };
+}
+
+export interface CreateProjectProposal extends BaseProposal {
+  type: 'create_project';
+  payload: {
+    name: string;
+    description?: string;
+    status?: 'active' | 'completed' | 'on_hold' | 'planning';
+  };
+}
+
+export type AssistantProposal =
+  | CreateTasksProposal
+  | StartTaskProposal
+  | PauseTaskProposal
+  | ResumeTaskProposal
+  | FinishTaskProposal
+  | PauseAllProposal
+  | ResumeLastPausedProposal
+  | AttachWorkSummaryProposal
+  | CreateProjectProposal
+  | CreateWorkEventProposal
+  | CreateMeetingEventProposal
+  | CarryOverTasksProposal
+  | DailyWrapUpProposal;
+
+export interface AssistantConversation {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssistantMessage {
+  id: string;
+  conversationId: string;
+  userId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  proposals: AssistantProposal[];
+  createdAt: string;
+}
+
 
 

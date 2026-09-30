@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Loader2, Plus, Trash2, Link2, ChevronDown,
@@ -146,7 +146,15 @@ function TasksEditor({ tasks, onChange }: { tasks: TaskItem[]; onChange: (t: Tas
 export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
   const isEditing = Boolean(existingEvent);
 
-  const { createWorkEvent, createMeetingEvent, updateEvent, eventsByDate } = useTimelineStore();
+  const {
+    createWorkEvent,
+    createMeetingEvent,
+    updateEvent,
+    eventsByDate,
+    projects,
+    fetchProjects,
+    createProject,
+  } = useTimelineStore();
 
   // ── Shared fields ───────────────────────────────────────────────────────
   const [eventType, setEventType] = useState<EventType>(existingEvent?.type ?? 'work');
@@ -155,9 +163,23 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
   const [startTime, setStartTime] = useState(existingEvent?.startTime ?? draft?.startTime ?? '');
   const [endTime, setEndTime]     = useState(existingEvent?.endTime ?? draft?.endTime ?? '');
   const [projectTag, setProjectTag] = useState(existingEvent?.projectTag ?? '');
+  const [projectId, setProjectId] = useState<string | null>(existingEvent?.projectId ?? null);
+  const [isCreatingNewProject, setIsCreatingNewProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
   const [previousEventId, setPreviousEventId] = useState(existingEvent?.previousEventId ?? null as string | null);
   const [chainSearch, setChainSearch] = useState('');
   const [chainOpen, setChainOpen]     = useState(false);
+
+  useEffect(() => {
+    void fetchProjects();
+  }, [fetchProjects]);
+
+  useEffect(() => {
+    if (projects.length > 0 && !projectId && projectTag) {
+      const match = projects.find((p) => p.name.toLowerCase() === projectTag.toLowerCase());
+      if (match) setProjectId(match.id);
+    }
+  }, [projects, projectId, projectTag]);
 
   // ── Work-specific fields ────────────────────────────────────────────────
   const initWorkDesc   = existingEvent?.type === 'work' ? existingEvent.description         : '';
@@ -213,13 +235,28 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
     setError(null);
 
     try {
+      let finalProjectId = projectId;
+      let finalProjectTag = projectTag.trim() || null;
+
+      if (isCreatingNewProject && newProjectName.trim()) {
+        const created = await createProject(newProjectName.trim());
+        if (created) {
+          finalProjectId = created.id;
+          finalProjectTag = created.name;
+        }
+      } else if (projectId) {
+        const proj = projects.find((p) => p.id === projectId);
+        if (proj) finalProjectTag = proj.name;
+      }
+
       if (isEditing && existingEvent) {
         const eventUpdates = {
           title:      title.trim(),
           date,
           startTime:  startTime || null,
           endTime:    endTime   || null,
-          projectTag: projectTag.trim() || null,
+          projectId:  finalProjectId,
+          projectTag: finalProjectTag,
         };
 
         const detailUpdates = eventType === 'work'
@@ -234,7 +271,8 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
           date,
           startTime:           startTime || null,
           endTime:             endTime   || null,
-          projectTag:          projectTag.trim() || null,
+          projectId:           finalProjectId,
+          projectTag:          finalProjectTag,
           description,
           implementationNotes,
           status,
@@ -246,7 +284,8 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
           date,
           startTime:         startTime || null,
           endTime:           endTime   || null,
-          projectTag:        projectTag.trim() || null,
+          projectId:         finalProjectId,
+          projectTag:        finalProjectTag,
           isOptional,
           discussionSummary,
           tasksAssigned,
@@ -368,16 +407,66 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
             </div>
           </div>
 
-          {/* Project tag */}
+          {/* Project Initiative */}
           <div className={SECTION_CLS}>
-            <FieldLabel optional>Project Tag</FieldLabel>
-            <input
-              type="text"
-              className={INPUT_CLS}
-              placeholder="e.g., data-engineering, frontend"
-              value={projectTag}
-              onChange={e => setProjectTag(e.target.value)}
-            />
+            <div className="flex items-center justify-between mb-1">
+              <FieldLabel optional>Project Initiative</FieldLabel>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreatingNewProject(!isCreatingNewProject);
+                  if (!isCreatingNewProject) {
+                    setProjectId(null);
+                  }
+                }}
+                className="text-[11px] text-teal-400 hover:text-teal-300 font-semibold transition"
+              >
+                {isCreatingNewProject ? '← Select Existing' : '+ New Project'}
+              </button>
+            </div>
+
+            {isCreatingNewProject ? (
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  className={INPUT_CLS}
+                  placeholder="Enter new project name (e.g., Mobile App Redesign)..."
+                  value={newProjectName}
+                  onChange={e => setNewProjectName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="relative">
+                <select
+                  className={`${INPUT_CLS} appearance-none pr-8 cursor-pointer`}
+                  value={projectId || (projects.find(p => p.name.toLowerCase() === projectTag.toLowerCase())?.id ?? '')}
+                  onChange={e => {
+                    const selId = e.target.value;
+                    if (selId === '__new__') {
+                      setIsCreatingNewProject(true);
+                      setProjectId(null);
+                    } else if (selId) {
+                      setProjectId(selId);
+                      const p = projects.find(proj => proj.id === selId);
+                      if (p) setProjectTag(p.name);
+                    } else {
+                      setProjectId(null);
+                      setProjectTag('');
+                    }
+                  }}
+                >
+                  <option value="">No Project Assigned (Standalone)</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.status === 'completed' ? '(Completed)' : '(Active)'}
+                    </option>
+                  ))}
+                  <option value="__new__">+ Create New Project…</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+              </div>
+            )}
           </div>
 
           {/* ── Divider ──────────────────────────────────────────────── */}

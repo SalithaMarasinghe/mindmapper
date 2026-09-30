@@ -4,13 +4,14 @@ import { WeekCalendar, type NewEventDraft } from './WeekCalendar';
 import { EventModal } from './EventModal';
 import { EventDetailView } from './EventDetailView';
 import { ChainView } from './ChainView';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, FileText } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { marked } from 'marked';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import type { TimelineEventFull } from '../../types';
+import { CareerLedgerModal } from '../ledger/CareerLedgerModal';
 
 export function WorkJournal() {
   const { eventsByDate, fetchWeek } = useTimelineStore();
@@ -51,6 +52,9 @@ export function WorkJournal() {
 
   // Chain state
   const [viewChainId, setViewChainId] = useState<string | null>(null);
+
+  // Career Ledger Modal
+  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
 
   const handleNewEvent = (draft: NewEventDraft) => {
     setModalDraft(draft);
@@ -272,18 +276,29 @@ export function WorkJournal() {
             </button>
           </div>
           
-          <button 
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition border ${
-              isGenerating 
-                ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed' 
-                : 'bg-teal-900/40 text-teal-300 hover:bg-teal-900/60 hover:text-teal-200 border-teal-700/50'
-            }`}
-            onClick={handleGenerateSummary}
-            disabled={isGenerating}
-          >
-            <Sparkles className="w-4 h-4" />
-            Generate Summary
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition border ${
+                isGenerating 
+                  ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed' 
+                  : 'bg-teal-900/40 text-teal-300 hover:bg-teal-900/60 hover:text-teal-200 border-teal-700/50'
+              }`}
+              onClick={handleGenerateSummary}
+              disabled={isGenerating}
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate Summary
+            </button>
+
+            <button
+              onClick={() => setIsLedgerOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition border bg-indigo-950/50 text-indigo-300 hover:bg-indigo-900/70 hover:text-indigo-100 border-indigo-700/60 shadow-sm"
+              title="Continuous Workload & Career Ledger (Storylines, Chronological, Markdown, AI Synthesis)"
+            >
+              <FileText className="w-4 h-4 text-indigo-400" />
+              Career Ledger (.md)
+            </button>
+          </div>
 
           <span className="text-sm font-bold text-slate-200">
             {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -328,6 +343,13 @@ export function WorkJournal() {
           chainId={viewChainId}
           onClose={() => setViewChainId(null)}
           onEditEvent={handleEventClick}
+        />
+      )}
+
+      {isLedgerOpen && (
+        <CareerLedgerModal
+          isOpen={isLedgerOpen}
+          onClose={() => setIsLedgerOpen(false)}
         />
       )}
     </div>
