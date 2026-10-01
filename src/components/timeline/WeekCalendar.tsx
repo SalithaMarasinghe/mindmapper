@@ -186,22 +186,24 @@ function EventBlock({ event, startHour, isChained, onClick, onContextMenu }: Eve
     else                                     { statusLabel = '• In Progress'; statusClass = 'bg-bg/60 text-text-secondary'; }
   }
 
+  const isCrossMidnight = Boolean(event.startTime && event.endTime && evEnd < evStart);
+
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       onMouseDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu(e); }}
-      title={event.title}
+      title={isCrossMidnight ? `${event.title} (Spanned into next day until ${event.endTime})` : event.title}
       style={{ top: topPx, height: Math.max(heightPx, 24), left: 2, right: 2 }}
       className={`
         absolute z-10 rounded-md border px-1.5 py-1 text-left
         flex flex-col justify-start overflow-hidden
         transition-all duration-100 hover:z-20 hover:brightness-110 active:scale-[0.98]
-        ${colors.bg} ${colors.border} ${colors.text}
+        ${colors.bg} ${isCrossMidnight ? 'border-purple-600/70 border-l-[3px] border-l-purple-400' : colors.border} ${colors.text}
       `}
     >
       <div className="flex items-center gap-1 min-w-0">
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${colors.dot}`} />
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isCrossMidnight ? 'bg-purple-400' : colors.dot}`} />
         <span className="text-xs font-semibold truncate flex-1 leading-tight">{event.title}</span>
         {isChained && <Link2 className="w-3 h-3 flex-shrink-0 opacity-70" aria-label="Chained event" />}
       </div>
@@ -212,7 +214,13 @@ function EventBlock({ event, startHour, isChained, onClick, onContextMenu }: Eve
         </span>
       )}
 
-      {heightPx >= 52 && event.type === 'work' && statusLabel && (
+      {heightPx >= 48 && isCrossMidnight && (
+        <span className="text-[9px] font-semibold text-purple-300 bg-purple-950/70 border border-purple-800/70 rounded px-1 py-0.5 leading-none self-start mt-0.5 truncate max-w-full">
+          🌙 Spanned to +1d ({formatTime(event.endTime)})
+        </span>
+      )}
+
+      {heightPx >= 58 && event.type === 'work' && statusLabel && !isCrossMidnight && (
         <span className={`mt-auto self-start text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${statusClass}`}>
           {statusLabel}
         </span>

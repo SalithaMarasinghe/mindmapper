@@ -72,10 +72,17 @@ interface AssistantState {
 }
 
 const ensureISO = (val?: unknown): string => {
+  const now = new Date();
   if (typeof val === 'string' && val.length > 5 && !isNaN(Date.parse(val))) {
-    return new Date(val).toISOString();
+    const parsed = new Date(val);
+    // Guard against timezone hallucinations (e.g. LLM appending 'Z' to local time):
+    // Timestamps for real-time actions must never be in the future
+    if (parsed.getTime() > now.getTime() + 60000) {
+      return now.toISOString();
+    }
+    return parsed.toISOString();
   }
-  return new Date().toISOString();
+  return now.toISOString();
 };
 
 function timeToHours(t: string): number {
@@ -583,6 +590,18 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             );
           }
 
+          if (!runningTask) {
+            const { data: openEntries } = await supabase
+              .from('task_time_entries')
+              .select('task_id')
+              .eq('user_id', user.id)
+              .is('ended_at', null)
+              .limit(1);
+            if (openEntries && openEntries.length > 0) {
+              runningTask = await findTaskInStoreOrDb(user.id, openEntries[0].task_id);
+            }
+          }
+
           const runningId = runningTask?.id || taskStore.runningTaskId || prop.payload?.taskId || 'running';
           const taskTitle = runningTask?.title || prop.payload?.taskTitle || 'Task';
           const reason = (prop.payload?.reason || 'paused') as SegmentEndReason;
@@ -656,9 +675,25 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         if (prop.type === 'pause_all') {
           const taskStore = useTaskStore.getState();
           const safeIso = ensureISO(prop.payload?.timestampISO);
-          const runningId = taskStore.runningTaskId || prop.payload?.taskId;
-          const targetTask = runningId ? taskStore.tasks.find((t) => t.id === runningId) : null;
-          const taskTitle = targetTask?.title || prop.payload?.taskTitle || 'All tasks';
+          let runningId = taskStore.runningTaskId || prop.payload?.taskId;
+
+          if (!runningId) {
+            const { data: openEntries } = await supabase
+              .from('task_time_entries')
+              .select('task_id')
+              .eq('user_id', user.id)
+              .is('ended_at', null)
+              .limit(1);
+            if (openEntries && openEntries.length > 0) {
+              runningId = openEntries[0].task_id;
+            }
+          }
+
+          let targetTask = runningId ? taskStore.tasks.find((t) => t.id === runningId) : null;
+          if (!targetTask && runningId) {
+            targetTask = await findTaskInStoreOrDb(user.id, runningId);
+          }
+          const taskTitle = targetTask?.title || prop.payload?.taskTitle || 'Running task';
           const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
 
           if (runningId) {
@@ -1178,28 +1213,14 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         }
 
         case 'pause_all': {
-          const runningId = taskStore.runningTaskId;
-          if (runningId) {
-            await taskStore.pauseTask(runningId, proposal.payload.timestampISO, 'paused');
-            toast.success('Running task paused. Enjoy your break! ☕');
-          } else if (proposal.payload.taskId) {
-            const targetId = await resolveTaskId(proposal.payload.taskId, proposal.payload.taskTitle);
-            await taskStore.pauseTask(targetId, proposal.payload.timestampISO, 'paused');
-            toast.success('Running task paused. Enjoy your break! ☕');
-          }
+          await taskStore.pauseAll(proposal.payload.timestampISO);
+          toast.success('Running task paused. Enjoy your break! ☕');
           break;
         }
 
         case 'resume_last_paused': {
-          const lastId = taskStore.lastPausedTaskId;
-          if (lastId) {
-            await taskStore.resumeTask(lastId, proposal.payload.timestampISO);
-            toast.success('Task resumed!');
-          } else if (proposal.payload.taskId) {
-            const targetId = await resolveTaskId(proposal.payload.taskId, proposal.payload.taskTitle);
-            await taskStore.resumeTask(targetId, proposal.payload.timestampISO);
-            toast.success('Task resumed!');
-          }
+          await taskStore.resumeLastPaused(proposal.payload.timestampISO);
+          toast.success('Task resumed!');
           break;
         }
 
@@ -1226,73 +1247,22 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           const targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectTag);
           p.payload.projectId = targetProjectId;
 
-          const startH = p.payload.startTime ? timeToHours(p.payload.startTime) : 0;
-          const endH = p.payload.endTime ? timeToHours(p.payload.endTime) : 0;
-          const crossesMidnight = Boolean(p.payload.startTime && p.payload.endTime && startH > endH);
-
-          if (crossesMidnight) {
-            const startD = new Date(`${p.payload.date}T12:00:00`);
-            const nextD = new Date(startD);
-            nextD.setDate(nextD.getDate() + 1);
-            const nextDateStr = toDateStr(nextD);
-
-            // Part 1: start date from startTime to 24:00
-            const ev1Id = await timelineStore.createWorkEvent({
-              date: p.payload.date,
-              startTime: p.payload.startTime,
-              endTime: '24:00',
-              title: `${p.payload.title} (Part 1)`,
-              projectId: targetProjectId,
-              projectTag: p.payload.projectTag,
-              description: p.payload.description,
-              implementationNotes: p.payload.implementationNotes,
-              status: p.payload.status,
-              links: [],
-              sourceSegmentId: p.payload.sourceSegmentId,
-              sourceTaskId: p.payload.sourceTaskId,
-              previousEventId: p.payload.previousEventId ?? null,
-            });
-
-            // Part 2: next date from 00:00 to endTime
-            const ev2Id = await timelineStore.createWorkEvent({
-              date: nextDateStr,
-              startTime: '00:00',
-              endTime: p.payload.endTime,
-              title: `${p.payload.title} (Part 2)`,
-              projectId: targetProjectId,
-              projectTag: p.payload.projectTag,
-              description: p.payload.description,
-              implementationNotes: p.payload.implementationNotes,
-              status: p.payload.status,
-              links: [],
-              sourceSegmentId: p.payload.sourceSegmentId,
-              sourceTaskId: p.payload.sourceTaskId,
-              previousEventId: ev1Id ?? null,
-            });
-
-            if (ev1Id && ev2Id) {
-              createdRecordIds.eventIds = [ev1Id, ev2Id];
-            } else if (ev1Id) {
-              createdRecordIds.eventIds = [ev1Id];
-            }
-          } else {
-            const evId = await timelineStore.createWorkEvent({
-              date: p.payload.date,
-              startTime: p.payload.startTime,
-              endTime: p.payload.endTime,
-              title: p.payload.title,
-              projectId: targetProjectId,
-              projectTag: p.payload.projectTag,
-              description: p.payload.description,
-              implementationNotes: p.payload.implementationNotes,
-              status: p.payload.status,
-              links: [],
-              sourceSegmentId: p.payload.sourceSegmentId,
-              sourceTaskId: p.payload.sourceTaskId,
-              previousEventId: p.payload.previousEventId ?? null,
-            });
-            if (evId) createdRecordIds.eventIds = [evId];
-          }
+          const evId = await timelineStore.createWorkEvent({
+            date: p.payload.date,
+            startTime: p.payload.startTime,
+            endTime: p.payload.endTime,
+            title: p.payload.title,
+            projectId: targetProjectId,
+            projectTag: p.payload.projectTag,
+            description: p.payload.description,
+            implementationNotes: p.payload.implementationNotes,
+            status: p.payload.status,
+            links: [],
+            sourceSegmentId: p.payload.sourceSegmentId,
+            sourceTaskId: p.payload.sourceTaskId,
+            previousEventId: p.payload.previousEventId ?? null,
+          });
+          if (evId) createdRecordIds.eventIds = [evId];
 
           const shouldSyncToTask = p.payload.syncToTaskLog ?? true;
           let targetTaskId = p.payload.linkedTaskId || p.payload.sourceTaskId;

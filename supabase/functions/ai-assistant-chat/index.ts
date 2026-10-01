@@ -818,12 +818,12 @@ ${upcomingDaysTable}
        1. 'finish_task' (ONLY IF task is currently running or an open todo/in_progress task exists; NEVER if task is already [DONE]):
           - taskId: task ID (from context.runningTask or open task in snapshot)
           - taskTitle: task title
-          - timestampISO: current ISO time
+          - timestampISO: "${currentTimeISO}" (CRITICAL: MUST be exactly "${currentTimeISO}", NEVER append 'Z' to local time!)
           - timeDisplay: resolved local time
           (This auto-executes immediately, stopping the timer and moving the task to Done).
        2. 'create_work_event':
-          - date: "${context.today}"
-          - startTime: start time of the task/session (from context.runningTask.startedAt or earliest segment today)
+          - date: date the session started (if started before midnight/yesterday evening, use "${yesterdayDate}"; if started today, use "${context.today}")
+          - startTime: start time of the task/session (from context.runningTask.startedAt or earliest segment)
           - endTime: completion time
           - title: task title
           - projectTag: project tag if inferable, otherwise null
@@ -1736,6 +1736,15 @@ Deno.serve(async (req: Request) => {
         const validStatuses = ['active', 'planning', 'completed', 'on_hold'];
         if (!validStatuses.includes(String(payload.status))) {
           payload.status = 'active';
+        }
+      }
+
+      if (['start_task', 'pause_task', 'resume_task', 'finish_task', 'pause_all', 'resume_last_paused'].includes(type)) {
+        const rawIso = payload.timestampISO ? String(payload.timestampISO) : '';
+        const parsedMs = rawIso ? Date.parse(rawIso) : NaN;
+        const currentMs = Date.parse(currentTimeISO);
+        if (isNaN(parsedMs) || parsedMs > currentMs + 60000) {
+          payload.timestampISO = currentTimeISO;
         }
       }
 

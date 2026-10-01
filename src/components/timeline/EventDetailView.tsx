@@ -21,6 +21,11 @@ function formatTime(t: string | null): string {
   return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
+function timeToHours(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) + (m || 0) / 60;
+}
+
 const SECTION_CLS = 'flex flex-col gap-1.5';
 const LABEL_CLS = 'text-xs font-semibold text-text-secondary uppercase tracking-wider';
 
@@ -97,11 +102,18 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
 
             <h2 className="text-2xl font-bold text-text mt-1">{event.title}</h2>
             
-            <p className="text-sm font-medium text-text-secondary">
-              {event.date}
-              {event.startTime && ` • ${formatTime(event.startTime)}`}
-              {event.endTime && ` – ${formatTime(event.endTime)}`}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              <p className="text-sm font-medium text-text-secondary">
+                {event.date}
+                {event.startTime && ` • ${formatTime(event.startTime)}`}
+                {event.endTime && ` – ${formatTime(event.endTime)}`}
+              </p>
+              {Boolean(event.startTime && event.endTime && timeToHours(event.startTime) > timeToHours(event.endTime)) && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-950/60 text-purple-300 border border-purple-800/60">
+                  🌙 Spanned into next day (until {formatTime(event.endTime)})
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-1">

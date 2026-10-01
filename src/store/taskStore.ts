@@ -575,14 +575,45 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   // ── pauseAll (Take a break) ─────────────────────────────────────────────
   pauseAll: async (timestampISO: string) => {
-    const { runningTaskId } = get();
+    let { runningTaskId } = get();
+    if (!runningTaskId) {
+      const { user } = useAuthStore.getState();
+      if (user) {
+        const { data: openEntries } = await supabase
+          .from('task_time_entries')
+          .select('task_id')
+          .eq('user_id', user.id)
+          .is('ended_at', null)
+          .limit(1);
+        if (openEntries && openEntries.length > 0) {
+          runningTaskId = openEntries[0].task_id;
+          set({ runningTaskId });
+        }
+      }
+    }
     if (!runningTaskId) return;
     await get().pauseTask(runningTaskId, timestampISO, 'paused');
   },
 
   // ── resumeLastPaused ────────────────────────────────────────────────────
   resumeLastPaused: async (timestampISO: string) => {
-    const { lastPausedTaskId } = get();
+    let { lastPausedTaskId } = get();
+    if (!lastPausedTaskId) {
+      const { user } = useAuthStore.getState();
+      if (user) {
+        const { data: recentEntries } = await supabase
+          .from('task_time_entries')
+          .select('task_id')
+          .eq('user_id', user.id)
+          .not('ended_at', 'is', null)
+          .order('ended_at', { ascending: false })
+          .limit(1);
+        if (recentEntries && recentEntries.length > 0) {
+          lastPausedTaskId = recentEntries[0].task_id;
+          set({ lastPausedTaskId });
+        }
+      }
+    }
     if (!lastPausedTaskId) return;
     await get().resumeTask(lastPausedTaskId, timestampISO);
   },
@@ -795,10 +826,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const entry = toTaskTimeEntry(openEntries[0] as RawTaskTimeEntry);
       const startTime = new Date(entry.startedAt).getTime();
       const elapsedHours = (Date.now() - startTime) / (1000 * 3600);
-      const isPastDay = entry.startedAt.slice(0, 10) < toDateStr(new Date());
+      const startDateLocal = toDateStr(new Date(entry.startedAt));
+      const todayLocal = toDateStr(new Date());
 
-      // Trigger if started on prior calendar day OR has been running > 12h
-      if (isPastDay || elapsedHours >= 12) {
+      // Only trigger stale modal if started on prior calendar day AND running >= 4h,
+      // OR has been running continuously for >= 10h (prevents false positives after 1 minute)
+      const isStaleFromPriorDay = startDateLocal < todayLocal && elapsedHours >= 4;
+      if (isStaleFromPriorDay || elapsedHours >= 10) {
         // Fetch task details
         const { data: taskData } = await supabase
           .from('tasks')
