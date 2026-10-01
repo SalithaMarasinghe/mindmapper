@@ -903,6 +903,13 @@ ${upcomingDaysTable}
        - Set projectId: the project's UUID from Existing Projects
        - Set projectTag: the project's name
      * If the project is brand new and does not exist in Existing Projects, propose 'create_project' AND set projectTag to that project's name on the event proposal.
+    - AUTOMATIC PROJECT INITIATIVE FINALIZATION & COMPLETION ('update_project'):
+      * When the user reports that an engineering initiative or project is finalized, shipped, delivered, or completed (e.g., 'I delivered the product to the client', 'We showcased the prototype and the project is now completed', 'Finished the last task for Omni-Search Indexer and project is done', 'I just completed this work and this completely wraps up the project'):
+        - Propose 'update_project' with:
+          * projectId: UUID from Existing Projects snapshot matching the initiative
+          * projectName: exact project name
+          * status: 'completed'
+        - If they also reported a meeting or work session where they delivered or wrapped it up, propose BOTH the event ('create_meeting_event' or 'create_work_event') AND the companion 'update_project'!
 
 ### CURRENT STATE SNAPSHOT:
 - Running Task Status: ${runningTaskInfo}
@@ -1189,6 +1196,20 @@ You MUST respond with a single JSON object matching this structure:
         "name": "Project Name",
         "description": "Brief description of the initiative scope and objectives",
         "status": "active" | "planning" | "completed" | "on_hold"
+      }
+    }
+
+14. update_project:
+    {
+      "id": "uuid",
+      "type": "update_project",
+      "summary": "Mark project 'Project Name' as Completed",
+      "status": "pending",
+      "payload": {
+        "projectId": "uuid from Existing Projects",
+        "projectName": "Project Name",
+        "status": "completed" | "active" | "on_hold" | "planning",
+        "description": "Optional summary of successful completion"
       }
     }
 
@@ -1691,7 +1712,12 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      if (type === 'create_project') {
+      if (type === 'create_project' || type === 'update_project') {
+        payload.name = String(payload.name || payload.projectName || payload.title || 'Project').trim();
+        payload.projectName = String(payload.projectName || payload.name || 'Project').trim();
+        if (payload.projectId !== undefined && payload.projectId !== null) {
+          payload.projectId = String(payload.projectId).trim();
+        }
         payload.name = String(payload.name || payload.title || 'New Project').trim();
         if (payload.description !== undefined && payload.description !== null) {
           payload.description = String(payload.description).trim();
@@ -1789,5 +1815,6 @@ Deno.serve(async (req: Request) => {
     });
   }
 });
+
 
 

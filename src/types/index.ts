@@ -260,6 +260,7 @@ export type ProposalType =
   | 'resume_last_paused'
   | 'attach_work_summary'
   | 'create_project'
+  | 'update_project'
   | 'create_work_event'
   | 'create_meeting_event'
   | 'update_meeting_event'
@@ -485,6 +486,16 @@ export interface DailyWrapUpProposal extends BaseProposal {
   };
 }
 
+export interface UpdateProjectProposal extends BaseProposal {
+  type: 'update_project';
+  payload: {
+    projectId: string;
+    projectName: string;
+    status: 'active' | 'completed' | 'on_hold' | 'planning';
+    description?: string;
+  };
+}
+
 export interface CreateProjectProposal extends BaseProposal {
   type: 'create_project';
   payload: {
@@ -504,6 +515,7 @@ export type AssistantProposal =
   | ResumeLastPausedProposal
   | AttachWorkSummaryProposal
   | CreateProjectProposal
+  | UpdateProjectProposal
   | CreateWorkEventProposal
   | CreateMeetingEventProposal
   | UpdateMeetingEventProposal
@@ -579,3 +591,4 @@ export interface AppNotification {
   actionLabel?: string;
   actionUrl?: string;
 }
+

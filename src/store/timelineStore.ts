@@ -126,6 +126,11 @@ interface TimelineState {
     description?: string,
     status?: 'active' | 'completed' | 'on_hold' | 'planning'
   ) => Promise<Project | null>;
+  updateProject: (
+    id: string,
+    updates: Partial<Pick<Project, 'name' | 'description' | 'status'>>
+  ) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
 
   // Fetch all events in a date range (inclusive), with details joined
   fetchWeek: (weekStart: string, weekEnd: string) => Promise<void>;
@@ -236,6 +241,59 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
     } catch (err: unknown) {
       console.error('Failed to create project:', err);
       return null;
+    }
+  },
+
+  // ── updateProject ──────────────────────────────────────────────────────────
+  updateProject: async (id, updates) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return;
+    try {
+      const updateData: Record<string, unknown> = {};
+      if (updates.name !== undefined) updateData.name = updates.name.trim();
+      if (updates.description !== undefined) {
+        updateData.description = updates.description ? updates.description.trim() : null;
+      }
+      if (updates.status !== undefined) updateData.status = updates.status;
+
+      const { data, error } = await supabase
+        .from('projects')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      set((state) => ({
+        projects: state.projects.map((p) =>
+          p.id === id ? { ...p, ...updates, updatedAt: data.updated_at } : p
+        ),
+      }));
+    } catch (err: unknown) {
+      console.error('Failed to update project:', err);
+      throw err;
+    }
+  },
+
+  // ── deleteProject ──────────────────────────────────────────────────────────
+  deleteProject: async (id) => {
+    const { user } = useAuthStore.getState();
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      set((state) => ({
+        projects: state.projects.filter((p) => p.id !== id),
+      }));
+    } catch (err: unknown) {
+      console.error('Failed to delete project:', err);
+      throw err;
     }
   },
 

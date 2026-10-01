@@ -9,6 +9,7 @@ import { WorkJournal } from '../components/timeline/WorkJournal';
 import { TaskLog } from '../components/tasklog/TaskLog';
 import { JarvisScreen } from '../components/jarvis/JarvisScreen';
 import { CareerLedgerModal } from '../components/ledger/CareerLedgerModal';
+import { ProjectsModal } from '../components/ledger/ProjectsModal';
 
 type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'mind-maps';
 
@@ -24,6 +25,7 @@ export function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
+  const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const { maps, fetchMaps } = useMapsStore();
   const { isReadOnly } = useSettingsStore();
 
@@ -40,6 +42,7 @@ export function DashboardPage() {
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as DashboardTab)}
         onCareerLedgerOpen={() => setIsLedgerOpen(true)}
+        onProjectsOpen={() => setIsProjectsOpen(true)}
       />
       
       <main className={`${
@@ -114,6 +117,8 @@ export function DashboardPage() {
 
       {isModalOpen && <CreateMapModal onClose={() => setIsModalOpen(false)} />}
       {isLedgerOpen && <CareerLedgerModal isOpen={isLedgerOpen} onClose={() => setIsLedgerOpen(false)} />}
+      {isProjectsOpen && <ProjectsModal isOpen={isProjectsOpen} onClose={() => setIsProjectsOpen(false)} />}
     </div>
   );
 }
+

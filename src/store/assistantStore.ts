@@ -15,6 +15,7 @@ import type {
   FinishTaskProposal,
   AttachWorkSummaryProposal,
   CreateProjectProposal,
+  UpdateProjectProposal,
   CreateWorkEventProposal,
   CreateMeetingEventProposal,
   UpdateMeetingEventProposal,
@@ -420,11 +421,21 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           }
 
           const taskStore = useTaskStore.getState();
+          const cleanPropTitle = (prop.payload?.taskTitle || '').trim().toLowerCase();
           const targetTask =
             taskStore.tasks.find((t) => t.id === prop.payload.taskId) ||
             taskStore.tasks.find(
-              (t) => t.title.trim().toLowerCase() === prop.payload.taskTitle.trim().toLowerCase()
-            );
+              (t) => t.title.trim().toLowerCase() === cleanPropTitle
+            ) ||
+            taskStore.tasks.find((t) => {
+              const tClean = t.title.trim().toLowerCase();
+              return tClean.includes(cleanPropTitle) || (cleanPropTitle && cleanPropTitle.includes(tClean));
+            }) ||
+            taskStore.tasks.find((t) => {
+              const words = cleanPropTitle.split(/\s+/).filter((w: string) => w.length > 2);
+              const tClean = t.title.trim().toLowerCase();
+              return words.length > 0 && words.filter((w: string) => tClean.includes(w)).length >= 2;
+            });
 
           if (!targetTask) {
             processedProposals.push(prop);
@@ -446,9 +457,10 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
               payload: {
                 ...prop.payload,
                 taskId: targetTask.id,
+                taskTitle: targetTask.title,
               },
             });
-            toast.success(`Started "${prop.payload.taskTitle}"!`);
+            toast.success(`Started "${targetTask.title}"!`);
           } catch (execErr) {
             console.error('Failed to auto-execute start_task:', execErr);
             processedProposals.push(prop);
@@ -458,18 +470,18 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
         if (prop.type === 'pause_task') {
           const taskStore = useTaskStore.getState();
-          const targetTask =
-            taskStore.tasks.find((t) => t.id === prop.payload.taskId) ||
-            (taskStore.runningTaskId ? taskStore.tasks.find((t) => t.id === taskStore.runningTaskId) : null);
+          const runningTask = taskStore.runningTaskId
+            ? taskStore.tasks.find((t) => t.id === taskStore.runningTaskId)
+            : taskStore.tasks.find((t) => t.status === 'in_progress' && !t.isPaused);
 
-          if (targetTask) {
+          if (runningTask) {
             try {
               const previousState = {
-                status: targetTask.status,
-                isPaused: targetTask.isPaused,
-                startedAt: targetTask.startedAt,
+                status: runningTask.status,
+                isPaused: runningTask.isPaused,
+                startedAt: runningTask.startedAt,
               };
-              await taskStore.pauseTask(targetTask.id, prop.payload.timestampISO, prop.payload.reason);
+              await taskStore.pauseTask(runningTask.id, prop.payload?.timestampISO || new Date().toISOString(), prop.payload?.reason || 'paused');
               processedProposals.push({
                 ...prop,
                 status: 'auto_executed',
@@ -477,16 +489,29 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
                 previousState,
                 payload: {
                   ...prop.payload,
-                  taskId: targetTask.id,
+                  taskId: runningTask.id,
+                  taskTitle: runningTask.title,
+                  reason: prop.payload?.reason || 'paused',
                 },
               });
-              toast.success(`Paused "${prop.payload.taskTitle}".`);
+              toast.success(`Paused "${runningTask.title}". Enjoy your break! ☕`);
             } catch (execErr) {
               console.error('Failed to auto-execute pause_task:', execErr);
               processedProposals.push(prop);
             }
-            continue;
+          } else {
+            processedProposals.push({
+              ...prop,
+              status: 'auto_executed',
+              executedAt: new Date().toISOString(),
+              payload: {
+                ...prop.payload,
+                reason: prop.payload?.reason || 'paused',
+              },
+            });
+            toast.success('Break started. No active task was running! ☕');
           }
+          continue;
         }
 
         if (prop.type === 'pause_all') {
@@ -516,8 +541,15 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
               console.error('Failed to auto-execute pause_all:', execErr);
               processedProposals.push(prop);
             }
-            continue;
+          } else {
+            processedProposals.push({
+              ...prop,
+              status: 'auto_executed',
+              executedAt: new Date().toISOString(),
+            });
+            toast.success('Break started. No active task was running! ☕');
           }
+          continue;
         }
 
         if (prop.type === 'resume_task') {
@@ -788,6 +820,19 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           break;
         }
 
+        case 'update_project': {
+          const p = proposal as UpdateProjectProposal;
+          const targetId = await resolveProjectId(p.payload.projectId, p.payload.projectName);
+          if (targetId) {
+            await timelineStore.updateProject(targetId, {
+              status: p.payload.status,
+              description: p.payload.description,
+            });
+            toast.success(`Project "${p.payload.projectName}" marked as ${p.payload.status}! 🏆`);
+          }
+          break;
+        }
+
         case 'create_tasks': {
           const p = proposal as CreateTasksProposal;
           const createdIds: string[] = [];
@@ -807,7 +852,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           // Sync active view to the date of the created tasks and reload
           if (targetDate) {
             taskStore.setSelectedDate(targetDate);
-            await taskStore.fetchTasks(targetDate);
+            await taskStore.fetchTasks();
           }
           toast.success(`Created ${createdIds.length} tasks in To Do (${targetDate})!`);
           break;
@@ -1031,7 +1076,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
               createdRecordIds.taskIds = createdIds;
               if (targetDate) {
                 taskStore.setSelectedDate(targetDate);
-                await taskStore.fetchTasks(targetDate);
+                await taskStore.fetchTasks();
               }
               toast.success(
                 `Logged meeting & added ${createdIds.length} task${createdIds.length === 1 ? '' : 's'} to Kanban To Do (${targetDate})! 📋`
@@ -1472,3 +1517,4 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
     }
   },
 }));
+

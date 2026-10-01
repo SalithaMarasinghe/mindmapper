@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { FolderGit2, Sparkles, Tag } from 'lucide-react';
-import type { CreateProjectProposal } from '../../../types';
+import type { CreateProjectProposal, UpdateProjectProposal } from '../../../types';
 import { ProposalCard } from './ProposalCard';
 
+type ProjectProposal = CreateProjectProposal | UpdateProjectProposal;
+
 interface CreateProjectCardProps {
-  proposal: CreateProjectProposal;
-  onApprove: (updatedProposal?: CreateProjectProposal) => void;
+  proposal: ProjectProposal;
+  onApprove: (updatedProposal?: ProjectProposal) => void;
   onReject: () => void;
   isSubmitting?: boolean;
 }
@@ -16,21 +18,36 @@ export function CreateProjectCard({
   onReject,
   isSubmitting,
 }: CreateProjectCardProps) {
+  const isUpdate = proposal.type === 'update_project';
+  const rawName = isUpdate ? (proposal.payload as any).projectName : (proposal.payload as any).name;
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(proposal.payload.name || '');
+  const [name, setName] = useState(rawName || '');
   const [description, setDescription] = useState(proposal.payload.description || '');
-  const [status, setStatus] = useState(proposal.payload.status || 'active');
+  const [status, setStatus] = useState(proposal.payload.status || (isUpdate ? 'completed' : 'active'));
 
   const handleApprove = () => {
-    const updated: CreateProjectProposal = {
-      ...proposal,
-      payload: {
-        name: name.trim() || proposal.payload.name,
-        description: description.trim() || undefined,
-        status: status as 'active' | 'completed' | 'on_hold' | 'planning',
-      },
-    };
-    onApprove(updated);
+    if (isUpdate) {
+      const updated: UpdateProjectProposal = {
+        ...(proposal as UpdateProjectProposal),
+        payload: {
+          ...(proposal as UpdateProjectProposal).payload,
+          projectName: name.trim() || rawName,
+          description: description.trim() || undefined,
+          status: status as 'active' | 'completed' | 'on_hold' | 'planning',
+        },
+      };
+      onApprove(updated);
+    } else {
+      const updated: CreateProjectProposal = {
+        ...(proposal as CreateProjectProposal),
+        payload: {
+          name: name.trim() || rawName,
+          description: description.trim() || undefined,
+          status: status as 'active' | 'completed' | 'on_hold' | 'planning',
+        },
+      };
+      onApprove(updated);
+    }
   };
 
   const statusBadge = {

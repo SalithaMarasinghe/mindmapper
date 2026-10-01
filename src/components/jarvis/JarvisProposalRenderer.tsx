@@ -21,6 +21,7 @@ export function JarvisProposalRenderer({
 }: JarvisProposalRendererProps) {
   switch (proposal.type) {
     case 'create_project':
+    case 'update_project':
       return (
         <CreateProjectCard
           proposal={proposal}

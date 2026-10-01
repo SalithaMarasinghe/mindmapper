@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Unlock, Settings, LogOut, ChevronDown, FileText } from 'lucide-react';
+import { Lock, Unlock, Settings, LogOut, ChevronDown, FileText, FolderGit2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { NotificationBell } from '../notifications/NotificationBell';
@@ -11,6 +11,7 @@ export interface TopBarProps {
   activeTab: string;
   onTabChange: (id: string) => void;
   onCareerLedgerOpen: () => void;
+  onProjectsOpen?: () => void;
 }
 
 export function TopBar({
@@ -18,6 +19,7 @@ export function TopBar({
   activeTab,
   onTabChange,
   onCareerLedgerOpen,
+  onProjectsOpen,
 }: TopBarProps) {
   const { profile, user, signOut } = useAuthStore();
   const { isReadOnly, toggleReadOnly } = useSettingsStore();
@@ -54,6 +56,17 @@ export function TopBar({
 
         {/* Right: Actions */}
         <div className="flex-1 flex justify-end items-center gap-1.5">
+          {/* Projects Initiative Manager Button */}
+          {onProjectsOpen && (
+            <button
+              onClick={onProjectsOpen}
+              className="flex items-center gap-1.5 text-text-muted hover:text-text-secondary px-2 py-1.5 rounded-[8px] hover:bg-surface transition-colors"
+              title="Projects & Initiatives"
+            >
+              <FolderGit2 className="h-4 w-4" />
+            </button>
+          )}
+
           {/* Career Ledger Button */}
           <button
             onClick={onCareerLedgerOpen}
