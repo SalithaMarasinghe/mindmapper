@@ -40,32 +40,32 @@ export function TaskTimeConfirmModal({
       prompt: 'Are you starting this task now?',
       btnText: 'Confirm & Start',
       icon: <Play className="w-4 h-4 fill-current" />,
-      accent: 'bg-teal-900/60 text-teal-300',
-      btnCls: 'bg-teal-600 hover:bg-teal-500',
+      accent: 'bg-accent/20 text-accent',
+      btnCls: 'bg-accent/20 hover:bg-accent/20',
     },
     pause: {
       title: 'Pause Task',
       prompt: 'When did you pause working on this task?',
       btnText: 'Confirm & Pause',
       icon: <Pause className="w-4 h-4 fill-current" />,
-      accent: 'bg-amber-900/60 text-amber-300',
-      btnCls: 'bg-amber-600 hover:bg-amber-500',
+      accent: 'bg-surface-2 text-text-secondary',
+      btnCls: 'bg-surface-2 hover:bg-surface-2',
     },
     resume: {
       title: 'Resume Task',
       prompt: 'Are you resuming this task now?',
       btnText: 'Confirm & Resume',
       icon: <Play className="w-4 h-4 fill-current" />,
-      accent: 'bg-teal-900/60 text-teal-300',
-      btnCls: 'bg-teal-600 hover:bg-teal-500',
+      accent: 'bg-accent/20 text-accent',
+      btnCls: 'bg-accent/20 hover:bg-accent/20',
     },
     complete: {
       title: 'Complete Task',
       prompt: 'Are you finishing this task now?',
       btnText: 'Confirm & Finish',
       icon: <CheckCircle2 className="w-4 h-4" />,
-      accent: 'bg-emerald-900/60 text-emerald-300',
-      btnCls: 'bg-emerald-600 hover:bg-emerald-500',
+      accent: 'bg-accent/20 text-accent',
+      btnCls: 'bg-accent/20 hover:bg-accent/20',
     },
   }[action];
 
@@ -112,27 +112,27 @@ export function TaskTimeConfirmModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[#000000]/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-bg backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal Card */}
-      <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface">
           <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-lg ${config.accent}`}>
               {config.icon}
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-100">{config.title}</h3>
-              <p className="text-xs text-slate-400">{config.prompt}</p>
+              <h3 className="text-base font-bold text-text">{config.title}</h3>
+              <p className="text-xs text-text-secondary">{config.prompt}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition"
+            className="p-1.5 text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -142,8 +142,8 @@ export function TaskTimeConfirmModal({
         <form onSubmit={handleConfirm} className="p-6 flex flex-col gap-4">
           {/* Running Task Switch Notice */}
           {runningTaskTitle && runningTaskTitle !== task.title && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-950/40 border border-amber-800/60 text-xs text-amber-200 animate-in fade-in duration-150">
-              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-surface-2 border border-border-strong text-xs text-text-secondary animate-in fade-in duration-150">
+              <AlertTriangle className="w-4 h-4 text-text-secondary flex-shrink-0 mt-0.5" />
               <div className="leading-relaxed">
                 <span>Task <strong>"{runningTaskTitle}"</strong> is currently active and will be automatically paused at this timestamp.</span>
               </div>
@@ -151,14 +151,14 @@ export function TaskTimeConfirmModal({
           )}
 
           {/* Task Info Pill */}
-          <div className="p-3 rounded-lg bg-[#000000] border border-[#1a1a1a] flex flex-col gap-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <div className="p-3 rounded-lg bg-bg border border-border flex flex-col gap-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
               Task
             </span>
-            <p className="text-sm font-semibold text-slate-200 truncate">{task.title}</p>
+            <p className="text-sm font-semibold text-text truncate">{task.title}</p>
             {task.startedAt && (
-              <span className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-                <Clock className="w-3.5 h-3.5 text-teal-400" />
+              <span className="text-xs text-text-secondary flex items-center gap-1.5 mt-0.5">
+                <Clock className="w-3.5 h-3.5 text-accent" />
                 First started: {formatDateTime(task.startedAt)}
               </span>
             )}
@@ -166,7 +166,7 @@ export function TaskTimeConfirmModal({
 
           {/* Timestamp Input */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={inputId} className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+            <label htmlFor={inputId} className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               {action === 'start'
                 ? 'Start Time'
                 : action === 'pause'
@@ -184,10 +184,10 @@ export function TaskTimeConfirmModal({
                   setLocalTime(e.target.value);
                   setError(null);
                 }}
-                className="w-full bg-[#000000] text-slate-100 border border-[#1a1a1a] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all font-mono"
+                className="w-full bg-bg text-text border border-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all font-mono"
               />
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-text-secondary">
               Pre-filled with time. You can edit this before confirming.
             </p>
           </div>
@@ -202,9 +202,9 @@ export function TaskTimeConfirmModal({
                 setAllowFuture(e.target.checked);
                 setError(null);
               }}
-              className="rounded bg-[#000000] border-[#1a1a1a] text-teal-600 focus:ring-teal-500 focus:ring-offset-0 cursor-pointer"
+              className="rounded bg-bg border-border text-accent focus:ring-accent focus:ring-offset-0 cursor-pointer"
             />
-            <label htmlFor="allow-future" className="text-xs text-slate-400 cursor-pointer select-none">
+            <label htmlFor="allow-future" className="text-xs text-text-secondary cursor-pointer select-none">
               Allow future date/time
             </label>
           </div>
@@ -218,18 +218,18 @@ export function TaskTimeConfirmModal({
           )}
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#1a1a1a]">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition"
+              className="px-4 py-2 text-xs font-semibold text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-lg transition shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${config.btnCls}`}
+              className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-text rounded-lg transition shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${config.btnCls}`}
             >
               {config.icon}
               <span>{isSubmitting ? 'Saving...' : config.btnText}</span>

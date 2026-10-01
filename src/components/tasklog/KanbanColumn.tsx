@@ -37,34 +37,34 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   const columnConfig = {
     todo: {
-      icon: <ListTodo className="w-4 h-4 text-slate-400" />,
-      badge: 'bg-[#0a0a0a] text-slate-300 border-slate-700',
-      headerBorder: 'border-slate-700/60',
+      icon: <ListTodo className="w-4 h-4 text-text-secondary" />,
+      badge: 'bg-surface text-text-secondary border-border',
+      headerBorder: 'border-border',
       emptyText: 'No tasks to do for this day.',
     },
     in_progress: {
-      icon: <Loader className="w-4 h-4 text-teal-400 animate-spin" />,
-      badge: 'bg-teal-950/70 text-teal-300 border-teal-800/80',
-      headerBorder: 'border-teal-800/40',
+      icon: <Loader className="w-4 h-4 text-accent animate-spin" />,
+      badge: 'bg-accent/20 text-accent border-accent',
+      headerBorder: 'border-accent',
       emptyText: 'No tasks currently in progress.',
     },
     done: {
-      icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
-      badge: 'bg-emerald-950/70 text-emerald-300 border-emerald-800/80',
-      headerBorder: 'border-emerald-800/40',
+      icon: <CheckCircle2 className="w-4 h-4 text-accent" />,
+      badge: 'bg-accent/20 text-accent border-accent',
+      headerBorder: 'border-accent',
       emptyText: 'No tasks completed yet.',
     },
   }[status];
 
   return (
-    <div className="flex-1 flex flex-col min-w-[290px] max-w-full bg-[#080808]/80 border border-[#1a1a1a] rounded-2xl overflow-hidden shadow-sm">
+    <div className="flex-1 flex flex-col min-w-[290px] max-w-full bg-surface-2 border border-border rounded-2xl overflow-hidden shadow-sm">
       {/* Column Header */}
       <div
-        className={`flex items-center justify-between px-4 py-3.5 bg-[#0a0a0a] border-b ${columnConfig.headerBorder}`}
+        className={`flex items-center justify-between px-4 py-3.5 bg-surface border-b ${columnConfig.headerBorder}`}
       >
         <div className="flex items-center gap-2">
           {columnConfig.icon}
-          <h2 className="text-sm font-bold text-slate-200 tracking-wide">{title}</h2>
+          <h2 className="text-sm font-bold text-text tracking-wide">{title}</h2>
           <span
             className={`px-2 py-0.5 rounded-full text-xs font-bold border ${columnConfig.badge}`}
           >
@@ -77,7 +77,7 @@ export function KanbanColumn({
             type="button"
             onClick={onAddTask}
             title="Add task to To Do"
-            className="p-1 text-slate-400 hover:text-teal-300 hover:bg-[#0f0f0f] rounded-lg transition"
+            className="p-1 text-text-secondary hover:text-accent hover:bg-surface-2 rounded-lg transition"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -87,13 +87,13 @@ export function KanbanColumn({
       {/* Cards Scroll Container */}
       <div className="flex-1 p-3 overflow-y-auto space-y-3 min-h-[320px]">
         {tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center p-4 border border-dashed border-[#1a1a1a] rounded-xl text-slate-500 text-xs">
+          <div className="flex flex-col items-center justify-center h-48 text-center p-4 border border-dashed border-border rounded-xl text-text-muted text-xs">
             <p>{columnConfig.emptyText}</p>
             {status === 'todo' && onAddTask && (
               <button
                 type="button"
                 onClick={onAddTask}
-                className="mt-2 text-xs font-semibold text-teal-400 hover:text-teal-300 transition"
+                className="mt-2 text-xs font-semibold text-accent hover:text-accent transition"
               >
                 + Create a task
               </button>

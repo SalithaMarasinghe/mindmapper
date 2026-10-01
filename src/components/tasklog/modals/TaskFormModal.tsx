@@ -70,23 +70,23 @@ export function TaskFormModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 bg-bg backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-3xl bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] overflow-hidden my-auto flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden my-auto flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a] flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-teal-900/40 text-teal-300 border border-teal-700/50">
+            <div className="p-2 rounded-lg bg-accent/20 text-accent border border-accent">
               {isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-100">
+              <h2 className="text-base font-bold text-text">
                 {isEditing ? 'Edit Task' : 'Create New Task'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-text-secondary">
                 {isEditing ? 'Update task details and markdown content' : 'Add a task to your To Do column'}
               </p>
             </div>
@@ -94,7 +94,7 @@ export function TaskFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition"
+            className="p-1.5 text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -110,8 +110,8 @@ export function TaskFormModal({
 
           {/* Title Field */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              Title <span className="text-teal-400">*</span>
+            <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              Title <span className="text-accent">*</span>
             </label>
             <input
               type="text"
@@ -123,7 +123,7 @@ export function TaskFormModal({
                 setTitle(e.target.value);
                 if (error) setError(null);
               }}
-              className="w-full bg-[#000000] text-slate-100 border border-[#1a1a1a] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 placeholder:text-slate-500 transition-all font-medium"
+              className="w-full bg-bg text-text border border-border rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent placeholder:text-text-muted transition-all font-medium"
             />
           </div>
 
@@ -131,15 +131,15 @@ export function TaskFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Priority Selector */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Flag className="w-3.5 h-3.5 text-slate-400" /> Priority
+              <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <Flag className="w-3.5 h-3.5 text-text-secondary" /> Priority
               </label>
-              <div className="grid grid-cols-3 gap-2 bg-[#000000] p-1 rounded-lg border border-[#1a1a1a]">
+              <div className="grid grid-cols-3 gap-2 bg-bg p-1 rounded-lg border border-border">
                 {(['low', 'medium', 'high'] as const).map((p) => {
                   const active = priority === p;
-                  let activeCls = 'bg-teal-900/70 text-teal-300 border-teal-700/60 shadow-sm';
-                  if (p === 'high') activeCls = 'bg-rose-900/70 text-rose-300 border-rose-700/60 shadow-sm';
-                  if (p === 'medium') activeCls = 'bg-amber-900/70 text-amber-300 border-amber-700/60 shadow-sm';
+                  let activeCls = 'bg-accent/20 text-accent border-accent shadow-sm';
+                  if (p === 'high') activeCls = 'bg-surface-2 text-text border-border-strong shadow-sm';
+                  if (p === 'medium') activeCls = 'bg-surface-2 text-text-secondary border-border-strong shadow-sm';
 
                   return (
                     <button
@@ -149,7 +149,7 @@ export function TaskFormModal({
                       className={`px-3 py-1.5 text-xs font-bold capitalize rounded-md border border-transparent transition-all ${
                         active
                           ? activeCls
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-[#0a0a0a]'
+                          : 'text-text-secondary hover:text-text hover:bg-surface'
                       }`}
                     >
                       {p}
@@ -161,14 +161,14 @@ export function TaskFormModal({
 
             {/* Planned Date */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Planned Date
+              <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-text-secondary" /> Planned Date
               </label>
               <input
                 type="date"
                 value={plannedDate}
                 onChange={(e) => setPlannedDate(e.target.value)}
-                className="w-full bg-[#000000] text-slate-100 border border-[#1a1a1a] rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all font-mono"
+                className="w-full bg-bg text-text border border-border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all font-mono"
               />
             </div>
           </div>
@@ -176,10 +176,10 @@ export function TaskFormModal({
           {/* Markdown Description */}
           <div className="flex flex-col gap-2 flex-1 min-h-[260px]">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                Description / Spec <span className="text-slate-500 font-normal lowercase">(markdown supported)</span>
+              <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                Description / Spec <span className="text-text-muted font-normal lowercase">(markdown supported)</span>
               </label>
-              <span className="text-[11px] text-teal-400 flex items-center gap-1">
+              <span className="text-[11px] text-accent flex items-center gap-1">
                 <Sparkles className="w-3 h-3" /> Copy-paste from AI chat formats automatically
               </span>
             </div>
@@ -194,18 +194,18 @@ export function TaskFormModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1a1a1a] flex-shrink-0">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition"
+              className="px-4 py-2 text-xs font-semibold text-text-secondary hover:text-text hover:bg-surface-2 rounded-lg transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-500 rounded-lg transition shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-text bg-accent/20 hover:bg-accent/20 rounded-lg transition shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
             >
               {isSubmitting ? (
                 'Saving...'

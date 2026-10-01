@@ -72,20 +72,20 @@ export function TaskCard({
   const isDifferentDate = task.plannedDate !== selectedDate;
 
   const priorityBadge = {
-    high: 'bg-rose-950/50 text-rose-300 border-rose-800/60',
-    medium: 'bg-amber-950/50 text-amber-300 border-amber-800/60',
-    low: 'bg-blue-950/50 text-blue-300 border-blue-800/60',
+    high: 'bg-surface-2 text-text border-border-strong',
+    medium: 'bg-surface-2 text-text-secondary border-border-strong',
+    low: 'bg-surface-2 text-text-secondary border-border-strong',
   }[task.priority];
 
   return (
     <div
       onClick={onClick}
-      className={`group relative bg-[#0a0a0a] hover:bg-[#141414] border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col gap-3 cursor-pointer select-none ${
+      className={`group relative bg-surface hover:bg-surface-2 border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col gap-3 cursor-pointer select-none ${
         isRunning
-          ? 'border-teal-600/70 shadow-teal-950/30 ring-1 ring-teal-500/20'
+          ? 'border-accent shadow-accent/20 ring-1 ring-accent'
           : isPaused
-          ? 'border-amber-700/60 bg-[#0a0a0a]/90'
-          : 'border-[#1a1a1a] hover:border-slate-600'
+          ? 'border-border-strong bg-surface'
+          : 'border-border hover:border-border-strong'
       }`}
     >
       {/* Top Meta: Priority, Date, Status Pill, Menu */}
@@ -98,14 +98,14 @@ export function TaskCard({
           </span>
 
           {isRunning && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-teal-950/70 text-teal-300 border border-teal-700/70">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" />
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-accent/20 text-accent border border-accent">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent/20 animate-ping" />
               Running
             </span>
           )}
 
           {isPaused && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-950/70 text-amber-300 border border-amber-700/70">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-surface-2 text-text-secondary border border-border-strong">
               <Pause className="w-2.5 h-2.5 fill-current" />
               Paused
             </span>
@@ -115,11 +115,11 @@ export function TaskCard({
             <span
               className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
                 isOverdue
-                  ? 'bg-amber-950/40 text-amber-300 border-amber-800/60'
-                  : 'bg-[#0a0a0a] text-slate-400 border-slate-700'
+                  ? 'bg-surface-2 text-text-secondary border-border-strong'
+                  : 'bg-surface text-text-secondary border-border'
               }`}
             >
-              {isOverdue && <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />}
+              {isOverdue && <AlertTriangle className="w-2.5 h-2.5 text-text-secondary" />}
               <Calendar className="w-2.5 h-2.5" />
               {task.plannedDate}
             </span>
@@ -131,7 +131,7 @@ export function TaskCard({
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-md transition opacity-80 group-hover:opacity-100"
+            className="p-1 text-text-secondary hover:text-text hover:bg-surface-2 rounded-md transition opacity-80 group-hover:opacity-100"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -139,16 +139,16 @@ export function TaskCard({
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 mt-1 w-44 bg-[#0a0a0a] rounded-xl shadow-xl border border-[#1a1a1a] py-1 z-40 text-xs">
+              <div className="absolute right-0 mt-1 w-44 bg-surface rounded-xl shadow-xl border border-border py-1 z-40 text-xs">
                 <button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false);
                     onEdit();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#0f0f0f] hover:text-white transition"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface-2 hover:text-text transition"
                 >
-                  <Edit2 className="w-3.5 h-3.5 text-teal-400" />
+                  <Edit2 className="w-3.5 h-3.5 text-accent" />
                   Edit Task
                 </button>
 
@@ -161,7 +161,7 @@ export function TaskCard({
                           setMenuOpen(false);
                           onPause();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-amber-300 hover:bg-[#0f0f0f] transition"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface-2 transition"
                       >
                         <Pause className="w-3.5 h-3.5" />
                         Pause Task
@@ -173,7 +173,7 @@ export function TaskCard({
                           setMenuOpen(false);
                           onResume();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-teal-300 hover:bg-[#0f0f0f] transition"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-accent hover:bg-surface-2 transition"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
                         Resume Task
@@ -186,9 +186,9 @@ export function TaskCard({
                         setMenuOpen(false);
                         onRevertToTodo();
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#0f0f0f] hover:text-white transition"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface-2 hover:text-text transition"
                     >
-                      <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowLeft className="w-3.5 h-3.5 text-text-secondary" />
                       Move back to To Do
                     </button>
                   </>
@@ -201,14 +201,14 @@ export function TaskCard({
                       setMenuOpen(false);
                       onRevertToInProgress();
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#0f0f0f] hover:text-white transition"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface-2 hover:text-text transition"
                   >
-                    <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                    <RotateCcw className="w-3.5 h-3.5 text-text-secondary" />
                     Reopen to In Progress
                   </button>
                 )}
 
-                <div className="my-1 border-t border-[#1a1a1a]" />
+                <div className="my-1 border-t border-border" />
 
                 <button
                   type="button"
@@ -216,7 +216,7 @@ export function TaskCard({
                     setMenuOpen(false);
                     onDelete();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-rose-400 hover:bg-rose-950/20 hover:text-rose-300 transition"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-text hover:bg-surface-2 hover:text-text transition"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Delete Task
@@ -228,23 +228,23 @@ export function TaskCard({
       </div>
 
       {/* Title */}
-      <h3 className="text-sm font-semibold text-slate-100 group-hover:text-white transition line-clamp-2 leading-snug">
+      <h3 className="text-sm font-semibold text-text group-hover:text-text transition line-clamp-2 leading-snug">
         {task.title}
       </h3>
 
       {/* Description Markdown Preview Snippet */}
       {task.description && (
-        <div className="text-xs text-slate-400 max-h-12 overflow-hidden line-clamp-2 pointer-events-none opacity-80 group-hover:opacity-95">
+        <div className="text-xs text-text-secondary max-h-12 overflow-hidden line-clamp-2 pointer-events-none opacity-80 group-hover:opacity-95">
           <MarkdownViewer content={task.description} />
         </div>
       )}
 
       {/* Timing and Status Details */}
-      <div className="pt-2 border-t border-[#1a1a1a]/60 flex items-center justify-between text-xs">
+      <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
         {/* Status Time Info */}
-        <div className="flex items-center gap-1.5 text-slate-400">
+        <div className="flex items-center gap-1.5 text-text-secondary">
           {task.status === 'todo' && (
-            <span className="text-[11px] text-slate-500 flex items-center gap-1">
+            <span className="text-[11px] text-text-muted flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               {task.plannedDate === toDateStr(new Date()) ? 'Planned for Today' : task.plannedDate}
             </span>
@@ -253,30 +253,30 @@ export function TaskCard({
           {task.status === 'in_progress' && (
             <div className="flex items-center gap-1.5">
               {isRunning ? (
-                <div className="flex items-center gap-1.5 text-teal-400 font-medium">
+                <div className="flex items-center gap-1.5 text-accent font-medium">
                   <Clock className="w-3.5 h-3.5 animate-pulse" />
                   <span className="font-mono">{formatDuration(liveSeconds)}</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 text-amber-400/90 font-medium">
+                <div className="flex items-center gap-1.5 text-text-secondary font-medium">
                   <Clock className="w-3.5 h-3.5" />
                   <span className="font-mono">{formatDuration(task.trackedSeconds)}</span>
-                  <span className="text-[10px] text-slate-500">(paused)</span>
+                  <span className="text-[10px] text-text-muted">(paused)</span>
                 </div>
               )}
             </div>
           )}
 
           {task.status === 'done' && (
-            <div className="flex flex-col text-[11px] text-slate-400">
+            <div className="flex flex-col text-[11px] text-text-secondary">
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-300 font-semibold font-mono">
+                <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+                <span className="text-accent font-semibold font-mono">
                   {formatDuration(task.trackedSeconds)}
                 </span>
               </div>
               {task.startedAt && task.completedAt && (
-                <span className="text-[10px] text-slate-500 pl-5">
+                <span className="text-[10px] text-text-muted pl-5">
                   Span: {formatTime(task.startedAt)} – {formatTime(task.completedAt)}
                 </span>
               )}
@@ -291,7 +291,7 @@ export function TaskCard({
               type="button"
               onClick={onStart}
               title="Start Task"
-              className="flex items-center gap-1.5 px-3 py-1 bg-teal-900/50 hover:bg-teal-800/70 text-teal-300 border border-teal-700/60 rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1 bg-accent/20 hover:bg-accent/20 text-accent border border-accent rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
             >
               <Play className="w-3 h-3 fill-current" />
               Start
@@ -305,7 +305,7 @@ export function TaskCard({
                   type="button"
                   onClick={onPause}
                   title="Pause Task"
-                  className="flex items-center gap-1 px-2.5 py-1 bg-amber-900/50 hover:bg-amber-800/70 text-amber-300 border border-amber-700/60 rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1 bg-surface-2 hover:bg-surface-2 text-text-secondary border border-border-strong rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
                 >
                   <Pause className="w-3 h-3 fill-current" />
                   Pause
@@ -315,7 +315,7 @@ export function TaskCard({
                   type="button"
                   onClick={onResume}
                   title="Resume Task"
-                  className="flex items-center gap-1 px-2.5 py-1 bg-teal-900/50 hover:bg-teal-800/70 text-teal-300 border border-teal-700/60 rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1 bg-accent/20 hover:bg-accent/20 text-accent border border-accent rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
                 >
                   <Play className="w-3 h-3 fill-current" />
                   Resume
@@ -326,7 +326,7 @@ export function TaskCard({
                 type="button"
                 onClick={onComplete}
                 title="Complete Task"
-                className="flex items-center gap-1 px-2.5 py-1 bg-emerald-900/50 hover:bg-emerald-800/70 text-emerald-300 border border-emerald-700/60 rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
+                className="flex items-center gap-1 px-2.5 py-1 bg-accent/20 hover:bg-accent/20 text-accent border border-accent rounded-lg text-xs font-bold transition shadow-sm active:scale-95"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Done
@@ -339,7 +339,7 @@ export function TaskCard({
               type="button"
               onClick={onRevertToInProgress}
               title="Reopen to In Progress"
-              className="p-1.5 text-slate-500 hover:text-amber-300 hover:bg-[#141414] rounded-md transition"
+              className="p-1.5 text-text-muted hover:text-text-secondary hover:bg-surface-2 rounded-md transition"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>

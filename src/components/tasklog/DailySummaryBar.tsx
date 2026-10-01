@@ -36,23 +36,23 @@ export function DailySummaryBar({ tasks }: DailySummaryBarProps) {
   }, 0);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 py-2.5 bg-[#080808] border-b border-[#1a1a1a]">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 py-2.5 bg-surface-2 border-b border-border">
       {/* 1. Completed Progress */}
-      <div className="flex items-center gap-3 bg-[#0a0a0a] px-3.5 py-2 rounded-xl border border-[#1a1a1a]/60">
-        <div className="p-2 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
+      <div className="flex items-center gap-3 bg-surface px-3.5 py-2 rounded-xl border border-border">
+        <div className="p-2 rounded-lg bg-accent/20 text-accent border border-accent">
           <CheckCircle2 className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between text-xs font-semibold">
-            <span className="text-slate-400">Completed</span>
-            <span className="text-slate-200">
+            <span className="text-text-secondary">Completed</span>
+            <span className="text-text">
               {completedCount} / {totalCount}{' '}
-              <span className="text-slate-500 font-normal">({percentCompleted}%)</span>
+              <span className="text-text-muted font-normal">({percentCompleted}%)</span>
             </span>
           </div>
-          <div className="w-full h-1.5 bg-[#000000] rounded-full overflow-hidden mt-1.5">
+          <div className="w-full h-1.5 bg-bg rounded-full overflow-hidden mt-1.5">
             <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+              className="h-full bg-accent/20 rounded-full transition-all duration-300"
               style={{ width: `${percentCompleted}%` }}
             />
           </div>
@@ -60,28 +60,28 @@ export function DailySummaryBar({ tasks }: DailySummaryBarProps) {
       </div>
 
       {/* 2. Total Tracked Time */}
-      <div className="flex items-center gap-3 bg-[#0a0a0a] px-3.5 py-2 rounded-xl border border-[#1a1a1a]/60">
-        <div className="p-2 rounded-lg bg-teal-950/60 text-teal-400 border border-teal-800/60">
+      <div className="flex items-center gap-3 bg-surface px-3.5 py-2 rounded-xl border border-border">
+        <div className="p-2 rounded-lg bg-accent/20 text-accent border border-accent">
           <Clock className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-semibold text-slate-400 block">Total Tracked Time</span>
-          <p className="text-sm font-bold text-teal-300 font-mono mt-0.5">
+          <span className="text-xs font-semibold text-text-secondary block">Total Tracked Time</span>
+          <p className="text-sm font-bold text-accent font-mono mt-0.5">
             {formatDuration(totalTrackedSeconds)}
           </p>
         </div>
       </div>
 
       {/* 3. Open Tasks */}
-      <div className="flex items-center gap-3 bg-[#0a0a0a] px-3.5 py-2 rounded-xl border border-[#1a1a1a]/60">
-        <div className="p-2 rounded-lg bg-amber-950/60 text-amber-400 border border-amber-800/60">
+      <div className="flex items-center gap-3 bg-surface px-3.5 py-2 rounded-xl border border-border">
+        <div className="p-2 rounded-lg bg-surface-2 text-text-secondary border border-border-strong">
           <ListTodo className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-semibold text-slate-400 block">Open Tasks</span>
-          <p className="text-sm font-bold text-amber-300 mt-0.5">
+          <span className="text-xs font-semibold text-text-secondary block">Open Tasks</span>
+          <p className="text-sm font-bold text-text-secondary mt-0.5">
             {openCount}{' '}
-            <span className="text-xs text-slate-500 font-normal">
+            <span className="text-xs text-text-muted font-normal">
               ({todoTasks.length} to do, {inProgressTasks.length} in progress)
             </span>
           </p>

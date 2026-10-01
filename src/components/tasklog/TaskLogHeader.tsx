@@ -44,23 +44,23 @@ export function TaskLogHeader({
   const isCurrentToday = selectedDate === toDateStr(new Date());
 
   return (
-    <div className="flex flex-col bg-[#0a0a0a] border-b border-[#1a1a1a] flex-shrink-0">
+    <div className="flex flex-col bg-surface border-b border-border flex-shrink-0">
       {/* Carryover notice banner if past tasks exist */}
       {pastUnfinishedCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-gradient-to-r from-amber-950/40 via-amber-900/30 to-amber-950/40 border-b border-amber-800/40 text-xs text-amber-200 animate-in fade-in duration-200">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-gradient-to-r from-amber-950/40 via-amber-900/30 to-amber-950/40 border-b border-border-strong text-xs text-text-secondary animate-in fade-in duration-200">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-text-secondary flex-shrink-0" />
             <span>
-              You have <strong className="text-amber-100">{pastUnfinishedCount}</strong> unfinished{' '}
+              You have <strong className="text-text-secondary">{pastUnfinishedCount}</strong> unfinished{' '}
               {pastUnfinishedCount === 1 ? 'task' : 'tasks'} from earlier days.
             </span>
           </div>
           <button
             type="button"
             onClick={onOpenCarryover}
-            className="flex items-center gap-1.5 px-3 py-1 bg-amber-900/60 hover:bg-amber-800/80 border border-amber-700/60 text-amber-100 rounded-lg font-semibold transition active:scale-95 text-xs shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1 bg-surface-2 hover:bg-surface-2 border border-border-strong text-text-secondary rounded-lg font-semibold transition active:scale-95 text-xs shadow-sm"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <Sparkles className="w-3.5 h-3.5 text-text-secondary" />
             Review & Carry Over
           </button>
         </div>
@@ -74,7 +74,7 @@ export function TaskLogHeader({
             type="button"
             onClick={handlePrevDay}
             title="Previous Day"
-            className="p-1.5 hover:bg-[#141414] rounded-lg transition text-slate-400 hover:text-slate-200"
+            className="p-1.5 hover:bg-surface-2 rounded-lg transition text-text-secondary hover:text-text"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -84,8 +84,8 @@ export function TaskLogHeader({
             onClick={handleToday}
             className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
               isCurrentToday
-                ? 'bg-teal-900/40 text-teal-300 border border-teal-700/50'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#141414]'
+                ? 'bg-accent/20 text-accent border border-accent'
+                : 'text-text-secondary hover:text-text hover:bg-surface-2'
             }`}
           >
             Today
@@ -95,19 +95,19 @@ export function TaskLogHeader({
             type="button"
             onClick={handleNextDay}
             title="Next Day"
-            className="p-1.5 hover:bg-[#141414] rounded-lg transition text-slate-400 hover:text-slate-200"
+            className="p-1.5 hover:bg-surface-2 rounded-lg transition text-text-secondary hover:text-text"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
 
-          <div className="h-4 w-[1px] bg-[#141414] mx-1" />
+          <div className="h-4 w-[1px] bg-surface-2 mx-1" />
 
           {/* Date Picker Input */}
           <div className="flex items-center gap-2 relative group">
-            <Calendar className="w-4 h-4 text-teal-400" />
-            <span className="text-sm font-bold text-slate-100">
+            <Calendar className="w-4 h-4 text-accent" />
+            <span className="text-sm font-bold text-text">
               {getRelativeDateLabel(selectedDate)}{' '}
-              <span className="text-xs text-slate-400 font-normal">({selectedDate})</span>
+              <span className="text-xs text-text-secondary font-normal">({selectedDate})</span>
             </span>
             <input
               type="date"
@@ -126,7 +126,7 @@ export function TaskLogHeader({
               type="button"
               onClick={onPauseRunningTask}
               title={`Pause running task "${runningTask.title}"`}
-              className="flex items-center gap-1.5 px-3 py-2 bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border border-amber-700/60 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 animate-in fade-in"
+              className="flex items-center gap-1.5 px-3 py-2 bg-surface-2 hover:bg-surface-2 text-text-secondary border border-border-strong rounded-xl text-xs font-bold transition shadow-sm active:scale-95 animate-in fade-in"
             >
               <Coffee className="w-3.5 h-3.5" />
               <span>Take a Break</span>
@@ -138,7 +138,7 @@ export function TaskLogHeader({
               type="button"
               onClick={onResumeLastTask}
               title={`Resume "${lastPausedTask.title}"`}
-              className="flex items-center gap-1.5 px-3 py-2 bg-teal-950/60 hover:bg-teal-900/80 text-teal-300 border border-teal-700/60 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 animate-in fade-in max-w-[200px]"
+              className="flex items-center gap-1.5 px-3 py-2 bg-accent/20 hover:bg-accent/20 text-accent border border-accent rounded-xl text-xs font-bold transition shadow-sm active:scale-95 animate-in fade-in max-w-[200px]"
             >
               <Play className="w-3.5 h-3.5 fill-current flex-shrink-0" />
               <span className="truncate">Resume {lastPausedTask.title}</span>
@@ -148,7 +148,7 @@ export function TaskLogHeader({
           <button
             type="button"
             onClick={onNewTask}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm hover:shadow active:scale-95"
+            className="flex items-center gap-2 bg-accent/20 hover:bg-accent/20 text-text px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm hover:shadow active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>New Task</span>

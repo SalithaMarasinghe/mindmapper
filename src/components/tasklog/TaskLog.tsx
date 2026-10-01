@@ -283,7 +283,7 @@ export function TaskLog() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 w-full h-full bg-[#000000] overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 w-full h-full bg-bg overflow-hidden">
       {/* 1. Header with date navigation & New Task & Break/Resume */}
       <TaskLogHeader
         selectedDate={selectedDate}
@@ -317,8 +317,8 @@ export function TaskLog() {
       {/* 4. Scrollable Work Area: Kanban Board on top, Task Table right beneath */}
       <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-6 relative">
         {isLoading && (
-          <div className="fixed inset-0 bg-[#000000]/60 backdrop-blur-[1px] flex items-center justify-center z-20 pointer-events-none">
-            <div className="flex items-center gap-2 px-4 py-2 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] text-teal-400 text-xs font-semibold shadow-lg">
+          <div className="fixed inset-0 bg-bg backdrop-blur-[1px] flex items-center justify-center z-20 pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 bg-surface rounded-xl border border-border text-accent text-xs font-semibold shadow-lg">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Loading tasks...</span>
             </div>
