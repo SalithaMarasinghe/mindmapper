@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { connectWithSupabaseGoogleOAuth } from '../../services/googleAuth';
+import { supabase } from '../../lib/supabase';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -19,6 +19,24 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
 
   const inputClass = "w-full rounded-md border border-[#1a1a1a] bg-[#000000] text-slate-200 placeholder:text-slate-500 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500";
   const labelClass = "block text-sm font-medium mb-1 text-slate-300";
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const redirectTo = `${window.location.origin}/dashboard`;
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+        },
+      });
+      if (oauthError) throw oauthError;
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed');
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,14 +160,9 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
 
       <button
         type="button"
-        onClick={async () => {
-          try {
-            await connectWithSupabaseGoogleOAuth();
-          } catch (e: any) {
-            setError(e.message || 'Google OAuth failed');
-          }
-        }}
-        className="flex w-full items-center justify-center gap-2.5 rounded-md bg-white py-2 px-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 transition-colors shadow-sm"
+        disabled={isLoading}
+        onClick={handleGoogleSignIn}
+        className="flex w-full items-center justify-center gap-2.5 rounded-md bg-white py-2 px-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 transition-colors shadow-sm disabled:opacity-50"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24">
           <path
