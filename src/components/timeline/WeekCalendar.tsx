@@ -154,9 +154,9 @@ function EventContextMenu({
 
 function getEventColors(type: 'work' | 'meeting') {
   if (type === 'work') {
-    return { bg: 'bg-surface', border: 'border-border', text: 'text-accent', dot: 'bg-surface-2' };
+    return { bg: 'bg-surface', border: 'border-border border-l-[3px] border-l-slate-400', text: 'text-text', dot: 'bg-slate-400' };
   }
-  return { bg: 'bg-surface', border: 'border-border', text: 'text-text', dot: 'bg-surface-2' };
+  return { bg: 'bg-surface', border: 'border-border border-l-[3px] border-l-indigo-400', text: 'text-text', dot: 'bg-indigo-400' };
 }
 
 // ─── EventBlock ───────────────────────────────────────────────────────────────
@@ -332,7 +332,7 @@ export function WeekCalendar({
                 <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{weekday}</span>
                 <span className={`
                   mt-1 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold transition-colors
-                  ${isToday ? 'bg-accent text-text' : 'text-text'}
+                  ${isToday ? 'bg-accent text-bg' : 'text-text'}
                 `}>
                   {day}
                 </span>
