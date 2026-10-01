@@ -71,19 +71,6 @@ interface AssistantState {
   updateActionTime: (messageId: string, proposalId: string, newTimestampISO: string) => Promise<void>;
 }
 
-const ensureISO = (val?: unknown): string => {
-  const now = new Date();
-  if (typeof val === 'string' && val.length > 5 && !isNaN(Date.parse(val))) {
-    const parsed = new Date(val);
-    // Guard against timezone hallucinations (e.g. LLM appending 'Z' to local time):
-    // Timestamps for real-time actions must never be in the future
-    if (parsed.getTime() > now.getTime() + 60000) {
-      return now.toISOString();
-    }
-    return parsed.toISOString();
-  }
-  return now.toISOString();
-};
 
 function timeToHours(t: string): number {
   const [h, m] = t.split(':').map(Number);
@@ -284,6 +271,11 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
     const taskStore = useTaskStore.getState();
     const timelineStore = useTimelineStore.getState();
 
+    // Ensure tasks are loaded so runningTask & todaysTasks are accurate
+    if (taskStore.tasks.length === 0 || !taskStore.runningTaskId) {
+      await taskStore.fetchTasks();
+    }
+
     // Ensure projects are available for assistant context
     let currentProjects = timelineStore.projects;
     if (currentProjects.length === 0) {
@@ -294,11 +286,11 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
     const today = toDateStr(new Date());
     const runningTask = taskStore.runningTaskId
       ? taskStore.tasks.find((t) => t.id === taskStore.runningTaskId) ?? null
-      : null;
+      : taskStore.tasks.find((t) => t.status === 'in_progress' && !t.isPaused) ?? null;
 
     const lastPausedTask = taskStore.lastPausedTaskId
       ? taskStore.tasks.find((t) => t.id === taskStore.lastPausedTaskId) ?? null
-      : null;
+      : taskStore.tasks.find((t) => t.status === 'in_progress' && t.isPaused) ?? null;
 
     const yesterdayDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const recentTimelineMeetings = [
@@ -546,7 +538,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             continue;
           }
 
-          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const safeIso = new Date().toISOString();
           try {
             const previousState = {
               status: targetTask.status,
@@ -570,13 +562,14 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           } catch (execErr) {
             console.error('Failed to auto-execute start_task:', execErr);
             processedProposals.push(prop);
+            toast.error(`Failed to start "${targetTask.title}".`);
           }
           continue;
         }
 
         if (prop.type === 'pause_task') {
           const taskStore = useTaskStore.getState();
-          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const safeIso = new Date().toISOString();
           let runningTask: WorkTask | null | undefined = taskStore.runningTaskId
             ? taskStore.tasks.find((t) => t.id === taskStore.runningTaskId)
             : taskStore.tasks.find((t) => t.status === 'in_progress' && !t.isPaused);
@@ -602,79 +595,61 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             }
           }
 
-          const runningId = runningTask?.id || taskStore.runningTaskId || prop.payload?.taskId || 'running';
+          const runningId =
+            runningTask?.id ||
+            taskStore.runningTaskId ||
+            (prop.payload?.taskId && prop.payload.taskId !== 'running' && prop.payload.taskId !== 'none'
+              ? prop.payload.taskId
+              : undefined);
           const taskTitle = runningTask?.title || prop.payload?.taskTitle || 'Task';
           const reason = (prop.payload?.reason || 'paused') as SegmentEndReason;
           const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
 
-          if (runningTask || runningId !== 'running') {
-            try {
-              const previousState = runningTask
-                ? {
-                    status: runningTask.status,
-                    isPaused: runningTask.isPaused,
-                    startedAt: runningTask.startedAt,
-                  }
-                : {
-                    status: 'in_progress' as const,
-                    isPaused: false,
-                    startedAt: safeIso,
-                  };
+          try {
+            const previousState = runningTask
+              ? {
+                  status: runningTask.status,
+                  isPaused: runningTask.isPaused,
+                  startedAt: runningTask.startedAt,
+                }
+              : {
+                  status: 'in_progress' as const,
+                  isPaused: false,
+                  startedAt: safeIso,
+                };
+
+            if (runningId) {
               await taskStore.pauseTask(runningId, safeIso, reason);
-              processedProposals.push({
-                ...prop,
-                type: 'pause_task',
-                status: 'auto_executed',
-                executedAt: new Date().toISOString(),
-                previousState,
-                payload: {
-                  taskId: runningId,
-                  taskTitle,
-                  timestampISO: safeIso,
-                  timeDisplay,
-                  reason,
-                },
-              });
-              toast.success(`Paused "${taskTitle}". Enjoy your break! ☕`);
-            } catch (execErr) {
-              console.error('Failed to auto-execute pause_task:', execErr);
-              processedProposals.push({
-                ...prop,
-                type: 'pause_task',
-                status: 'auto_executed',
-                executedAt: new Date().toISOString(),
-                payload: {
-                  taskId: runningId,
-                  taskTitle,
-                  timestampISO: safeIso,
-                  timeDisplay,
-                  reason,
-                },
-              });
-              toast.success(`Paused "${taskTitle}". Enjoy your break! ☕`);
+            } else {
+              await taskStore.pauseAll(safeIso);
             }
-          } else {
+
             processedProposals.push({
               ...prop,
               type: 'pause_task',
               status: 'auto_executed',
               executedAt: new Date().toISOString(),
+              previousState,
               payload: {
-                taskId: 'none',
+                taskId: runningId || 'all',
                 taskTitle,
                 timestampISO: safeIso,
                 timeDisplay,
                 reason,
               },
             });
-            toast.success('Break started. No active task was running! ☕');
+            toast.success(`Paused "${taskTitle}". Enjoy your break! ☕`);
+          } catch (execErr) {
+            console.error('Failed to auto-execute pause_task:', execErr);
+            processedProposals.push(prop);
+            toast.error(`Failed to pause "${taskTitle}". Please pause from Task Flow.`);
           }
           continue;
         }
 
         if (prop.type === 'pause_all') {
           const taskStore = useTaskStore.getState();
-          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const safeIso = new Date().toISOString();
           let runningId = taskStore.runningTaskId || prop.payload?.taskId;
 
           if (!runningId) {
@@ -696,57 +671,36 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           const taskTitle = targetTask?.title || prop.payload?.taskTitle || 'Running task';
           const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
 
-          if (runningId) {
-            try {
-              await taskStore.pauseAll(safeIso);
-              processedProposals.push({
-                ...prop,
-                type: 'pause_all',
-                status: 'auto_executed',
-                executedAt: new Date().toISOString(),
-                payload: {
-                  taskId: runningId,
-                  taskTitle,
-                  timestampISO: safeIso,
-                  timeDisplay,
-                },
-              });
-              toast.success('Running task paused. Enjoy your break! ☕');
-            } catch (execErr) {
-              console.error('Failed to auto-execute pause_all:', execErr);
-              processedProposals.push({
-                ...prop,
-                type: 'pause_all',
-                status: 'auto_executed',
-                executedAt: new Date().toISOString(),
-                payload: {
-                  taskId: runningId,
-                  taskTitle,
-                  timestampISO: safeIso,
-                  timeDisplay,
-                },
-              });
-            }
-          } else {
+          try {
+            await taskStore.pauseAll(safeIso);
             processedProposals.push({
               ...prop,
               type: 'pause_all',
               status: 'auto_executed',
               executedAt: new Date().toISOString(),
               payload: {
+                taskId: runningId,
                 taskTitle,
                 timestampISO: safeIso,
                 timeDisplay,
               },
             });
-            toast.success('Break started. No active task was running! ☕');
+            toast.success(
+              runningId
+                ? `Paused "${taskTitle}". Enjoy your break! ☕`
+                : 'Break started. All timers paused! ☕'
+            );
+          } catch (execErr) {
+            console.error('Failed to auto-execute pause_all:', execErr);
+            processedProposals.push(prop);
+            toast.error('Failed to pause running tasks.');
           }
           continue;
         }
 
         if (prop.type === 'resume_task') {
           const taskStore = useTaskStore.getState();
-          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const safeIso = new Date().toISOString();
           let targetTask: WorkTask | null | undefined =
             (prop.payload?.taskId ? taskStore.tasks.find((t) => t.id === prop.payload.taskId) : null) ||
             (taskStore.lastPausedTaskId ? taskStore.tasks.find((t) => t.id === taskStore.lastPausedTaskId) : null) ||
@@ -761,11 +715,15 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             );
           }
 
-          const targetId = targetTask?.id || prop.payload?.taskId || taskStore.lastPausedTaskId || 'active';
+          const targetId =
+            targetTask?.id ||
+            (prop.payload?.taskId && prop.payload.taskId !== 'active'
+              ? prop.payload.taskId
+              : taskStore.lastPausedTaskId);
           const targetTitle = targetTask?.title || prop.payload?.taskTitle || 'Task';
           const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
 
-          if (targetId !== 'active') {
+          if (targetId) {
             try {
               const previousState = targetTask
                 ? {
@@ -796,90 +754,64 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
               toast.success(`Resumed "${targetTitle}"!`);
             } catch (execErr) {
               console.error('Failed to auto-execute resume_task:', execErr);
+              processedProposals.push(prop);
+              toast.error(`Failed to resume "${targetTitle}".`);
+            }
+          } else {
+            try {
+              await taskStore.resumeLastPaused(safeIso);
               processedProposals.push({
                 ...prop,
                 type: 'resume_task',
                 status: 'auto_executed',
                 executedAt: new Date().toISOString(),
                 payload: {
-                  taskId: targetId,
+                  taskId: 'last_paused',
                   taskTitle: targetTitle,
                   timestampISO: safeIso,
                   timeDisplay,
                 },
               });
-              toast.success(`Resumed "${targetTitle}"!`);
+              toast.success('Resumed task timer!');
+            } catch (execErr) {
+              console.error('Failed to auto-execute resume_task fallback:', execErr);
+              processedProposals.push(prop);
+              toast.error('Failed to resume task timer.');
             }
-          } else {
-            processedProposals.push({
-              ...prop,
-              type: 'resume_task',
-              status: 'auto_executed',
-              executedAt: new Date().toISOString(),
-              payload: {
-                taskId: 'active',
-                taskTitle: targetTitle,
-                timestampISO: safeIso,
-                timeDisplay,
-              },
-            });
-            toast.success('Resumed task timer!');
           }
           continue;
         }
 
         if (prop.type === 'resume_last_paused') {
           const taskStore = useTaskStore.getState();
-          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const safeIso = new Date().toISOString();
           const lastPausedId = taskStore.lastPausedTaskId || prop.payload?.taskId;
-          const targetTask = lastPausedId ? taskStore.tasks.find((t) => t.id === lastPausedId) : null;
+          let targetTask = lastPausedId ? taskStore.tasks.find((t) => t.id === lastPausedId) : null;
+          if (!targetTask) {
+            targetTask = taskStore.tasks.find((t) => t.status === 'in_progress' && t.isPaused) || null;
+          }
           const targetTitle = targetTask?.title || prop.payload?.taskTitle || 'Last paused task';
           const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
 
-          if (lastPausedId) {
-            try {
-              await taskStore.resumeLastPaused(safeIso);
-              processedProposals.push({
-                ...prop,
-                type: 'resume_last_paused',
-                status: 'auto_executed',
-                executedAt: new Date().toISOString(),
-                payload: {
-                  taskId: lastPausedId,
-                  taskTitle: targetTitle,
-                  timestampISO: safeIso,
-                  timeDisplay,
-                },
-              });
-              toast.success(`Resumed "${targetTitle}"!`);
-            } catch (execErr) {
-              console.error('Failed to auto-execute resume_last_paused:', execErr);
-              processedProposals.push({
-                ...prop,
-                type: 'resume_last_paused',
-                status: 'auto_executed',
-                executedAt: new Date().toISOString(),
-                payload: {
-                  taskId: lastPausedId,
-                  taskTitle: targetTitle,
-                  timestampISO: safeIso,
-                  timeDisplay,
-                },
-              });
-            }
-          } else {
+          try {
+            await taskStore.resumeLastPaused(safeIso);
             processedProposals.push({
               ...prop,
               type: 'resume_last_paused',
               status: 'auto_executed',
               executedAt: new Date().toISOString(),
               payload: {
+                taskId: targetTask?.id || lastPausedId,
                 taskTitle: targetTitle,
                 timestampISO: safeIso,
                 timeDisplay,
               },
             });
-            toast.success('Task resumed!');
+            toast.success(`Resumed "${targetTitle}"!`);
+          } catch (execErr) {
+            console.error('Failed to auto-execute resume_last_paused:', execErr);
+            processedProposals.push(prop);
+            toast.error(`Failed to resume "${targetTitle}".`);
           }
           continue;
         }
@@ -899,13 +831,14 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             targetTask = await findTaskInStoreOrDb(
               user.id,
               prop.payload?.taskId,
-              prop.payload?.taskTitle
+              prop.payload?.taskTitle,
+              (t) => t.status === 'in_progress'
             );
           }
 
           const targetId = targetTask?.id || prop.payload?.taskId || taskStore.runningTaskId;
           const targetTitle = targetTask?.title || prop.payload?.taskTitle || 'Task';
-          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const safeIso = new Date().toISOString();
 
           if (targetId) {
             // Guard: If the task is already completed, do NOT re-execute finishTask or toast again
@@ -952,30 +885,11 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
               toast.success(`Completed "${targetTitle}"! 🎉`);
             } catch (execErr) {
               console.error('Failed to auto-execute finish_task:', execErr);
-              processedProposals.push({
-                ...prop,
-                status: 'auto_executed',
-                executedAt: new Date().toISOString(),
-                payload: {
-                  ...prop.payload,
-                  taskId: targetId,
-                  taskTitle: targetTitle,
-                  timestampISO: safeIso,
-                },
-              });
-              toast.success(`Completed "${targetTitle}"! 🎉`);
+              processedProposals.push(prop);
+              toast.error(`Failed to complete "${targetTitle}".`);
             }
           } else {
-            processedProposals.push({
-              ...prop,
-              status: 'auto_executed',
-              executedAt: new Date().toISOString(),
-              payload: {
-                ...prop.payload,
-                taskTitle: targetTitle,
-                timestampISO: safeIso,
-              },
-            });
+            processedProposals.push(prop);
           }
           continue;
         }

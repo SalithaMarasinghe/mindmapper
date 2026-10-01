@@ -574,25 +574,26 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   // ── pauseAll (Take a break) ─────────────────────────────────────────────
-  pauseAll: async (timestampISO: string) => {
-    let { runningTaskId } = get();
-    if (!runningTaskId) {
-      const { user } = useAuthStore.getState();
-      if (user) {
-        const { data: openEntries } = await supabase
-          .from('task_time_entries')
-          .select('task_id')
-          .eq('user_id', user.id)
-          .is('ended_at', null)
-          .limit(1);
-        if (openEntries && openEntries.length > 0) {
-          runningTaskId = openEntries[0].task_id;
-          set({ runningTaskId });
-        }
-      }
+  pauseAll: async (timestampISO?: string) => {
+    const ts = timestampISO || new Date().toISOString();
+    try {
+      const { error } = await supabase.rpc('rpc_pause_all', {
+        p_timestamp: ts,
+        p_reason: 'paused',
+      });
+
+      if (error) throw error;
+
+      set((state) => ({
+        runningTaskId: null,
+        lastPausedTaskId: state.runningTaskId || state.lastPausedTaskId,
+      }));
+      await get().fetchTasks();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to pause all tasks';
+      set({ error: message });
+      throw err;
     }
-    if (!runningTaskId) return;
-    await get().pauseTask(runningTaskId, timestampISO, 'paused');
   },
 
   // ── resumeLastPaused ────────────────────────────────────────────────────
