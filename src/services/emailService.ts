@@ -96,6 +96,11 @@ export function extractMeetingFromEmail(
         if (!isNaN(dateObj.getTime())) {
           targetDate = dateObj.toISOString().slice(0, 10);
         }
+      } else if (dateHeader) {
+        const dateObj = new Date(dateHeader);
+        if (!isNaN(dateObj.getTime())) {
+          targetDate = dateObj.toISOString().slice(0, 10);
+        }
       }
     }
   }
@@ -402,12 +407,13 @@ export async function fetchLiveGoogleCalendarEvents(accessToken: string): Promis
           (e: any) => e.entryPointType === 'video'
         );
         if (videoEntry?.uri) {
-          meetingUrl = videoEntry.uri;
-          platform = meetingUrl.includes('meet.google')
+          const uri: string = videoEntry.uri;
+          meetingUrl = uri;
+          platform = uri.includes('meet.google')
             ? 'google_meet'
-            : meetingUrl.includes('zoom.us')
+            : uri.includes('zoom.us')
             ? 'zoom'
-            : meetingUrl.includes('teams.microsoft')
+            : uri.includes('teams.microsoft')
             ? 'teams'
             : 'other';
         }

@@ -7,15 +7,12 @@ import {
   Send,
   Calendar,
   LogOut,
-  ExternalLink,
   ShieldCheck,
-  Check,
 } from 'lucide-react';
 import { useEmailStore } from '../../store/emailStore';
 import {
   connectWithSupabaseGoogleOAuth,
   connectWithGoogleIdentityPopup,
-  GOOGLE_MEETING_SCOPES,
 } from '../../services/googleAuth';
 import { toast } from 'react-hot-toast';
 
@@ -31,7 +28,6 @@ export function EmailIntegrationSettings() {
     simulateIncomingEmail,
     isSyncing,
     lastSyncedAt,
-    emails,
   } = useEmailStore();
 
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
@@ -131,7 +127,6 @@ export function EmailIntegrationSettings() {
     }
   };
 
-  const meetingCount = emails.filter((e) => e.hasMeetingInvite).length;
   const isConnected = !!gmailAccessToken && !useTestInbox;
 
   return (

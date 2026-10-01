@@ -15,7 +15,7 @@ import {
 import { useNotificationStore } from '../../store/notificationStore';
 import { useEmailStore } from '../../store/emailStore';
 import { useTimelineStore } from '../../store/timelineStore';
-import { useAssistantStore } from '../../store/assistantStore';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 interface NotificationCenterProps {
@@ -24,12 +24,12 @@ interface NotificationCenterProps {
 }
 
 export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
+  const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification, clearAll } =
     useNotificationStore();
   const { isSyncing, syncEmails, lastSyncedAt } = useEmailStore();
   const { createMeetingEvent } = useTimelineStore();
-  const { openSidebar } = useAssistantStore();
 
   const [filter, setFilter] = useState<'all' | 'meetings'>('all');
 
@@ -346,7 +346,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
           type="button"
           onClick={() => {
             onClose();
-            openSidebar();
+            navigate('/dashboard');
           }}
           className="text-xs text-teal-400 hover:text-teal-300 font-semibold"
         >
