@@ -86,7 +86,7 @@ export function NodeEditor({
   if (!nodeContent) {
     return (
       <div className="flex justify-center p-12">
-        <div className="w-8 h-8 rounded-full border-4 border-slate-700 border-t-teal-500 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-4 border-border border-t-teal-500 animate-spin" />
       </div>
     );
   }
@@ -144,25 +144,25 @@ export function NodeEditor({
   };
 
   return (
-    <div className="node-study-page flex flex-col h-full bg-[#000000] w-full pb-16">
-      <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#000000]/95 backdrop-blur z-10 border-b border-[#1a1a1a] mb-4">
-        <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-3">
+    <div className="node-study-page flex flex-col h-full bg-bg w-full pb-16">
+      <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-bg/95 backdrop-blur z-10 border-b border-border mb-4">
+        <h1 className="text-xl font-bold text-text tracking-tight flex items-center gap-3">
           {currentNode?.label || 'Study Material'}
           <div className="text-sm font-semibold flex items-center gap-1.5 transition-colors">
             {(status === 'unsaved' || status === 'saving') && (
-              <span className="text-teal-400 flex items-center gap-1.5 bg-teal-900/30 px-2 py-0.5 rounded border border-teal-800 shadow-sm ml-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" /> Saving...
+              <span className="text-accent flex items-center gap-1.5 bg-surface px-2 py-0.5 rounded border border-border shadow-sm ml-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> Saving...
               </span>
             )}
             {status === 'saved' && showSaved && (
-              <span className="text-green-400 flex items-center gap-1 bg-green-900/30 px-2 py-0.5 rounded border border-green-800 shadow-sm transition-opacity duration-300 ml-2">
+              <span className="text-text-secondary flex items-center gap-1 bg-surface px-2 py-0.5 rounded border border-border shadow-sm transition-opacity duration-300 ml-2">
                 Saved ✓
               </span>
             )}
             {status === 'failed' && (
               <button 
                 onClick={() => retrySave(nodeId)}
-                className="text-red-400 flex items-center gap-1 bg-red-900/30 px-2 py-0.5 rounded border border-red-800 shadow-sm hover:bg-red-900/50 transition-colors ml-2"
+                className="text-text-secondary flex items-center gap-1 bg-surface px-2 py-0.5 rounded border border-border shadow-sm hover:bg-surface transition-colors ml-2"
               >
                 ⚠ Save failed — Retry
               </button>
@@ -180,7 +180,7 @@ export function NodeEditor({
               }
             }}
             title="Toggle with Cmd/Ctrl + T"
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${isTestMode ? 'bg-orange-900/40 text-orange-300 hover:bg-orange-900/60' : 'text-slate-400 hover:bg-[#141414]'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${isTestMode ? 'bg-surface text-text-secondary hover:bg-surface' : 'text-text-secondary hover:bg-bg'}`}
           >
             {isTestMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {isTestMode ? '📖 Study Mode' : '🧠 Test Mode'}
@@ -189,7 +189,7 @@ export function NodeEditor({
             onClick={handleExportPdf}
             disabled={isExporting}
             title="Export this branch to PDF"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-teal-400 bg-teal-900/30 border border-teal-800 hover:bg-teal-900/50 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-accent bg-surface border border-border hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isExporting
               ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -200,7 +200,7 @@ export function NodeEditor({
             onClick={handleExportMd}
             disabled={isExportingMd}
             title="Export this branch to Markdown"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-violet-400 bg-violet-900/30 border border-violet-800 hover:bg-violet-900/50 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-text-secondary bg-surface border border-border hover:bg-surface disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isExportingMd
               ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -211,7 +211,7 @@ export function NodeEditor({
             <button
               onClick={handleClearContent}
               title="Erase all content"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-red-400 bg-red-900/10 border border-transparent hover:bg-red-900/30 hover:border-red-800/50"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-text-secondary bg-surface border border-transparent hover:bg-surface hover:border-border"
             >
               <Trash2 className="w-4 h-4" />
               Erase
@@ -227,7 +227,7 @@ export function NodeEditor({
                   e.stopPropagation();
                 }
               }}
-              className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'bg-[#141414] text-green-400 border-green-800 hover:bg-[#1e1e1e]' : 'bg-green-600 text-white border-transparent hover:bg-green-700'}`}
+              className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'bg-bg text-text-secondary border-border hover:bg-bg' : 'bg-surface-2 text-text border-transparent hover:bg-surface-2'}`}
             >
               {isCompleted ? '✓ Studied' : 'Mark as Studied'}
             </button>
@@ -236,11 +236,11 @@ export function NodeEditor({
       </div>
 
       {isTestMode && (
-        <div className="mx-1 xl:mx-4 mb-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-800 flex items-center justify-between gap-4">
+        <div className="mx-1 xl:mx-4 mb-3 rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm font-medium text-text flex items-center justify-between gap-4">
           <span>🧠 Test Mode — read your notes, then hide them to test recall</span>
           <button
             onClick={() => setIsNotesHidden((prev) => !prev)}
-            className="rounded-md bg-[#0a0a0a] px-3 py-1.5 text-xs font-bold text-orange-700 border border-orange-200 hover:bg-orange-100 transition"
+            className="rounded-md bg-bg px-3 py-1.5 text-xs font-bold text-text border border-border hover:bg-surface-2 transition"
           >
             {isNotesHidden ? 'Reveal' : 'Hide Notes'}
           </button>

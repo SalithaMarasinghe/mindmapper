@@ -12,11 +12,11 @@ import { MarkdownEditor } from '../common/MarkdownEditor';
 // ─── Shared input/label class tokens ─────────────────────────────────────────
 
 const INPUT_CLS =
-  'w-full rounded-lg border border-[#1a1a1a] bg-[#000000] px-3 py-2 text-sm text-slate-200 ' +
-  'placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 ' +
-  'focus:ring-teal-500/30 transition-shadow';
+  'w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text ' +
+  'placeholder:text-text-muted focus:border-border focus:outline-none focus:ring-2 ' +
+  'focus:ring-border-strong/30 transition-shadow';
 
-const LABEL_CLS = 'block text-sm font-semibold text-slate-300 mb-1.5';
+const LABEL_CLS = 'block text-sm font-semibold text-text mb-1.5';
 
 const SECTION_CLS = 'flex flex-col gap-1.5';
 
@@ -36,7 +36,7 @@ function FieldLabel({ children, optional }: { children: React.ReactNode; optiona
   return (
     <label className={LABEL_CLS}>
       {children}
-      {optional && <span className="text-slate-500 font-normal ml-1">– Optional</span>}
+      {optional && <span className="text-text-muted font-normal ml-1">– Optional</span>}
     </label>
   );
 }
@@ -73,7 +73,7 @@ function LinksEditor({ links, onChange }: { links: EventLink[]; onChange: (l: Ev
               type="button"
               onClick={() => remove(i)}
               aria-label="Remove link"
-              className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/10 rounded-lg transition flex-shrink-0"
+              className="p-2 text-text-muted hover:text-text-secondary hover:bg-surface rounded-lg transition flex-shrink-0"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -82,7 +82,7 @@ function LinksEditor({ links, onChange }: { links: EventLink[]; onChange: (l: Ev
         <button
           type="button"
           onClick={add}
-          className="flex items-center gap-1.5 text-xs font-semibold text-teal-400 hover:text-teal-300 transition w-fit"
+          className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent transition w-fit"
         >
           <Plus className="w-3.5 h-3.5" /> Add link
         </button>
@@ -110,7 +110,7 @@ function TasksEditor({ tasks, onChange }: { tasks: TaskItem[]; onChange: (t: Tas
               type="checkbox"
               checked={task.done}
               onChange={e => update(i, 'done', e.target.checked)}
-              className="w-4 h-4 rounded border-[#1a1a1a] accent-teal-500 flex-shrink-0 cursor-pointer"
+              className="w-4 h-4 rounded border-border accent-teal-500 flex-shrink-0 cursor-pointer"
               aria-label="Task done"
             />
             <input
@@ -123,7 +123,7 @@ function TasksEditor({ tasks, onChange }: { tasks: TaskItem[]; onChange: (t: Tas
               type="button"
               onClick={() => remove(i)}
               aria-label="Remove task"
-              className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/10 rounded-lg transition flex-shrink-0"
+              className="p-2 text-text-muted hover:text-text-secondary hover:bg-surface rounded-lg transition flex-shrink-0"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -132,7 +132,7 @@ function TasksEditor({ tasks, onChange }: { tasks: TaskItem[]; onChange: (t: Tas
         <button
           type="button"
           onClick={add}
-          className="flex items-center gap-1.5 text-xs font-semibold text-teal-400 hover:text-teal-300 transition w-fit"
+          className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent transition w-fit"
         >
           <Plus className="w-3.5 h-3.5" /> Add task
         </button>
@@ -305,24 +305,24 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
   // ── Render ──────────────────────────────────────────────────────────────
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-bg/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label={isEditing ? 'Edit event' : 'New event'}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] w-full max-w-4xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-bg rounded-2xl shadow-2xl border border-border w-full max-w-4xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-100">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-text">
             {isEditing ? 'Edit Event' : 'New Event'}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="p-1.5 hover:bg-[#141414] rounded-full text-slate-400 hover:text-slate-200 transition"
+            className="p-1.5 hover:bg-bg rounded-full text-text-secondary hover:text-text transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -333,14 +333,14 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
 
           {/* Type toggle — only shown when creating */}
           {!isEditing && (
-            <div className="flex bg-[#000000] p-1 rounded-lg border border-[#1a1a1a] self-start">
+            <div className="flex bg-bg p-1 rounded-lg border border-border self-start">
               <button
                 type="button"
                 onClick={() => setEventType('work')}
                 className={`flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                   eventType === 'work'
-                    ? 'bg-[#0a0a0a] text-teal-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-bg text-accent shadow-sm'
+                    : 'text-text-secondary hover:text-text'
                 }`}
               >
                 <Briefcase className="w-3.5 h-3.5" /> Work
@@ -350,8 +350,8 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                 onClick={() => setEventType('meeting')}
                 className={`flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                   eventType === 'meeting'
-                    ? 'bg-[#0a0a0a] text-violet-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-bg text-text-secondary shadow-sm'
+                    : 'text-text-secondary hover:text-text'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" /> Meeting
@@ -363,7 +363,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
 
           {/* Title */}
           <div className={SECTION_CLS}>
-            <FieldLabel>Title <span className="text-red-400">*</span></FieldLabel>
+            <FieldLabel>Title <span className="text-text-secondary">*</span></FieldLabel>
             <input
               autoFocus
               required
@@ -378,7 +378,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
           {/* Date + times */}
           <div className="grid grid-cols-3 gap-3">
             <div className={SECTION_CLS}>
-              <FieldLabel>Date <span className="text-red-400">*</span></FieldLabel>
+              <FieldLabel>Date <span className="text-text-secondary">*</span></FieldLabel>
               <input
                 required
                 type="date"
@@ -419,7 +419,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                     setProjectId(null);
                   }
                 }}
-                className="text-[11px] text-teal-400 hover:text-teal-300 font-semibold transition"
+                className="text-[11px] text-accent hover:text-accent font-semibold transition"
               >
                 {isCreatingNewProject ? '← Select Existing' : '+ New Project'}
               </button>
@@ -464,13 +464,13 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                   ))}
                   <option value="__new__">+ Create New Project…</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
               </div>
             )}
           </div>
 
           {/* ── Divider ──────────────────────────────────────────────── */}
-          <div className="border-t border-[#1a1a1a]" />
+          <div className="border-t border-border" />
 
           {/* ── Work form ────────────────────────────────────────────── */}
           {eventType === 'work' && (
@@ -510,7 +510,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                     <option value="done">Done</option>
                     <option value="blocked">Blocked</option>
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                 </div>
               </div>
 
@@ -530,14 +530,14 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                   aria-checked={isOptional}
                   onClick={() => setIsOptional(v => !v)}
                   className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${
-                    isOptional ? 'bg-teal-600' : 'bg-[#141414]'
+                    isOptional ? 'bg-accent' : 'bg-bg'
                   }`}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[#e2e8f0] shadow transition-transform ${
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-bg shadow transition-transform ${
                     isOptional ? 'translate-x-5' : 'translate-x-0'
                   }`} />
                 </button>
-                <span className="text-sm font-semibold text-slate-300">Attendance was optional for me</span>
+                <span className="text-sm font-semibold text-text">Attendance was optional for me</span>
               </div>
 
               {/* Discussion summary */}
@@ -571,27 +571,27 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
           )}
 
           {/* ── Divider ──────────────────────────────────────────────── */}
-          <div className="border-t border-[#1a1a1a]" />
+          <div className="border-t border-border" />
 
           {/* ── Continue from (chain linker) ──────────────────────────── */}
           <div className={SECTION_CLS}>
             <FieldLabel optional>
               <span className="flex items-center gap-1.5">
-                <Link2 className="w-3.5 h-3.5 text-slate-500" />
+                <Link2 className="w-3.5 h-3.5 text-text-muted" />
                 Continue from previous event
               </span>
             </FieldLabel>
 
             {selectedPrevEvent ? (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-900/30 border border-teal-800">
-                <span className="text-xs text-teal-300 flex-1 truncate font-medium">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border">
+                <span className="text-xs text-accent flex-1 truncate font-medium">
                   ↩ {selectedPrevEvent.date} — {selectedPrevEvent.title}
                 </span>
                 <button
                   type="button"
                   onClick={() => { setPreviousEventId(null); setChainSearch(''); }}
                   aria-label="Clear previous event link"
-                  className="text-slate-500 hover:text-red-400 transition flex-shrink-0"
+                  className="text-text-muted hover:text-text-secondary transition flex-shrink-0"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -608,17 +608,17 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                   onBlur={() => setTimeout(() => setChainOpen(false), 150)}
                 />
                 {chainOpen && filteredChainEvents.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg shadow-xl overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-bg border border-border rounded-lg shadow-xl overflow-hidden">
                     {filteredChainEvents.map(ev => (
                       <button
                         key={ev.id}
                         type="button"
                         onMouseDown={() => { setPreviousEventId(ev.id); setChainSearch(''); setChainOpen(false); }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-[#141414] transition flex items-center gap-3"
+                        className="w-full text-left px-3 py-2.5 hover:bg-bg transition flex items-center gap-3"
                       >
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.type === 'work' ? 'bg-teal-400' : 'bg-violet-400'}`} />
-                        <span className="text-xs text-slate-500 flex-shrink-0">{ev.date}</span>
-                        <span className="text-sm text-slate-200 truncate">{ev.title}</span>
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.type === 'work' ? 'bg-surface-2' : 'bg-surface-2'}`} />
+                        <span className="text-xs text-text-muted flex-shrink-0">{ev.date}</span>
+                        <span className="text-sm text-text truncate">{ev.title}</span>
                       </button>
                     ))}
                   </div>
@@ -629,7 +629,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
 
           {/* Error */}
           {error && (
-            <p className="text-sm text-red-400 bg-red-900/10 border border-red-800/50 rounded-lg px-3 py-2">
+            <p className="text-sm text-text-secondary bg-surface border border-border rounded-lg px-3 py-2">
               {error}
             </p>
           )}
@@ -637,11 +637,11 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
         </form>
 
         {/* ── Footer ──────────────────────────────────────────────────── */}
-        <div className="px-6 py-4 border-t border-[#1a1a1a] bg-[#000000]/50 flex justify-end gap-3 rounded-b-2xl">
+        <div className="px-6 py-4 border-t border-border bg-bg/50 flex justify-end gap-3 rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-slate-300 bg-[#141414]/50 hover:bg-[#141414] rounded-lg transition"
+            className="px-4 py-2 text-sm font-semibold text-text bg-bg/50 hover:bg-bg rounded-lg transition"
           >
             Cancel
           </button>
@@ -650,7 +650,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
             form=""
             onClick={handleSubmit}
             disabled={!title.trim() || !date || isSubmitting}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:bg-teal-800/50 disabled:text-teal-400 transition shadow-sm disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-text bg-accent hover:bg-surface-2 rounded-lg disabled:bg-surface-2 disabled:text-accent transition shadow-sm disabled:cursor-not-allowed"
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
             {isEditing ? 'Save Changes' : 'Create Event'}

@@ -12,7 +12,7 @@ export function NotesSection({ nodeId }: { nodeId: string }) {
         value={notes}
         onChange={e => updateContent(nodeId, { notes: e.target.value })}
         placeholder="Any additional notes, page references, or reminders..."
-        className="w-full resize-none outline-none text-gray-800 placeholder:text-gray-400 min-h-[120px] text-base leading-relaxed bg-transparent"
+        className="w-full resize-none outline-none text-text placeholder:text-text-secondary min-h-[120px] text-base leading-relaxed bg-transparent"
       />
     </SectionShell>
   );

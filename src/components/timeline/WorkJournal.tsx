@@ -252,25 +252,25 @@ export function WorkJournal() {
   return (
     <div className="flex flex-col w-full h-full min-h-0 flex-1">
       {/* Main Calendar View */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#000000] overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 bg-bg overflow-hidden">
         {/* Calendar Header / Nav */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a] bg-[#0a0a0a] flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-bg flex-shrink-0">
           <div className="flex items-center gap-2">
             <button 
               onClick={handlePrevWeek}
-              className="p-1.5 hover:bg-[#141414] rounded-md transition text-slate-400 hover:text-slate-200"
+              className="p-1.5 hover:bg-bg rounded-md transition text-text-secondary hover:text-text"
             >
               &larr;
             </button>
             <button 
               onClick={handleToday}
-              className="px-3 py-1 hover:bg-[#141414] rounded-md transition text-sm font-semibold text-slate-300"
+              className="px-3 py-1 hover:bg-bg rounded-md transition text-sm font-semibold text-text"
             >
               Today
             </button>
             <button 
               onClick={handleNextWeek}
-              className="p-1.5 hover:bg-[#141414] rounded-md transition text-slate-400 hover:text-slate-200"
+              className="p-1.5 hover:bg-bg rounded-md transition text-text-secondary hover:text-text"
             >
               &rarr;
             </button>
@@ -280,8 +280,8 @@ export function WorkJournal() {
             <button 
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition border ${
                 isGenerating 
-                  ? 'bg-[#0a0a0a] text-slate-400 border-slate-700 cursor-not-allowed' 
-                  : 'bg-teal-900/40 text-teal-300 hover:bg-teal-900/60 hover:text-teal-200 border-teal-700/50'
+                  ? 'bg-bg text-text-secondary border-border cursor-not-allowed' 
+                  : 'bg-surface text-accent hover:bg-surface hover:text-accent border-border'
               }`}
               onClick={handleGenerateSummary}
               disabled={isGenerating}
@@ -292,15 +292,15 @@ export function WorkJournal() {
 
             <button
               onClick={() => setIsLedgerOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition border bg-indigo-950/50 text-indigo-300 hover:bg-indigo-900/70 hover:text-indigo-100 border-indigo-700/60 shadow-sm"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition border bg-surface text-text-secondary hover:bg-surface hover:text-text border-border shadow-sm"
               title="Continuous Workload & Career Ledger (Storylines, Chronological, Markdown, AI Synthesis)"
             >
-              <FileText className="w-4 h-4 text-indigo-400" />
+              <FileText className="w-4 h-4 text-text-secondary" />
               Career Ledger (.md)
             </button>
           </div>
 
-          <span className="text-sm font-bold text-slate-200">
+          <span className="text-sm font-bold text-text">
             {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
         </div>

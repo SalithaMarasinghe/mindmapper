@@ -22,7 +22,7 @@ function formatTime(t: string | null): string {
 }
 
 const SECTION_CLS = 'flex flex-col gap-1.5';
-const LABEL_CLS = 'text-xs font-semibold text-slate-400 uppercase tracking-wider';
+const LABEL_CLS = 'text-xs font-semibold text-text-secondary uppercase tracking-wider';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -47,30 +47,30 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
   let statusLabel = '';
   let statusClass = '';
   if (event.type === 'work') {
-    if (event.status === 'done') { statusLabel = 'Done'; statusClass = 'bg-green-900/60 text-green-300 border-green-700'; }
-    else if (event.status === 'blocked') { statusLabel = 'Blocked'; statusClass = 'bg-red-900/60 text-red-300 border-red-700'; }
-    else { statusLabel = 'In Progress'; statusClass = 'bg-[#141414]/60 text-slate-300 border-slate-600'; }
+    if (event.status === 'done') { statusLabel = 'Done'; statusClass = 'bg-surface text-text-secondary border-border'; }
+    else if (event.status === 'blocked') { statusLabel = 'Blocked'; statusClass = 'bg-surface text-text-secondary border-border'; }
+    else { statusLabel = 'In Progress'; statusClass = 'bg-bg/60 text-text border-border'; }
   }
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#000000]/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-bg/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-3xl bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-bg rounded-2xl shadow-2xl border border-border flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-[#1a1a1a] bg-[#000000]/30">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-border bg-bg/30">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               {/* Type Badge */}
               {event.type === 'work' ? (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-900/60 border border-teal-700 text-teal-300 text-xs font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-border text-accent text-xs font-bold uppercase tracking-wider">
                   <Briefcase className="w-3.5 h-3.5" /> Work
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-violet-900/60 border border-violet-700 text-violet-300 text-xs font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-border text-text-secondary text-xs font-bold uppercase tracking-wider">
                   <Users className="w-3.5 h-3.5" /> Meeting
                 </span>
               )}
@@ -82,22 +82,22 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
                 </span>
               )}
               {event.type === 'meeting' && event.isOptional && (
-                <span className="px-2.5 py-1 rounded-md bg-[#0a0a0a] border border-slate-700 text-slate-300 text-xs font-bold uppercase tracking-wider">
+                <span className="px-2.5 py-1 rounded-md bg-bg border border-border text-text text-xs font-bold uppercase tracking-wider">
                   Optional
                 </span>
               )}
 
               {/* Project Tag */}
               {event.projectTag && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold text-slate-400 border border-slate-700/50 bg-[#0a0a0a]/50">
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold text-text-secondary border border-border/50 bg-bg/50">
                   #{event.projectTag}
                 </span>
               )}
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-100 mt-1">{event.title}</h2>
+            <h2 className="text-2xl font-bold text-text mt-1">{event.title}</h2>
             
-            <p className="text-sm font-medium text-slate-400">
+            <p className="text-sm font-medium text-text-secondary">
               {event.date}
               {event.startTime && ` • ${formatTime(event.startTime)}`}
               {event.endTime && ` – ${formatTime(event.endTime)}`}
@@ -108,7 +108,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="p-1.5 text-slate-400 hover:text-teal-400 hover:bg-teal-900/30 rounded-lg transition-colors flex-shrink-0"
+                className="p-1.5 text-text-secondary hover:text-accent hover:bg-surface rounded-lg transition-colors flex-shrink-0"
                 aria-label="Edit event"
               >
                 <Edit2 className="w-5 h-5" />
@@ -116,7 +116,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
             )}
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition-colors flex-shrink-0"
+              className="p-1.5 text-text-secondary hover:text-text hover:bg-bg rounded-lg transition-colors flex-shrink-0"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -129,21 +129,21 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
 
           {/* Chain Info */}
           {(prevEvent || nextEvent) && (
-            <div className="flex flex-col gap-2 p-3 rounded-lg bg-teal-950/20 border border-teal-900/30">
+            <div className="flex flex-col gap-2 p-3 rounded-lg bg-surface border border-border">
               {prevEvent && (
-                <div className="flex items-center gap-2 text-sm text-slate-300">
-                  <Link2 className="w-4 h-4 text-teal-500" />
-                  <span className="text-slate-400">Continued from:</span>
+                <div className="flex items-center gap-2 text-sm text-text">
+                  <Link2 className="w-4 h-4 text-accent" />
+                  <span className="text-text-secondary">Continued from:</span>
                   <span className="font-semibold">{prevEvent.title}</span>
-                  <span className="text-xs text-slate-500 ml-1">({prevEvent.date})</span>
+                  <span className="text-xs text-text-muted ml-1">({prevEvent.date})</span>
                 </div>
               )}
               {nextEvent && (
-                <div className="flex items-center gap-2 text-sm text-slate-300">
-                  <Link2 className="w-4 h-4 text-teal-500" />
-                  <span className="text-slate-400">Continued in:</span>
+                <div className="flex items-center gap-2 text-sm text-text">
+                  <Link2 className="w-4 h-4 text-accent" />
+                  <span className="text-text-secondary">Continued in:</span>
                   <span className="font-semibold">{nextEvent.title}</span>
-                  <span className="text-xs text-slate-500 ml-1">({nextEvent.date})</span>
+                  <span className="text-xs text-text-muted ml-1">({nextEvent.date})</span>
                 </div>
               )}
             </div>
@@ -162,7 +162,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
               {event.implementationNotes && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Implementation Notes</h3>
-                  <div className="p-3.5 rounded-lg bg-[#000000]/50 border border-[#1a1a1a]">
+                  <div className="p-3.5 rounded-lg bg-bg/50 border border-border">
                     <MarkdownViewer content={event.implementationNotes} />
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
                           href={link.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-teal-400 hover:text-teal-300 hover:underline"
+                          className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent hover:underline"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                           {link.label || link.url}
@@ -195,21 +195,21 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
           {event.type === 'meeting' && (
             <>
               {event.links.some((l) => l.url.includes('meet.google') || l.url.includes('zoom.us') || l.url.includes('teams.microsoft')) && (
-                <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-950/60 to-emerald-950/60 border border-teal-600/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-950/60 to-emerald-950/60 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-teal-500/20 text-teal-400">
+                    <div className="p-2 rounded-lg bg-accent text-accent">
                       <Video className="w-5 h-5 animate-pulse" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wide">Video Conference Ready</h4>
-                      <p className="text-xs text-slate-400">Click to directly enter the meeting room.</p>
+                      <h4 className="text-xs font-bold text-text uppercase tracking-wide">Video Conference Ready</h4>
+                      <p className="text-xs text-text-secondary">Click to directly enter the meeting room.</p>
                     </div>
                   </div>
                   <a
                     href={event.links.find((l) => l.url.includes('meet.google') || l.url.includes('zoom.us') || l.url.includes('teams.microsoft'))?.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-semibold text-xs rounded-lg shadow-md transition-all shrink-0"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-text font-semibold text-xs rounded-lg shadow-md transition-all shrink-0"
                   >
                     <Video className="w-4 h-4" />
                     <span>Join Meeting Directly</span>
@@ -227,7 +227,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
               {event.decisions && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Decisions Made</h3>
-                  <div className="p-3.5 rounded-lg bg-violet-950/20 border border-violet-900/30">
+                  <div className="p-3.5 rounded-lg bg-surface border border-border">
                     <MarkdownViewer content={event.decisions} />
                   </div>
                 </div>
@@ -240,11 +240,11 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
                     {event.tasksAssigned.map((task, i) => (
                       <li key={i} className="flex items-start gap-2.5">
                         {task.done ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-4 h-4 text-text flex-shrink-0 mt-0.5" />
                         ) : (
-                          <Circle className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                          <Circle className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
                         )}
-                        <span className={`text-sm ${task.done ? 'text-slate-400 line-through' : 'text-slate-200'}`}>
+                        <span className={`text-sm ${task.done ? 'text-text-secondary line-through' : 'text-text'}`}>
                           {task.text}
                         </span>
                       </li>
@@ -263,7 +263,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
                           href={link.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-teal-400 hover:text-teal-300 hover:underline"
+                          className="inline-flex items-center gap-1.5 text-sm text-accent hover:text-accent hover:underline"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                           {link.label || link.url}
@@ -279,10 +279,10 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
         </div>
         
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[#1a1a1a] bg-[#000000]/50 flex justify-end">
+        <div className="px-6 py-4 border-t border-border bg-bg/50 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 text-sm font-semibold text-white bg-[#141414] hover:bg-[#1e1e1e] rounded-lg transition shadow-sm"
+            className="px-5 py-2 text-sm font-semibold text-text bg-bg hover:bg-bg rounded-lg transition shadow-sm"
           >
             Close
           </button>

@@ -34,9 +34,9 @@ function WorkStep({
   onEdit: () => void;
 }) {
   const statusIcon =
-    event.status === 'done'    ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> :
-    event.status === 'blocked' ? <AlertTriangle className="w-3.5 h-3.5 text-red-400" />  :
-                                  <Clock className="w-3.5 h-3.5 text-slate-400" />;
+    event.status === 'done'    ? <CheckCircle2 className="w-3.5 h-3.5 text-text-secondary" /> :
+    event.status === 'blocked' ? <AlertTriangle className="w-3.5 h-3.5 text-text-secondary" />  :
+                                  <Clock className="w-3.5 h-3.5 text-text-secondary" />;
 
   const statusLabel =
     event.status === 'done'    ? 'Done' :
@@ -44,32 +44,32 @@ function WorkStep({
                                   'In Progress';
 
   const statusColor =
-    event.status === 'done'    ? 'text-green-400' :
-    event.status === 'blocked' ? 'text-red-400'   :
-                                  'text-slate-400';
+    event.status === 'done'    ? 'text-text-secondary' :
+    event.status === 'blocked' ? 'text-text-secondary'   :
+                                  'text-text-secondary';
 
   return (
     <div className="flex gap-4">
       {/* ── Spine ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col items-center flex-shrink-0" style={{ width: 32 }}>
         {/* Node circle */}
-        <div className="w-8 h-8 rounded-full bg-teal-900/70 border-2 border-teal-600 flex items-center justify-center flex-shrink-0 z-10">
-          <span className="text-xs font-bold text-teal-300">{index + 1}</span>
+        <div className="w-8 h-8 rounded-full bg-surface border-2 border-border flex items-center justify-center flex-shrink-0 z-10">
+          <span className="text-xs font-bold text-accent">{index + 1}</span>
         </div>
         {/* Connecting line */}
-        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-teal-700/60 to-[#141414]/30 mt-1" style={{ minHeight: 24 }} />}
+        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-teal-700/60 to-transparent mt-1" style={{ minHeight: 24 }} />}
       </div>
 
       {/* ── Card ──────────────────────────────────────────────────────── */}
       <div className="flex-1 pb-6">
         <button
           onClick={onEdit}
-          className="w-full text-left rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] hover:border-teal-700/60 hover:bg-[#0a0a0a]/80 transition-all duration-150 overflow-hidden group"
+          className="w-full text-left rounded-xl border border-border bg-bg hover:border-border hover:bg-bg/80 transition-all duration-150 overflow-hidden group"
         >
           {/* Header strip */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1a1a1a] bg-teal-950/20">
-            <Briefcase className="w-3.5 h-3.5 text-teal-400 flex-shrink-0" />
-            <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">Work</span>
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-surface">
+            <Briefcase className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+            <span className="text-xs font-bold text-accent uppercase tracking-wider">Work</span>
             <span className="ml-auto flex items-center gap-1.5 text-xs font-semibold">
               {statusIcon}
               <span className={statusColor}>{statusLabel}</span>
@@ -79,34 +79,34 @@ function WorkStep({
           <div className="px-4 py-3">
             {/* Date + time */}
             <div className="flex items-baseline gap-2 mb-1.5">
-              <span className="text-xs font-semibold text-slate-500">{formatDate(event.date)}</span>
+              <span className="text-xs font-semibold text-text-muted">{formatDate(event.date)}</span>
               {event.startTime && (
-                <span className="text-xs text-slate-600">
+                <span className="text-xs text-text-muted">
                   {formatTime(event.startTime)}{event.endTime ? ` – ${formatTime(event.endTime)}` : ''}
                 </span>
               )}
               {event.projectTag && (
-                <span className="ml-auto text-[10px] font-semibold bg-[#141414] text-slate-400 px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-[10px] font-semibold bg-bg text-text-secondary px-2 py-0.5 rounded-full">
                   {event.projectTag}
                 </span>
               )}
             </div>
 
             {/* Title */}
-            <h4 className="text-sm font-semibold text-slate-100 mb-2 group-hover:text-teal-200 transition-colors">
+            <h4 className="text-sm font-semibold text-text mb-2 group-hover:text-accent transition-colors">
               {event.title}
             </h4>
 
             {/* Description */}
             {event.description && (
-              <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
+              <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
                 {event.description}
               </p>
             )}
 
             {/* Implementation notes preview */}
             {event.implementationNotes && (
-              <p className="mt-2 text-xs text-slate-500 italic leading-relaxed line-clamp-2 border-l-2 border-[#1a1a1a] pl-2">
+              <p className="mt-2 text-xs text-text-muted italic leading-relaxed line-clamp-2 border-l-2 border-border pl-2">
                 {event.implementationNotes}
               </p>
             )}
@@ -121,7 +121,7 @@ function WorkStep({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="text-[10px] font-semibold text-teal-400 hover:text-teal-300 bg-teal-900/20 border border-teal-800/40 rounded-full px-2 py-0.5 transition"
+                    className="text-[10px] font-semibold text-accent hover:text-accent bg-surface border border-border rounded-full px-2 py-0.5 transition"
                   >
                     ↗ {l.label || l.url}
                   </a>
@@ -155,59 +155,59 @@ function MeetingStep({
     <div className="flex gap-4">
       {/* ── Spine ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col items-center flex-shrink-0" style={{ width: 32 }}>
-        <div className="w-8 h-8 rounded-full bg-violet-900/70 border-2 border-violet-600 flex items-center justify-center flex-shrink-0 z-10">
-          <span className="text-xs font-bold text-violet-300">{index + 1}</span>
+        <div className="w-8 h-8 rounded-full bg-surface border-2 border-border flex items-center justify-center flex-shrink-0 z-10">
+          <span className="text-xs font-bold text-text-secondary">{index + 1}</span>
         </div>
-        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-violet-700/60 to-[#141414]/30 mt-1" style={{ minHeight: 24 }} />}
+        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-violet-700/60 to-transparent mt-1" style={{ minHeight: 24 }} />}
       </div>
 
       {/* ── Card ──────────────────────────────────────────────────────── */}
       <div className="flex-1 pb-6">
         <button
           onClick={onEdit}
-          className="w-full text-left rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] hover:border-violet-700/60 transition-all duration-150 overflow-hidden group"
+          className="w-full text-left rounded-xl border border-border bg-bg hover:border-border transition-all duration-150 overflow-hidden group"
         >
           {/* Header strip */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1a1a1a] bg-violet-950/20">
-            <Users className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
-            <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">Meeting</span>
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-surface">
+            <Users className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Meeting</span>
             {event.isOptional && (
-              <span className="text-[10px] font-semibold text-slate-500 bg-[#141414] rounded-full px-2 py-0.5">optional</span>
+              <span className="text-[10px] font-semibold text-text-muted bg-bg rounded-full px-2 py-0.5">optional</span>
             )}
             {totalTasks > 0 && (
-              <span className="ml-auto text-xs text-slate-500">
-                Tasks: <span className={doneTasks === totalTasks ? 'text-green-400' : 'text-slate-400'}>{doneTasks}/{totalTasks}</span>
+              <span className="ml-auto text-xs text-text-muted">
+                Tasks: <span className={doneTasks === totalTasks ? 'text-text-secondary' : 'text-text-secondary'}>{doneTasks}/{totalTasks}</span>
               </span>
             )}
           </div>
 
           <div className="px-4 py-3">
             <div className="flex items-baseline gap-2 mb-1.5">
-              <span className="text-xs font-semibold text-slate-500">{formatDate(event.date)}</span>
+              <span className="text-xs font-semibold text-text-muted">{formatDate(event.date)}</span>
               {event.startTime && (
-                <span className="text-xs text-slate-600">
+                <span className="text-xs text-text-muted">
                   {formatTime(event.startTime)}{event.endTime ? ` – ${formatTime(event.endTime)}` : ''}
                 </span>
               )}
               {event.projectTag && (
-                <span className="ml-auto text-[10px] font-semibold bg-[#141414] text-slate-400 px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-[10px] font-semibold bg-bg text-text-secondary px-2 py-0.5 rounded-full">
                   {event.projectTag}
                 </span>
               )}
             </div>
 
-            <h4 className="text-sm font-semibold text-slate-100 mb-2 group-hover:text-violet-200 transition-colors">
+            <h4 className="text-sm font-semibold text-text mb-2 group-hover:text-text transition-colors">
               {event.title}
             </h4>
 
             {event.discussionSummary && (
-              <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
+              <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
                 {event.discussionSummary}
               </p>
             )}
 
             {event.decisions && (
-              <p className="mt-2 text-xs text-slate-500 italic leading-relaxed line-clamp-2 border-l-2 border-[#1a1a1a] pl-2">
+              <p className="mt-2 text-xs text-text-muted italic leading-relaxed line-clamp-2 border-l-2 border-border pl-2">
                 ↳ {event.decisions}
               </p>
             )}
@@ -216,17 +216,17 @@ function MeetingStep({
             {event.tasksAssigned.length > 0 && (
               <ul className="mt-2.5 flex flex-col gap-1">
                 {event.tasksAssigned.slice(0, 3).map((t, i) => (
-                  <li key={i} className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <li key={i} className="flex items-center gap-1.5 text-xs text-text-secondary">
                     <span className={`w-3 h-3 rounded-sm border flex items-center justify-center flex-shrink-0 ${
-                      t.done ? 'border-green-600 bg-green-900/40' : 'border-[#1a1a1a]'
+                      t.done ? 'border-border bg-surface' : 'border-border'
                     }`}>
-                      {t.done && <span className="text-green-400 text-[8px] font-bold">✓</span>}
+                      {t.done && <span className="text-text-secondary text-[8px] font-bold">✓</span>}
                     </span>
-                    <span className={t.done ? 'line-through text-slate-600' : ''}>{t.text}</span>
+                    <span className={t.done ? 'line-through text-text-muted' : ''}>{t.text}</span>
                   </li>
                 ))}
                 {event.tasksAssigned.length > 3 && (
-                  <li className="text-[10px] text-slate-600 pl-4.5">
+                  <li className="text-[10px] text-text-muted pl-4.5">
                     +{event.tasksAssigned.length - 3} more tasks
                   </li>
                 )}
@@ -242,7 +242,7 @@ function MeetingStep({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="text-[10px] font-semibold text-violet-400 hover:text-violet-300 bg-violet-900/20 border border-violet-800/40 rounded-full px-2 py-0.5 transition"
+                    className="text-[10px] font-semibold text-text-secondary hover:text-text-secondary bg-surface border border-border rounded-full px-2 py-0.5 transition"
                   >
                     ↗ {l.label || l.url}
                   </a>
@@ -270,7 +270,7 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-end sm:justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-end sm:justify-center p-0 sm:p-4 bg-bg/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Chain view"
@@ -278,7 +278,7 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
     >
       {/* Panel — slides in from the right on mobile, centred modal on desktop */}
       <div className="
-        bg-[#000000] border-l sm:border border-[#1a1a1a]
+        bg-bg border-l sm:border border-border
         w-full sm:w-[540px] h-[90vh] sm:h-auto sm:max-h-[80vh]
         rounded-t-2xl sm:rounded-2xl shadow-2xl
         flex flex-col overflow-hidden
@@ -286,20 +286,20 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
       ">
 
         {/* ── Header ───────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#1a1a1a] flex-shrink-0 bg-[#0a0a0a]">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-border flex-shrink-0 bg-bg">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-teal-900/60 border border-teal-700 flex items-center justify-center">
-              <Link2 className="w-3.5 h-3.5 text-teal-400" />
+            <div className="w-7 h-7 rounded-lg bg-surface border border-border flex items-center justify-center">
+              <Link2 className="w-3.5 h-3.5 text-accent" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-100">Chain Thread</h2>
-              <p className="text-[10px] text-slate-500">{chain.length} linked event{chain.length !== 1 ? 's' : ''}</p>
+              <h2 className="text-sm font-bold text-text">Chain Thread</h2>
+              <p className="text-[10px] text-text-muted">{chain.length} linked event{chain.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
           <button
             onClick={onClose}
             aria-label="Close chain view"
-            className="ml-auto p-1.5 hover:bg-[#141414] rounded-full text-slate-400 hover:text-slate-200 transition"
+            className="ml-auto p-1.5 hover:bg-bg rounded-full text-text-secondary hover:text-text transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -309,9 +309,9 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
         <div className="flex-1 overflow-y-auto px-6 pt-6 pb-2">
           {chain.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Link2 className="w-10 h-10 text-slate-700 mb-3" />
-              <p className="text-sm font-semibold text-slate-500">No events found in this chain.</p>
-              <p className="text-xs text-slate-600 mt-1">They may not have been loaded yet — navigate to their week first.</p>
+              <Link2 className="w-10 h-10 text-text-muted mb-3" />
+              <p className="text-sm font-semibold text-text-muted">No events found in this chain.</p>
+              <p className="text-xs text-text-muted mt-1">They may not have been loaded yet — navigate to their week first.</p>
             </div>
           ) : (
             <div>
@@ -343,9 +343,9 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
         </div>
 
         {/* ── Footer note ──────────────────────────────────────────────── */}
-        <div className="px-6 py-3 border-t border-[#1a1a1a] flex-shrink-0">
-          <p className="text-[10px] text-slate-600">
-            Click any step to open it for editing. Chain ID: <span className="font-mono text-slate-700">{chainId.slice(0, 8)}…</span>
+        <div className="px-6 py-3 border-t border-border flex-shrink-0">
+          <p className="text-[10px] text-text-muted">
+            Click any step to open it for editing. Chain ID: <span className="font-mono text-text-muted">{chainId.slice(0, 8)}…</span>
           </p>
         </div>
       </div>

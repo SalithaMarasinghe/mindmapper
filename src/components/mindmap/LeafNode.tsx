@@ -34,7 +34,7 @@ export function LeafNode({ data }: LeafNodeProps) {
         }
       }}
       onContextMenu={handleContextMenu}
-      className="group relative bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-2 rounded-full shadow-sm text-sm cursor-pointer hover:bg-[#141414] hover:border-teal-600 hover:shadow hover:-translate-x-0.5 transition-all min-w-[140px] flex justify-between items-center"
+      className="group relative bg-bg border border-border px-3 py-2 rounded-full shadow-sm text-sm cursor-pointer hover:bg-bg hover:border-border hover:shadow hover:-translate-x-0.5 transition-all min-w-[140px] flex justify-between items-center"
     >
       <Handle id="t-left" type="target" position={Position.Left} className="opacity-0" />
       <Handle id="t-right" type="target" position={Position.Right} className="opacity-0 w-0 h-0" />
@@ -45,13 +45,13 @@ export function LeafNode({ data }: LeafNodeProps) {
       <Handle id="s-top" type="source" position={Position.Top} className="opacity-0 w-0 h-0" />
       <Handle id="s-bottom" type="source" position={Position.Bottom} className="opacity-0 w-0 h-0" />
       
-      <span className="text-slate-300 font-medium truncate pr-3">{node.label}</span>
+      <span className="text-text font-medium truncate pr-3">{node.label}</span>
       
       <div className="flex items-center">
         {isCompleted && (
-          <div className="w-2 h-2 rounded-full bg-green-500 mr-2 shadow-sm" />
+          <div className="w-2 h-2 rounded-full bg-surface-2 mr-2 shadow-sm" />
         )}
-        <span className="text-xs text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity font-semibold whitespace-nowrap">
+        <span className="text-xs text-accent opacity-0 group-hover:opacity-100 transition-opacity font-semibold whitespace-nowrap">
           → Study
         </span>
       </div>
@@ -62,7 +62,7 @@ export function LeafNode({ data }: LeafNodeProps) {
           e.stopPropagation();
           onPreview?.(node);
         }}
-        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-teal-600/90 text-white flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all"
+        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-accent text-text flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all"
         aria-label="Quick preview"
       >
         <Eye className="w-3.5 h-3.5" />

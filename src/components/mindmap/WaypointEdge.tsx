@@ -109,7 +109,7 @@ export function WaypointEdge({
       <path
         d={path}
         fill="none"
-        stroke={isHovered ? '#7C3AED22' : 'transparent'}
+        stroke={isHovered ? 'var(--accent-dim)' : 'transparent'}
         strokeWidth={25}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -122,7 +122,7 @@ export function WaypointEdge({
         id={id}
         d={path}
         fill="none"
-        stroke={isHovered || localWaypoints.length > 0 ? '#7C3AED' : (style.stroke || '#94a3b8')}
+        stroke={isHovered || localWaypoints.length > 0 ? 'var(--accent)' : (style.stroke || 'var(--border)')}
         strokeWidth={isHovered ? 4 : (style.strokeWidth || 2)}
         markerEnd={markerEnd}
         style={{ 
@@ -161,7 +161,7 @@ export function WaypointEdge({
                 height: '12px',
                 borderRadius: '50%',
                 backgroundColor: 'white',
-                border: '3px solid #7C3AED',
+                border: '3px solid var(--accent)',
                 cursor: dragInfo?.id === wp.id ? 'grabbing' : 'grab',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                 transform: dragInfo?.id === wp.id ? 'scale(1.3)' : 'scale(1)',
@@ -189,7 +189,7 @@ export function WaypointEdge({
                 height: '10px',
                 borderRadius: '50%',
                 backgroundColor: 'white',
-                border: '2px solid #7C3AED66',
+                border: '2px solid var(--accent)66',
                 cursor: 'copy',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                 opacity: 0.8,

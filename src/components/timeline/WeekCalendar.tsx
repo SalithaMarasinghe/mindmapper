@@ -123,27 +123,27 @@ function EventContextMenu({
     <div
       ref={ref}
       style={{ top: menu.y, left: menu.x, position: 'fixed' }}
-      className="z-[200] w-52 bg-[#0a0a0a] rounded-xl shadow-xl shadow-black/50 border border-[#1a1a1a] py-1.5 animate-in fade-in zoom-in-95 duration-100"
+      className="z-[200] w-52 bg-bg rounded-xl shadow-xl shadow-black/50 border border-border py-1.5 animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="px-3 py-2 border-b border-[#1a1a1a] mb-1">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
+      <div className="px-3 py-2 border-b border-border mb-1">
+        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">
           {menu.event.title}
         </p>
       </div>
 
-      <button onClick={() => { onEdit(); onClose(); }} className={`${ITEM} text-slate-300 hover:bg-teal-900/40 hover:text-teal-300`}>
+      <button onClick={() => { onEdit(); onClose(); }} className={`${ITEM} text-text hover:bg-surface hover:text-accent`}>
         <Edit2 className="h-4 w-4" /> Edit event
       </button>
 
       {menu.event.chainId && onViewChain && (
-        <button onClick={() => { onViewChain(); onClose(); }} className={`${ITEM} text-slate-300 hover:bg-teal-900/40 hover:text-teal-300`}>
+        <button onClick={() => { onViewChain(); onClose(); }} className={`${ITEM} text-text hover:bg-surface hover:text-accent`}>
           <GitBranch className="h-4 w-4" /> View full chain
         </button>
       )}
 
-      <div className="border-t border-[#1a1a1a] my-1" />
+      <div className="border-t border-border my-1" />
 
-      <button onClick={() => { onDelete(); onClose(); }} className={`${ITEM} text-red-400 hover:bg-red-900/30`}>
+      <button onClick={() => { onDelete(); onClose(); }} className={`${ITEM} text-text-secondary hover:bg-surface`}>
         <Trash2 className="h-4 w-4" /> Delete event
       </button>
     </div>
@@ -154,9 +154,9 @@ function EventContextMenu({
 
 function getEventColors(type: 'work' | 'meeting') {
   if (type === 'work') {
-    return { bg: 'bg-teal-900/60', border: 'border-teal-700', text: 'text-teal-100', dot: 'bg-teal-400' };
+    return { bg: 'bg-surface', border: 'border-border', text: 'text-accent', dot: 'bg-surface-2' };
   }
-  return { bg: 'bg-violet-900/60', border: 'border-violet-700', text: 'text-violet-100', dot: 'bg-violet-400' };
+  return { bg: 'bg-surface', border: 'border-border', text: 'text-text', dot: 'bg-surface-2' };
 }
 
 // ─── EventBlock ───────────────────────────────────────────────────────────────
@@ -180,9 +180,9 @@ function EventBlock({ event, startHour, isChained, onClick, onContextMenu }: Eve
   let statusLabel = '';
   let statusClass = '';
   if (event.type === 'work') {
-    if (event.status === 'done')        { statusLabel = '✓ Done';        statusClass = 'bg-green-900/60 text-green-300'; }
-    else if (event.status === 'blocked')     { statusLabel = '⚠ Blocked';     statusClass = 'bg-red-900/60 text-red-300'; }
-    else                                     { statusLabel = '• In Progress'; statusClass = 'bg-[#141414]/60 text-slate-400'; }
+    if (event.status === 'done')        { statusLabel = '✓ Done';        statusClass = 'bg-surface text-text-secondary'; }
+    else if (event.status === 'blocked')     { statusLabel = '⚠ Blocked';     statusClass = 'bg-surface text-text-secondary'; }
+    else                                     { statusLabel = '• In Progress'; statusClass = 'bg-bg/60 text-text-secondary'; }
   }
 
   return (
@@ -320,19 +320,19 @@ export function WeekCalendar({
 
   return (
     <>
-      <div className="flex flex-col select-none bg-[#000000] overflow-hidden h-full">
+      <div className="flex flex-col select-none bg-bg overflow-hidden h-full">
 
         {/* Day headers */}
-        <div className="flex border-b border-[#1a1a1a] bg-[#0a0a0a] flex-shrink-0">
-          <div style={{ width: GUTTER_PX, minWidth: GUTTER_PX }} className="border-r border-[#1a1a1a]" />
+        <div className="flex border-b border-border bg-bg flex-shrink-0">
+          <div style={{ width: GUTTER_PX, minWidth: GUTTER_PX }} className="border-r border-border" />
           {weekDates.map((dateStr) => {
             const { weekday, day, isToday } = formatDayHeader(dateStr);
             return (
-              <div key={dateStr} className="flex-1 flex flex-col items-center py-2 border-l border-[#1a1a1a] min-w-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{weekday}</span>
+              <div key={dateStr} className="flex-1 flex flex-col items-center py-2 border-l border-border min-w-0">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{weekday}</span>
                 <span className={`
                   mt-1 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold transition-colors
-                  ${isToday ? 'bg-teal-600 text-white' : 'text-slate-300'}
+                  ${isToday ? 'bg-accent text-text' : 'text-text'}
                 `}>
                   {day}
                 </span>
@@ -346,7 +346,7 @@ export function WeekCalendar({
           <div className="flex relative" style={{ height: totalHeightPx }}>
 
             {/* Time gutter */}
-            <div className="relative flex-shrink-0 border-r border-[#1a1a1a]" style={{ width: GUTTER_PX, minWidth: GUTTER_PX }}>
+            <div className="relative flex-shrink-0 border-r border-border" style={{ width: GUTTER_PX, minWidth: GUTTER_PX }}>
               {hourLabels.map((h) => (
                 <div
                   key={h}
@@ -354,7 +354,7 @@ export function WeekCalendar({
                   style={{ top: (h - startHour) * HOUR_PX - 9, height: 18 }}
                 >
                   {h < endHour && (
-                    <span className="text-xs text-slate-200 whitespace-nowrap font-medium leading-none">
+                    <span className="text-xs text-text whitespace-nowrap font-medium leading-none">
                       {hourLabel(h)}
                     </span>
                   )}
@@ -373,7 +373,7 @@ export function WeekCalendar({
                   key={dateStr}
                   role="gridcell"
                   aria-label={dateStr}
-                  className={`relative flex-1 border-l border-[#1a1a1a] cursor-crosshair min-w-0 ${isToday ? 'bg-teal-950/10' : ''}`}
+                  className={`relative flex-1 border-l border-border cursor-crosshair min-w-0 ${isToday ? 'bg-surface' : ''}`}
                   onMouseDown={(e) => handleColumnMouseDown(e, dateStr)}
                   onMouseMove={(e) => handleColumnMouseMove(e, dateStr)}
                 >
@@ -381,7 +381,7 @@ export function WeekCalendar({
                   {hourLabels.map((h) => (
                     <div
                       key={h}
-                      className="absolute left-0 right-0 border-t border-[#1a1a1a]/50"
+                      className="absolute left-0 right-0 border-t border-border/50"
                       style={{ top: (h - startHour) * HOUR_PX }}
                     />
                   ))}
@@ -390,7 +390,7 @@ export function WeekCalendar({
                   {hourLabels.slice(0, -1).map((h) => (
                     <div
                       key={`${h}-half`}
-                      className="absolute left-0 right-0 border-t border-dashed border-[#1a1a1a]/25"
+                      className="absolute left-0 right-0 border-t border-dashed border-border/25"
                       style={{ top: (h - startHour) * HOUR_PX + HOUR_PX / 2 }}
                     />
                   ))}
@@ -402,8 +402,8 @@ export function WeekCalendar({
                       style={{ top: nowTopPx }}
                     >
                       <div className="flex items-center">
-                        <div className="w-2 h-2 rounded-full bg-teal-400 -ml-1 flex-shrink-0" />
-                        <div className="flex-1 h-[1.5px] bg-teal-400/70" />
+                        <div className="w-2 h-2 rounded-full bg-surface-2 -ml-1 flex-shrink-0" />
+                        <div className="flex-1 h-[1.5px] bg-surface-2" />
                       </div>
                     </div>
                   )}
@@ -411,13 +411,13 @@ export function WeekCalendar({
                   {/* Drag ghost */}
                   {isDragCol && drag && drag.endHour > drag.startHour && (
                     <div
-                      className="absolute left-1 right-1 z-10 rounded-md border border-teal-500 bg-teal-500/15 pointer-events-none"
+                      className="absolute left-1 right-1 z-10 rounded-md border border-border bg-accent pointer-events-none"
                       style={{
                         top:    (drag.startHour - startHour) * HOUR_PX,
                         height: Math.max((drag.endHour - drag.startHour) * HOUR_PX, 6),
                       }}
                     >
-                      <span className="text-[10px] font-semibold text-teal-300 px-1.5 block leading-tight mt-0.5">
+                      <span className="text-[10px] font-semibold text-accent px-1.5 block leading-tight mt-0.5">
                         {hoursToTime(drag.startHour)} – {hoursToTime(drag.endHour)}
                       </span>
                     </div>

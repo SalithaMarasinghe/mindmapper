@@ -32,7 +32,7 @@ export function DefinitionSection({ nodeId }: { nodeId: string }) {
         value={definition}
         onChange={handleChange}
         placeholder="What is this concept in your own words?"
-        className="w-full resize-none outline-none text-gray-800 placeholder:text-gray-400 min-h-[80px] text-base leading-relaxed bg-transparent font-medium"
+        className="w-full resize-none outline-none text-text placeholder:text-text-secondary min-h-[80px] text-base leading-relaxed bg-transparent font-medium"
       />
     </SectionShell>
   );

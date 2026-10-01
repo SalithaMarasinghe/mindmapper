@@ -43,8 +43,8 @@ export function BranchNode({ data }: BranchNodeProps) {
         }
       }}
       onContextMenu={handleContextMenu}
-      className="group bg-[#0a0a0a] px-4 py-3 rounded-lg shadow-sm border-l-4 border-y border-r border-[#1a1a1a] min-w-[160px] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all relative"
-      style={{ borderLeftColor: node.color || '#0d9488' }}
+      className="group bg-bg px-4 py-3 rounded-lg shadow-sm border-l-4 border-y border-r border-border min-w-[160px] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all relative"
+      style={{ borderLeftColor: node.color || 'var(--accent)' }}
     >
       <Handle id="t-left" type="target" position={Position.Left} className="opacity-0" />
       <Handle id="t-right" type="target" position={Position.Right} className="opacity-0 w-0 h-0" />
@@ -52,18 +52,18 @@ export function BranchNode({ data }: BranchNodeProps) {
       <Handle id="t-bottom" type="target" position={Position.Bottom} className="opacity-0 w-0 h-0" />
       
       <div className="flex items-center justify-between gap-3">
-        <span className="font-semibold text-slate-200 text-sm pr-4">{node.label}</span>
+        <span className="font-semibold text-text text-sm pr-4">{node.label}</span>
         {isCompleted && (
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm flex-shrink-0" />
+          <div className="w-2.5 h-2.5 rounded-full bg-surface-2 shadow-sm flex-shrink-0" />
         )}
       </div>
 
       {!readOnly && (
         <>
-          <button onClick={(e) => handleAdd(e, 'left')} className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-teal-600 text-white text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
-          <button onClick={(e) => handleAdd(e, 'right')} className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-teal-600 text-white text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
-          <button onClick={(e) => handleAdd(e, 'top')} className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-teal-600 text-white text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
-          <button onClick={(e) => handleAdd(e, 'bottom')} className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-5 h-5 rounded-full bg-teal-600 text-white text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
+          <button onClick={(e) => handleAdd(e, 'left')} className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-accent text-text text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
+          <button onClick={(e) => handleAdd(e, 'right')} className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-accent text-text text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
+          <button onClick={(e) => handleAdd(e, 'top')} className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-accent text-text text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
+          <button onClick={(e) => handleAdd(e, 'bottom')} className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-5 h-5 rounded-full bg-accent text-text text-xs flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all">+</button>
         </>
       )}
       <button
@@ -72,7 +72,7 @@ export function BranchNode({ data }: BranchNodeProps) {
           e.stopPropagation();
           onPreview?.(node);
         }}
-        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-teal-600/90 text-white flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all"
+        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-accent text-text flex items-center justify-center shadow opacity-0 group-hover:opacity-100 hover:scale-110 transition-all"
         aria-label="Quick preview"
       >
         <Eye className="w-3.5 h-3.5" />

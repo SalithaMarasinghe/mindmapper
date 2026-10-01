@@ -59,7 +59,7 @@ export function QuickPreviewModal({
         <div className="preview-modal-header">
           <div className="flex items-center gap-3 pr-10">
             <h2 className="text-xl font-bold text-[var(--color-text)]">{node.label}</h2>
-            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${content?.isCompleted ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${content?.isCompleted ? 'bg-surface-2 text-text' : 'bg-surface text-text-muted'}`}>
               {content?.isCompleted ? 'Studied ✓' : 'Not studied yet'}
             </span>
           </div>
@@ -69,10 +69,10 @@ export function QuickPreviewModal({
         <div className="preview-modal-content p-6">
           {isLoading ? (
             <div className="space-y-3">
-              <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 w-5/6 bg-gray-200 rounded animate-pulse" />
-              <div className="h-24 w-full bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-40 bg-surface rounded animate-pulse" />
+              <div className="h-4 w-full bg-surface rounded animate-pulse" />
+              <div className="h-4 w-5/6 bg-surface rounded animate-pulse" />
+              <div className="h-24 w-full bg-surface rounded animate-pulse" />
             </div>
           ) : content?.richContent && content.richContent.length > 0 ? (
             <div className="bg-[var(--color-surface)]">
@@ -98,7 +98,7 @@ export function QuickPreviewModal({
                 onClose();
                 navigate(`/map/${node.mapId}/node/${node.id}`);
               }}
-              className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition"
+              className="px-4 py-2 rounded-lg bg-accent hover:bg-surface-2 text-text text-sm font-semibold transition"
             >
               Open Full Page →
             </button>

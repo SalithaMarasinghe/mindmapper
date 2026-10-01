@@ -90,11 +90,11 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
   };
 
   return (
-    <div className="h-14 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center justify-between px-2 sm:px-4 gap-2 z-40 relative shadow-lg">
+    <div className="h-14 bg-bg border-b border-border flex items-center justify-between px-2 sm:px-4 gap-2 z-40 relative shadow-lg">
       <div className="flex items-center gap-2 shrink-0">
         <button 
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#141414] active:scale-95"
+          className="flex items-center gap-1.5 text-text-secondary hover:text-text transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-bg active:scale-95"
         >
           <span>← Dashboard</span>
         </button>
@@ -102,27 +102,27 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
 
       <div className="flex-1 min-w-0 flex justify-center items-center">
         {isEditingTitle ? (
-          <div className="flex items-center gap-2 bg-[#000000] px-2 py-1 rounded-lg border border-teal-500 ring-4 ring-teal-900/40">
+          <div className="flex items-center gap-2 bg-bg px-2 py-1 rounded-lg border border-border ring-4 ring-border-strong/40">
             <input 
               autoFocus
-              className="text-sm font-bold text-slate-100 bg-transparent px-1 focus:outline-none min-w-[200px]"
+              className="text-sm font-bold text-text bg-transparent px-1 focus:outline-none min-w-[200px]"
               value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
               onKeyDown={handleTitleKeyDown}
               onBlur={handleTitleSave}
             />
-            <button className="text-teal-400 p-1 hover:bg-teal-900/40 rounded-md transition" onClick={handleTitleSave}>
+            <button className="text-accent p-1 hover:bg-surface rounded-md transition" onClick={handleTitleSave}>
               <Check className="h-4 w-4" />
             </button>
           </div>
         ) : (
           <div 
             onClick={handleTitleClick}
-            className="flex items-center gap-2 text-base font-bold text-slate-100 group cursor-pointer hover:text-teal-400 transition max-w-[34vw] sm:max-w-[45vw]"
+            className="flex items-center gap-2 text-base font-bold text-text group cursor-pointer hover:text-accent transition max-w-[34vw] sm:max-w-[45vw]"
           >
             <span className="text-xl leading-none -mt-0.5">{map?.emoji}</span>
             <span className="truncate">{map?.title || 'Loading map...'}</span>
-            {!isReadOnly && <Edit2 className="h-3.5 w-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition" />}
+            {!isReadOnly && <Edit2 className="h-3.5 w-3.5 text-text-muted opacity-0 group-hover:opacity-100 transition" />}
           </div>
         )}
       </div>
@@ -130,7 +130,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
       <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto max-w-[58vw] sm:max-w-none pr-1">
         <div className="relative shrink-0">
           <button
-            className="px-3 py-1.5 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition whitespace-nowrap"
+            className="px-3 py-1.5 text-sm font-semibold text-text bg-accent hover:bg-surface-2 rounded-lg transition whitespace-nowrap"
             title="Share Map"
             onClick={handleShare}
           >
@@ -140,24 +140,24 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
             </span>
           </button>
           {sharePopoverOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl shadow-xl p-3 z-50">
-              <p className="text-xs font-semibold text-slate-400 mb-2">Shareable link</p>
+            <div className="absolute right-0 mt-2 w-80 bg-bg border border-border rounded-xl shadow-xl p-3 z-50">
+              <p className="text-xs font-semibold text-text-secondary mb-2">Shareable link</p>
               <input
                 readOnly
                 value={shareUrl}
-                className="w-full text-sm bg-[#000000] border border-[#1a1a1a] rounded-lg px-3 py-2 text-slate-300"
+                className="w-full text-sm bg-bg border border-border rounded-lg px-3 py-2 text-text"
               />
               <div className="mt-3 flex justify-between items-center">
                 <button
                   onClick={handleRevoke}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-400 hover:text-red-300"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-text-secondary"
                 >
                   <Link2Off className="w-4 h-4" />
                   Revoke link
                 </button>
                 <button
                   onClick={() => setSharePopoverOpen(false)}
-                  className="text-sm font-semibold text-slate-400 hover:text-slate-200"
+                  className="text-sm font-semibold text-text-secondary hover:text-text"
                 >
                   Close
                 </button>
@@ -169,16 +169,16 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
         {!isReadOnly && (
           <button 
             onClick={onAddBranch}
-            className="flex items-center gap-1.5 text-white bg-teal-600 hover:bg-teal-700 transition text-sm font-semibold px-3.5 py-1.5 rounded-lg border border-teal-700 shadow-sm whitespace-nowrap"
+            className="flex items-center gap-1.5 text-text bg-accent hover:bg-surface-2 transition text-sm font-semibold px-3.5 py-1.5 rounded-lg border border-border shadow-sm whitespace-nowrap"
           >
             <PlusCircle className="h-4 w-4" />
             <span>+ Add Branch</span>
           </button>
         )}
-        <div className="w-px h-6 bg-[#141414] mx-1.5 shrink-0" />
+        <div className="w-px h-6 bg-bg mx-1.5 shrink-0" />
         <button 
            onClick={onFitView}
-          className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition whitespace-nowrap"
+          className="px-3 py-1.5 text-sm font-semibold text-text-secondary hover:text-text hover:bg-bg rounded-lg transition whitespace-nowrap"
           title="Fit View"
         >
           <span className="inline-flex items-center gap-1.5">
@@ -189,7 +189,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
         {!isReadOnly && (
           <button
             onClick={onTidyUp}
-            className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition whitespace-nowrap"
+            className="px-3 py-1.5 text-sm font-semibold text-text-secondary hover:text-text hover:bg-bg rounded-lg transition whitespace-nowrap"
             title="Tidy Up"
           >
             Tidy Up

@@ -12,7 +12,7 @@ export function MentalModelSection({ nodeId }: { nodeId: string }) {
         value={mentalModel}
         onChange={e => updateContent(nodeId, { mentalModel: e.target.value })}
         placeholder="How do you think about this? What analogy helps?"
-        className="w-full resize-none outline-none text-gray-800 placeholder:text-gray-400 min-h-[100px] text-base leading-relaxed bg-transparent font-medium"
+        className="w-full resize-none outline-none text-text placeholder:text-text-secondary min-h-[100px] text-base leading-relaxed bg-transparent font-medium"
       />
     </SectionShell>
   );
