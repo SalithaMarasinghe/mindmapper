@@ -1333,16 +1333,18 @@ Deno.serve(async (req: Request) => {
       /^(pause|resume|start|finish|stop|complete|take a break|break|lunch|wrapping up|daily wrap up|carry over|carryover|roll over)\b/i.test(cleanMsg) ||
       /^(i(?:'m|\s+am)?\s+(?:taking|going on|on)\s+(?:a\s+)?(?:\d+\s+min(?:ute)?s?\s+)?(?:break|lunch|walk))\b/i.test(cleanMsg) ||
       /^(i(?:'m|\s+am)?\s+back(?:\s+from)?(?:\s+(?:break|lunch))?)\b/i.test(cleanMsg) ||
-      /^(i finished|i built|i completed|i tested|finished task|done with)\b/i.test(cleanMsg);
+      /^(i finished|i built|i completed|i tested|finished task|done with)\b/i.test(cleanMsg) ||
+      /\b(for the past|i have been|i spent|i worked on|working on)\b/i.test(cleanMsg);
 
     const isMeetingLog =
       /^(meeting|sync|standup|call|discussed|1-on-1|google meet|zoom)\b/i.test(cleanMsg) ||
       message.includes('10:32 AM:') || message.includes('Tech Lead:');
 
     const isTaskPlanningOrQuery =
-      /^(plan|create|add|schedule|log)\s+(?:a\s+)?(?:task|to-?do|ticket)\b/i.test(cleanMsg) ||
+      /^(plan|create|add|schedule|log|make|record)\s+(?:a\s+|me\s+a\s+|me\s+)?(?:task|to-?do|ticket|workload|work\s?load|task\s?load|work\s?journal|journal|entry)\b/i.test(cleanMsg) ||
       /^(what are my tasks|show my tasks|what task is running|today's tasks|wrap up|daily wrap up|carry over)\b/i.test(cleanMsg) ||
-      /^(new|create)\s+(?:a\s+)?project\b/i.test(cleanMsg);
+      /^(new|create)\s+(?:a\s+)?project\b/i.test(cleanMsg) ||
+      /\b(create|add|make|log|record)\s+(?:a\s+|me\s+a\s+|me\s+)?(?:workload|work\s?load|task|task\s?load|to-?do|journal|entry)\b/i.test(cleanMsg);
 
     const isEmailCheck =
       /\b(check my email|check email|check emails|any meetings|any meeting invites|meeting invite|did i get an email|sync meetings|sync email|read my email|unread email|check inbox)\b/i.test(cleanMsg);
