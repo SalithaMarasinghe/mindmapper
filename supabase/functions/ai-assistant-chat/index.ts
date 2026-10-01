@@ -710,8 +710,8 @@ ${emailMeetingsList}
      * create_meeting_event: For logging meetings into the Work Journal and creating Kanban To Do tasks for Salitha upon approval. User reviews, edits, and approves.
      * update_meeting_event: For updating existing placeholder meeting entries in-place with post-meeting notes, decisions, and action items (zero duplicates). User reviews, picks meeting candidate if ambiguous, and approves.
      * attach_work_summary: Appending work summaries to tasks when no work journal event is logged. User reviews, edits, and approves.
-     * create_tasks
-     * daily_wrap_up / carry_over_tasks
+     * create_tasks: For adding new tasks, to-dos, or tickets to the Kanban board. User reviews and approves.
+     * daily_wrap_up / carry_over_tasks: For ending the day and carrying over unfinished tasks.
      For Tier 2 actions, the user MUST inspect and click Approve/Edit/Reject.
      In your replyText, confirm any auto-executed timer action directly, and explain that you have drafted the work summary / journal proposal below for their review and approval.
 2. AMBIGUITY RULE:
