@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useJarvisStore } from '../../store/jarvisStore';
-import { JarvisOrb } from './JarvisOrb';
+import { JarvisOrb, type JarvisOrbState } from './JarvisOrb';
 import { VoiceDeckHeader } from './VoiceDeckHeader';
-import { Waveform } from './Waveform';
 import { StatusText } from './StatusText';
 import { TranscriptBox } from './TranscriptBox';
 import { MicButton } from './MicButton';
 import { QuickRefinementChips } from './QuickRefinementChips';
 import { ContextBar } from './ContextBar';
+import { useMicLevel } from '../../hooks/useMicLevel';
 import { Copy, X, FileText, Check } from 'lucide-react';
 
 export function VoiceDeck() {
@@ -15,7 +15,6 @@ export function VoiceDeck() {
     isRecording,
     isTranscribing,
     isSpeaking,
-    orbState,
     audioLevel,
     transcript,
     statusMessage,
@@ -31,6 +30,27 @@ export function VoiceDeck() {
 
   const [copiedRecently, setCopiedRecently] = useState(false);
 
+  // Derive orb state from one source of truth (store voice state)
+  const derivedOrbState: JarvisOrbState = isSpeaking
+    ? 'speaking'
+    : isRecording
+    ? 'listening'
+    : isSubmitting || isTranscribing
+    ? 'thinking'
+    : 'idle';
+
+  // Live microphone audio hook parallel to SpeechRecognition
+  const { analyser: micAnalyser, level: micLevel, isBlocked } = useMicLevel({
+    enabled: isRecording,
+  });
+
+  const effectiveAudioLevel = isRecording ? micLevel || audioLevel : audioLevel;
+
+  const effectiveStatusText =
+    isBlocked && isRecording
+      ? 'Microphone blocked by browser'
+      : statusMessage;
+
   useEffect(() => {
     if (lastCopiedAt) {
       setCopiedRecently(true);
@@ -39,7 +59,7 @@ export function VoiceDeck() {
     }
   }, [lastCopiedAt]);
 
-  const handleOrbClick = () => {
+  const handleOrbToggle = () => {
     if (isSpeaking) {
       stopSpeaking();
       void toggleRecording();
@@ -57,27 +77,24 @@ export function VoiceDeck() {
       <div className="p-4 space-y-4">
         <VoiceDeckHeader />
 
-        <div className="flex flex-col items-center gap-3 py-2">
-          <button
-            onClick={handleOrbClick}
-            className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            title={isSpeaking ? 'Interrupt' : 'Toggle recording'}
-          >
-            <JarvisOrb size={58} state={orbState} audioLevel={audioLevel} glow={false} />
-          </button>
-
-          <Waveform
-            isActive={isRecording}
-            isThinking={isSubmitting || isTranscribing}
-            analyserNode={null}
-            audioLevel={audioLevel}
+        {/* Centered Radial Waveform Orb */}
+        <div className="flex flex-col items-center justify-center pt-1 pb-2">
+          <JarvisOrb
+            size={120}
+            state={derivedOrbState}
+            level={effectiveAudioLevel}
+            analyser={micAnalyser}
+            onClick={handleOrbToggle}
           />
-          
-          <StatusText text={statusMessage} />
+          <div className="mt-2.5 w-full">
+            <StatusText text={effectiveStatusText} />
+          </div>
         </div>
 
+        {/* Live transcript directly under the orb */}
         <TranscriptBox transcript={transcript} />
 
+        {/* Mic control button */}
         <MicButton
           isRecording={isRecording}
           isDisabled={isSubmitting || isTranscribing}
@@ -86,8 +103,10 @@ export function VoiceDeck() {
           onStopSpeaking={stopSpeaking}
         />
 
+        {/* Quick Refinement Chips */}
         <QuickRefinementChips onRefinement={(text) => submitCommand(text)} />
 
+        {/* Active Context-Engineered Prompt Card (if present) */}
         {activePromptDocument && (
           <div className="bg-surface rounded-[8px] border border-border p-3 mt-2 space-y-2 relative group transition-all duration-300">
             <div className="flex items-center justify-between">
@@ -123,6 +142,7 @@ export function VoiceDeck() {
           </div>
         )}
 
+        {/* Context Bar */}
         <ContextBar />
       </div>
     </aside>

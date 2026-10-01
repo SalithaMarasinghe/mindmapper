@@ -30,6 +30,11 @@
   --warning:        #FBBF24;
   --error:          #F87171;
 
+  /* ── Radial Waveform Orb ── */
+  --orb-idle:       #EDEDED;
+  --orb-active:     #5EEAD4;
+  --orb-muted:      #8B8B92;
+
   /* ── Radius scale ── */
   --radius-sm:      8px;
   --radius-md:      12px;
