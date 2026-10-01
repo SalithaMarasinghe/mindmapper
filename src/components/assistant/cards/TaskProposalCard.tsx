@@ -38,14 +38,14 @@ export function TaskProposalCard({
     <ProposalCard
       proposal={proposal}
       title={proposal.summary || `Create ${tasks.length} Task${tasks.length === 1 ? '' : 's'}`}
-      icon={<ListPlus className="w-4 h-4 text-teal-400" />}
+      icon={<ListPlus className="w-4 h-4 text-text" />}
       onApprove={handleApprove}
       onReject={onReject}
       isSubmitting={isSubmitting}
     >
       <div className="flex flex-col gap-2.5">
-        <p className="text-slate-300">
-          The assistant proposes adding the following tasks to <strong className="text-teal-300">To Do</strong>:
+        <p className="text-text-secondary">
+          The assistant proposes adding the following tasks to <strong className="text-text">To Do</strong>:
         </p>
 
         <div className="flex flex-col gap-2">
@@ -63,8 +63,8 @@ export function TaskProposalCard({
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-slate-500 text-xs">#{idx + 1}</span>
-                    <span className="font-semibold text-slate-100 truncate">{task.title}</span>
+                    <span className="font-mono text-text-muted text-xs">#{idx + 1}</span>
+                    <span className="font-semibold text-text truncate">{task.title}</span>
                     <span
                       className={`px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider border ${priorityBadge}`}
                     >
@@ -77,7 +77,7 @@ export function TaskProposalCard({
                       type="button"
                       onClick={() => handleRemoveTask(idx)}
                       title="Remove this task from proposal"
-                      className="text-slate-500 hover:text-rose-400 text-xs px-1.5 py-0.5 rounded transition"
+                      className="text-text-muted hover:text-rose-400 text-xs px-1.5 py-0.5 rounded transition"
                     >
                       Remove
                     </button>
@@ -85,12 +85,12 @@ export function TaskProposalCard({
                 </div>
 
                 {task.description && (
-                  <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed">
                     {task.description}
                   </p>
                 )}
 
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                <div className="flex items-center gap-2 text-[10px] text-text-muted mt-0.5">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     Planned: {task.plannedDate}

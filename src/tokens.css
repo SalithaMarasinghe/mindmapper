@@ -20,10 +20,10 @@
   --text-secondary: #8B8B92;
   --text-muted:     #6B6B72;
 
-  /* ── Accent (teal — Jarvis active states only) ── */
-  --accent:         #5EEAD4;
-  --accent-dim:     rgba(94, 234, 212, 0.15);
-  --accent-ring:    rgba(94, 234, 212, 0.35);
+  /* ── Accent (light gray for ultra-minimalist UI) ── */
+  --accent:         #EDEDED;
+  --accent-dim:     rgba(237, 237, 237, 0.15);
+  --accent-ring:    rgba(237, 237, 237, 0.35);
 
   /* ── Semantic ── */
   --success:        #34D399;

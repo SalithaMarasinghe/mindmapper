@@ -34,31 +34,31 @@ export function ProposalCard({
     <div
       className={`rounded-xl border transition-all my-3 overflow-hidden shadow-md ${
         isApproved
-          ? 'bg-[#080808] border-emerald-800/60 ring-1 ring-emerald-500/20'
+          ? 'bg-surface-2 border-border-strong ring-1 ring-border-strong'
           : isRejected
-          ? 'bg-[#0a0a0a] border-slate-700/60 opacity-60'
+          ? 'bg-surface border-slate-700/60 opacity-60'
           : isFailed
-          ? 'bg-[#141414] border-rose-800/80 ring-1 ring-rose-500/30'
-          : 'bg-[#0a0a0a] border-teal-700/50 hover:border-teal-600/80'
+          ? 'bg-surface-2 border-rose-800/80 ring-1 ring-rose-500/30'
+          : 'bg-surface border-border hover:border-border-strong'
       }`}
     >
       {/* Top Banner */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#080808] border-b border-[#1a1a1a]/80 text-xs">
+      <div className="flex items-center justify-between px-4 py-3 bg-surface-2 border-b border-[#1a1a1a]/80 text-xs">
         <div className="flex items-center gap-2">
-          {icon && <span className="p-1 rounded bg-[#0a0a0a] text-teal-400">{icon}</span>}
-          <span className="font-bold text-slate-100 tracking-wide">{title}</span>
+          {icon && <span className="p-1 rounded bg-surface text-text">{icon}</span>}
+          <span className="font-bold text-text tracking-wide">{title}</span>
         </div>
 
         <div className="flex items-center gap-2">
           {isApproved && (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-950/80 text-emerald-300 border border-emerald-700/80">
+            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-2 text-text border border-border">
               <CheckCircle2 className="w-3 h-3" />
               Approved
             </span>
           )}
 
           {isRejected && (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#0a0a0a] text-slate-400 border border-slate-700">
+            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface text-text-muted border border-slate-700">
               <X className="w-3 h-3" />
               Rejected
             </span>
@@ -81,7 +81,7 @@ export function ProposalCard({
       </div>
 
       {/* Proposal Body */}
-      <div className="p-4 text-xs text-slate-300 flex flex-col gap-3">{children}</div>
+      <div className="p-4 text-xs text-text-secondary flex flex-col gap-3">{children}</div>
 
       {/* Failure Error Message */}
       {isFailed && proposal.error && (
@@ -93,12 +93,12 @@ export function ProposalCard({
 
       {/* Actions Bar (Only visible while pending or failed for retry) */}
       {(isPending || isFailed) && (
-        <div className="flex items-center justify-end gap-2 px-4 py-2.5 bg-[#080808] border-t border-[#1a1a1a]/60">
+        <div className="flex items-center justify-end gap-2 px-4 py-2.5 bg-surface-2 border-t border-[#1a1a1a]/60">
           <button
             type="button"
             disabled={isSubmitting}
             onClick={onReject}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-[#0a0a0a] transition disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-muted hover:text-slate-200 hover:bg-surface transition disabled:opacity-50"
           >
             Reject
           </button>
@@ -108,7 +108,7 @@ export function ProposalCard({
               type="button"
               disabled={isSubmitting}
               onClick={onEdit}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-400 hover:text-teal-300 hover:bg-teal-950/40 transition disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text hover:text-text hover:bg-surface-2 transition disabled:opacity-50"
             >
               Edit
             </button>
@@ -118,7 +118,7 @@ export function ProposalCard({
             type="button"
             disabled={isSubmitting}
             onClick={onApprove}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-teal-600 hover:bg-teal-500 shadow-sm active:scale-95 transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-bg bg-text hover:bg-text/90 text-bg shadow-sm active:scale-95 transition disabled:opacity-50"
           >
             <Check className="w-3.5 h-3.5" />
             <span>{isSubmitting ? 'Executing...' : (approveLabel || 'Approve & Execute')}</span>

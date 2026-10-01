@@ -285,7 +285,7 @@ export function WorkJournalCard({
         isMeeting ? (
           <Users className="w-4 h-4 text-purple-400" />
         ) : (
-          <Briefcase className="w-4 h-4 text-teal-400" />
+          <Briefcase className="w-4 h-4 text-text" />
         )
       }
       onApprove={handleApprove}
@@ -306,7 +306,7 @@ export function WorkJournalCard({
                 {candidateEvents.length} candidates found
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-text-muted">
               Jarvis detected multiple recent meetings on your schedule. Choose which entry to populate with these notes:
             </p>
             <div className="space-y-1.5 mt-1">
@@ -319,7 +319,7 @@ export function WorkJournalCard({
                     className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition select-none ${
                       isSelected
                         ? 'bg-purple-900/40 border-purple-500 ring-1 ring-purple-500/50 text-purple-200'
-                        : 'bg-[#000000] border-[#1a1a1a] text-slate-300 hover:border-[#333]'
+                        : 'bg-[#000000] border-[#1a1a1a] text-text-secondary hover:border-[#333]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -328,11 +328,11 @@ export function WorkJournalCard({
                         name="candidateMeeting"
                         checked={isSelected}
                         onChange={() => handleSelectCandidate(c.id)}
-                        className="rounded-full bg-[#080808] border-[#333] text-purple-600 focus:ring-0"
+                        className="rounded-full bg-surface-2 border-[#333] text-purple-600 focus:ring-0"
                       />
                       <div className="flex flex-col min-w-0">
-                        <span className="font-semibold text-xs text-slate-100 truncate">{c.title}</span>
-                        <span className="text-[10px] text-slate-400">{c.date}</span>
+                        <span className="font-semibold text-xs text-text truncate">{c.title}</span>
+                        <span className="text-[10px] text-text-muted">{c.date}</span>
                       </div>
                     </div>
                     {(c.startTime || c.endTime) && (
@@ -353,7 +353,7 @@ export function WorkJournalCard({
             <div className="flex items-center gap-2 text-purple-300">
               <CheckSquare className="w-3.5 h-3.5 text-purple-400 shrink-0" />
               <span>
-                Target Meeting: <strong className="text-white">{title || selectedCandidate?.title || 'Existing Meeting Entry'}</strong>
+                Target Meeting: <strong className="text-bg">{title || selectedCandidate?.title || 'Existing Meeting Entry'}</strong>
               </span>
             </div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800/60">
@@ -375,21 +375,21 @@ export function WorkJournalCard({
                         ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
                         : isMeeting
                         ? 'bg-purple-950/60 text-purple-300 border-purple-800/60'
-                        : 'bg-teal-950/60 text-teal-300 border-teal-800/60'
+                        : 'bg-teal-950/60 text-text border-teal-800/60'
                     }`}
                   >
                     {isUpdateMeeting ? 'Update Meeting Log' : isMeeting ? 'Meeting Log' : 'Work Log'}
                   </span>
                   {projectTag && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#0a0a0a] text-slate-300 border border-[#1a1a1a]">
-                      <Tag className="w-3 h-3 text-teal-400" />
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-surface text-text-secondary border border-[#1a1a1a]">
+                      <Tag className="w-3 h-3 text-text" />
                       {projectTag}
                     </span>
                   )}
                 </div>
-                <h4 className="font-semibold text-sm text-slate-100">{title}</h4>
+                <h4 className="font-semibold text-sm text-text">{title}</h4>
                 {isMeeting && 'attendees' in (meetingPayload || {}) && (meetingPayload as any)?.attendees && (meetingPayload as any).attendees.length > 0 && (
-                  <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-text-muted">
                     <Users className="w-3 h-3 text-purple-400 shrink-0" />
                     <span>Attendees: {(meetingPayload as any).attendees.join(', ')}</span>
                   </div>
@@ -400,20 +400,20 @@ export function WorkJournalCard({
                       href={meetingPayload.meetingUrl || meetingPayload.links?.[0]?.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/60 border border-emerald-600/50 hover:border-emerald-500 text-emerald-300 hover:text-white text-xs font-medium transition group"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/60 border border-emerald-600/50 hover:border-emerald-500 text-text hover:text-bg text-xs font-medium transition group"
                     >
-                      <Video className="w-3.5 h-3.5 text-emerald-400 group-hover:animate-pulse" />
+                      <Video className="w-3.5 h-3.5 text-text group-hover:animate-pulse" />
                       <span>Direct Join Link</span>
                       <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100" />
                     </a>
                   </div>
                 )}
                 {isLinkedToTask && (
-                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-teal-300">
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-text">
                     <span className="px-1.5 py-0.5 rounded bg-teal-950/60 border border-teal-800/60 font-semibold">
                       Linked Task
                     </span>
-                    <span className="text-slate-400">
+                    <span className="text-text-muted">
                       {syncToTaskLog
                         ? '• Will update Task Log description on approval'
                         : '• Work Journal only'}
@@ -421,12 +421,12 @@ export function WorkJournalCard({
                   </div>
                 )}
                 {previousEventId && (
-                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-teal-300">
-                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-teal-950/70 border border-teal-800/60 font-semibold">
-                      <Link2 className="w-3 h-3 text-teal-400" />
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-text">
+                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-2 border border-teal-800/60 font-semibold">
+                      <Link2 className="w-3 h-3 text-text" />
                       Chained from
                     </span>
-                    <span className="text-slate-300 font-medium truncate max-w-xs sm:max-w-md">
+                    <span className="text-text-secondary font-medium truncate max-w-xs sm:max-w-md">
                       {resolvedPreviousTitle || 'Predecessor Event'}
                     </span>
                   </div>
@@ -434,14 +434,14 @@ export function WorkJournalCard({
               </div>
 
               {/* Date & Time pill */}
-              <div className="flex flex-col items-end shrink-0 text-xs font-mono text-slate-400">
-                <span className="flex items-center gap-1 text-slate-300 font-medium">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              <div className="flex flex-col items-end shrink-0 text-xs font-mono text-text-muted">
+                <span className="flex items-center gap-1 text-text-secondary font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-text-muted" />
                   {date}
                 </span>
                 {(startTime || endTime) && (
-                  <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                    <Clock className="w-3 h-3 text-slate-500" />
+                  <span className="flex items-center gap-1 text-[11px] text-text-muted">
+                    <Clock className="w-3 h-3 text-text-muted" />
                     {startTime || '??'} – {endTime || '??'}
                   </span>
                 )}
@@ -452,8 +452,8 @@ export function WorkJournalCard({
             {isMeeting && (
               <div className="flex flex-col gap-2.5 mt-1 text-xs">
                 {discussionSummary && (
-                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
-                    <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                  <div className="bg-surface-2 p-3 rounded-lg border border-[#111111]">
+                    <div className="flex items-center gap-1.5 text-text-muted text-[10px] font-bold uppercase tracking-wider mb-1.5">
                       <FileText className="w-3 h-3 text-purple-400" />
                       Discussion Summary
                     </div>
@@ -463,8 +463,8 @@ export function WorkJournalCard({
 
                 {decisions && (
                   <div className="bg-emerald-950/25 p-3 rounded-lg border border-emerald-800/40 text-emerald-200">
-                    <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
-                      <Sparkles className="w-3 h-3 text-emerald-400" />
+                    <div className="flex items-center gap-1.5 text-text text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                      <Sparkles className="w-3 h-3 text-text" />
                       Key Decisions
                     </div>
                     <MarkdownViewer content={decisions} className="text-xs text-emerald-200" />
@@ -472,14 +472,14 @@ export function WorkJournalCard({
                 )}
 
                 {actionItemsText && (
-                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
+                  <div className="bg-surface-2 p-3 rounded-lg border border-[#111111]">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-                        <CheckSquare className="w-3 h-3 text-teal-400" />
+                      <div className="flex items-center gap-1.5 text-text-muted text-[10px] font-bold uppercase tracking-wider">
+                        <CheckSquare className="w-3 h-3 text-text" />
                         Action Items ({rawActionItems.length})
                       </div>
                       {salithaTasksCount > 0 && (
-                        <span className="text-[10px] font-semibold text-teal-400 bg-teal-950/70 border border-teal-800/60 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-semibold text-text bg-surface-2 border border-teal-800/60 px-2 py-0.5 rounded">
                           {salithaTasksCount} assigned to Salitha
                         </span>
                       )}
@@ -487,17 +487,17 @@ export function WorkJournalCard({
 
                     <ul className="space-y-2 pl-0.5">
                       {rawActionItems.map((item, i) => (
-                        <li key={i} className="flex flex-col gap-1 text-slate-300 text-xs">
+                        <li key={i} className="flex flex-col gap-1 text-text-secondary text-xs">
                           <div className="flex items-start gap-2">
-                            <span className="text-teal-400 mt-0.5">•</span>
+                            <span className="text-text mt-0.5">•</span>
                             <span className="flex-1 text-slate-200">
                               {item.text.replace(/^\[.*?\]\s*/, '')}
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5 pl-3.5 flex-wrap">
                             {item.isForUser ? (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-950/70 text-teal-300 border border-teal-800/60">
-                                <User className="w-2.5 h-2.5 text-teal-400" />
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-2 text-text border border-teal-800/60">
+                                <User className="w-2.5 h-2.5 text-text" />
                                 Salitha (You)
                               </span>
                             ) : item.assignee ? (
@@ -525,14 +525,14 @@ export function WorkJournalCard({
                     </ul>
 
                     {salithaTasksCount > 0 && (
-                      <label className="flex items-center gap-2 cursor-pointer pt-2.5 mt-2.5 border-t border-[#111111] text-slate-300 select-none">
+                      <label className="flex items-center gap-2 cursor-pointer pt-2.5 mt-2.5 border-t border-[#111111] text-text-secondary select-none">
                         <input
                           type="checkbox"
                           checked={addTasksToKanban}
                           onChange={(e) => setAddTasksToKanban(e.target.checked)}
-                          className="rounded bg-[#080808] border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                          className="rounded bg-surface-2 border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
                         />
-                        <span className="text-[11px] text-teal-300 font-medium">
+                        <span className="text-[11px] text-text font-medium">
                           Automatically add Salitha's action items ({salithaTasksCount}) to Kanban To Do upon approval
                         </span>
                       </label>
@@ -546,16 +546,16 @@ export function WorkJournalCard({
             {!isMeeting && (
               <div className="flex flex-col gap-2 mt-1 text-xs">
                 {description && (
-                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
-                    <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                  <div className="bg-surface-2 p-3 rounded-lg border border-[#111111]">
+                    <div className="text-text-muted text-[10px] font-bold uppercase tracking-wider mb-1.5">
                       Description
                     </div>
                     <MarkdownViewer content={description} className="text-xs" />
                   </div>
                 )}
                 {implementationNotes && (
-                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
-                    <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                  <div className="bg-surface-2 p-3 rounded-lg border border-[#111111]">
+                    <div className="text-text-muted text-[10px] font-bold uppercase tracking-wider mb-1.5">
                       Implementation Notes
                     </div>
                     <MarkdownViewer content={implementationNotes} className="text-xs font-mono" />
@@ -568,13 +568,13 @@ export function WorkJournalCard({
           /* Edit Mode Form */
           <div className="p-3.5 bg-[#000000] rounded-xl border border-teal-800/50 flex flex-col gap-3 text-xs">
             <div className="flex items-center justify-between pb-2 border-b border-[#111111]">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text">
                 Edit {isMeeting ? 'Meeting' : 'Work'} Entry
               </span>
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="text-xs text-slate-400 hover:text-slate-200"
+                className="text-xs text-text-muted hover:text-slate-200"
               >
                 Close Form
               </button>
@@ -583,18 +583,18 @@ export function WorkJournalCard({
             {/* Title & Tag */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="sm:col-span-2 flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   Title
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
+                  className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   Project Tag
                 </label>
                 <input
@@ -602,7 +602,7 @@ export function WorkJournalCard({
                   value={projectTag}
                   placeholder="e.g. Auth, Frontend"
                   onChange={(e) => setProjectTag(e.target.value)}
-                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
+                  className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
                 />
               </div>
             </div>
@@ -610,44 +610,44 @@ export function WorkJournalCard({
             {/* Date, Start, End */}
             <div className="grid grid-cols-3 gap-2">
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   Date
                 </label>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   Start Time
                 </label>
                 <input
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   End Time
                 </label>
                 <input
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
                 />
               </div>
             </div>
 
             {/* Chained Predecessor Event Selector */}
-            <div className="flex flex-col gap-1.5 p-2.5 bg-[#080808] rounded-lg border border-[#161616]">
-              <label className="text-[10px] text-teal-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                <Link2 className="w-3.5 h-3.5 text-teal-400" />
+            <div className="flex flex-col gap-1.5 p-2.5 bg-surface-2 rounded-lg border border-[#161616]">
+              <label className="text-[10px] text-text font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Link2 className="w-3.5 h-3.5 text-text" />
                 Chained from Previous Event (Lineage & Audit Trail)
               </label>
               <select
@@ -658,7 +658,7 @@ export function WorkJournalCard({
                   const match = availableEvents.find((ev) => ev.id === id);
                   setPreviousEventTitle(match ? match.title : null);
                 }}
-                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 cursor-pointer"
+                className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 cursor-pointer"
               >
                 <option value="">None (Independent / Standalone)</option>
                 {availableEvents.map((ev) => (
@@ -667,7 +667,7 @@ export function WorkJournalCard({
                   </option>
                 ))}
               </select>
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-text-muted">
                 {previousEventId
                   ? 'This event will be visually chained to the selected predecessor in your timeline.'
                   : 'Connect this event to an earlier meeting or workload for complete audit lineage.'}
@@ -678,49 +678,49 @@ export function WorkJournalCard({
             {isMeeting && (
               <>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  <label className="text-[10px] text-text-muted font-semibold uppercase">
                     Discussion Summary
                   </label>
                   <textarea
                     rows={6}
                     value={discussionSummary}
                     onChange={(e) => setDiscussionSummary(e.target.value)}
-                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  <label className="text-[10px] text-text-muted font-semibold uppercase">
                     Key Decisions
                   </label>
                   <textarea
                     rows={3}
                     value={decisions}
                     onChange={(e) => setDecisions(e.target.value)}
-                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  <label className="text-[10px] text-text-muted font-semibold uppercase">
                     Action Items (one per line)
                   </label>
                   <textarea
                     rows={4}
                     value={actionItemsText}
                     onChange={(e) => setActionItemsText(e.target.value)}
-                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed"
+                    className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed"
                   />
                 </div>
 
-                <label className="flex items-center gap-2 cursor-pointer pt-1 text-slate-300 select-none">
+                <label className="flex items-center gap-2 cursor-pointer pt-1 text-text-secondary select-none">
                   <input
                     type="checkbox"
                     checked={addTasksToKanban}
                     onChange={(e) => setAddTasksToKanban(e.target.checked)}
-                    className="rounded bg-[#080808] border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                    className="rounded bg-surface-2 border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
                   />
-                  <span className="text-xs text-teal-300">
+                  <span className="text-xs text-text">
                     Also add Salitha's action items to Kanban To Do upon approval
                   </span>
                 </label>
@@ -731,36 +731,36 @@ export function WorkJournalCard({
             {!isMeeting && (
               <>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  <label className="text-[10px] text-text-muted font-semibold uppercase">
                     Description
                   </label>
                   <textarea
                     rows={7}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                  <label className="text-[10px] text-text-muted font-semibold uppercase">
                     Implementation Notes
                   </label>
                   <textarea
                     rows={3}
                     value={implementationNotes}
                     onChange={(e) => setImplementationNotes(e.target.value)}
-                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
                 {isLinkedToTask && (
-                  <label className="flex items-center gap-2 cursor-pointer pt-1 text-slate-300 select-none">
+                  <label className="flex items-center gap-2 cursor-pointer pt-1 text-text-secondary select-none">
                     <input
                       type="checkbox"
                       checked={syncToTaskLog}
                       onChange={(e) => setSyncToTaskLog(e.target.checked)}
-                      className="rounded bg-[#080808] border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                      className="rounded bg-surface-2 border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
                     />
                     <span className="text-xs">
                       Also update completed task description in Task Log upon approval

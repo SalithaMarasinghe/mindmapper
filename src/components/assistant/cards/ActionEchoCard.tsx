@@ -87,9 +87,9 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
     switch (proposal.type) {
       case 'start_task':
         return {
-          icon: <Play className="w-3.5 h-3.5 text-teal-400 fill-teal-400/20" />,
+          icon: <Play className="w-3.5 h-3.5 text-text fill-teal-400/20" />,
           actionLabel: 'Started',
-          badgeColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+          badgeColor: 'text-text bg-accent/10 border-accent/20',
           sentence: `Started "${taskTitle}"`,
           snippet: null,
         };
@@ -112,18 +112,18 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
       case 'resume_task':
       case 'resume_last_paused':
         return {
-          icon: <RotateCcw className="w-3.5 h-3.5 text-teal-400" />,
+          icon: <RotateCcw className="w-3.5 h-3.5 text-text" />,
           actionLabel: 'Resumed',
-          badgeColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+          badgeColor: 'text-text bg-accent/10 border-accent/20',
           sentence: `Resumed "${taskTitle}"`,
           snippet: null,
         };
       case 'finish_task': {
         const durationStr = typeof payload.trackedDurationDisplay === 'string' ? payload.trackedDurationDisplay : null;
         return {
-          icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />,
+          icon: <CheckCircle2 className="w-3.5 h-3.5 text-text" />,
           actionLabel: 'Completed',
-          badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+          badgeColor: 'text-text bg-surface-2 border-border',
           sentence: `Completed "${taskTitle}" (Moved to Done)`,
           snippet: durationStr ? `Duration: ${durationStr}` : null,
         };
@@ -143,9 +143,9 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
       case 'create_work_event': {
         const descStr = typeof payload.description === 'string' ? payload.description : '';
         return {
-          icon: <Briefcase className="w-3.5 h-3.5 text-teal-400" />,
+          icon: <Briefcase className="w-3.5 h-3.5 text-text" />,
           actionLabel: 'Work Journal Entry',
-          badgeColor: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+          badgeColor: 'text-text bg-accent/10 border-accent/20',
           sentence: `Logged to Work Journal: "${taskTitle}"`,
           snippet: descStr
             ? descStr.slice(0, 140) + (descStr.length > 140 ? '...' : '')
@@ -166,9 +166,9 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
       }
       default:
         return {
-          icon: <Check className="w-3.5 h-3.5 text-slate-400" />,
+          icon: <Check className="w-3.5 h-3.5 text-text-muted" />,
           actionLabel: 'Executed',
-          badgeColor: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+          badgeColor: 'text-text-muted bg-slate-500/10 border-slate-500/20',
           sentence: proposal.summary,
           snippet: null,
         };
@@ -204,8 +204,8 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
     <div
       className={`rounded-xl border transition-all my-2 overflow-hidden shadow-sm ${
         isUndone
-          ? 'bg-[#080808] border-slate-800/80 opacity-70'
-          : 'bg-[#080808] border-teal-900/40 hover:border-teal-700/50'
+          ? 'bg-surface-2 border-border opacity-70'
+          : 'bg-surface-2 border-border hover:border-border'
       }`}
     >
       <div className="p-3 sm:p-3.5 flex flex-col gap-2">
@@ -215,7 +215,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
             <span
               className={`p-1.5 rounded-lg border flex items-center justify-center shrink-0 ${
                 isUndone
-                  ? 'bg-[#0a0a0a]/60 border-slate-700/60 text-slate-500'
+                  ? 'bg-surface/60 border-slate-700/60 text-text-muted'
                   : config.badgeColor
               }`}
             >
@@ -225,13 +225,13 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
             <div className="min-w-0 flex items-center gap-2 flex-wrap">
               <span
                 className={`text-xs font-semibold truncate ${
-                  isUndone ? 'text-slate-400 line-through' : 'text-slate-100'
+                  isUndone ? 'text-text-muted line-through' : 'text-text'
                 }`}
               >
                 {config.sentence}
               </span>
               {timeDisplay && !isUndone && (
-                <span className="text-[11px] font-mono text-slate-400 shrink-0">
+                <span className="text-[11px] font-mono text-text-muted shrink-0">
                   at <strong className="text-slate-200">{timeDisplay}</strong>
                 </span>
               )}
@@ -241,12 +241,12 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
           {/* Right badge / status */}
           <div className="shrink-0 flex items-center gap-1.5">
             {isUndone ? (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#0a0a0a]/80 text-slate-400 border border-slate-700/60">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface/80 text-text-muted border border-slate-700/60">
                 <Undo2 className="w-2.5 h-2.5" />
                 Undone
               </span>
             ) : (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-950/70 text-teal-300 border border-teal-700/60">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-2 text-text border border-border">
                 <CheckCircle2 className="w-2.5 h-2.5" />
                 Auto-Executed
               </span>
@@ -256,7 +256,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
 
         {/* Snippet preview if available */}
         {!isUndone && config.snippet && (
-          <div className="px-2.5 py-1.5 rounded bg-[#0a0a0a] border border-[#161616] text-[11px] text-slate-300 line-clamp-2">
+          <div className="px-2.5 py-1.5 rounded bg-surface border border-[#161616] text-[11px] text-text-secondary line-clamp-2">
             {config.snippet}
           </div>
         )}
@@ -269,13 +269,13 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
                 type="button"
                 onClick={handleUndo}
                 disabled={isUndoing}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-300 hover:text-rose-300 hover:bg-rose-950/30 border border-transparent hover:border-rose-900/50 transition cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-text-secondary hover:text-rose-300 hover:bg-rose-950/30 border border-transparent hover:border-rose-900/50 transition cursor-pointer disabled:opacity-50"
                 title="Revert this action and restore previous state"
               >
                 {isUndoing ? (
                   <Loader2 className="w-3 h-3 animate-spin text-rose-400" />
                 ) : (
-                  <Undo2 className="w-3 h-3 text-slate-400 group-hover:text-rose-400" />
+                  <Undo2 className="w-3 h-3 text-text-muted group-hover:text-rose-400" />
                 )}
                 <span>Undo</span>
               </button>
@@ -287,16 +287,16 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
                     setInputTime(toLocalInputValue(currentTimestampISO));
                     setIsEditing(!isEditing);
                   }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-300 hover:text-teal-300 hover:bg-teal-950/30 border border-transparent hover:border-teal-900/50 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-text-secondary hover:text-text hover:bg-teal-950/30 border border-transparent hover:border-teal-900/50 transition cursor-pointer"
                   title="Adjust the recorded timestamp"
                 >
-                  <Clock className="w-3 h-3 text-slate-400" />
+                  <Clock className="w-3 h-3 text-text-muted" />
                   <span>{isEditing ? 'Cancel Edit' : 'Edit Time'}</span>
                 </button>
               )}
             </div>
 
-            <span className="text-[10px] text-slate-500 font-medium">
+            <span className="text-[10px] text-text-muted font-medium">
               Instant Sync
             </span>
           </div>
@@ -306,13 +306,13 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
         {!isUndone && isEditing && hasTimePicker && (
           <div className="mt-1 p-2.5 bg-[#000000] border border-[#111111] rounded-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2 flex-1">
-              <Calendar className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-              <span className="text-[11px] text-slate-400 shrink-0">Adjust to:</span>
+              <Calendar className="w-3.5 h-3.5 text-text shrink-0" />
+              <span className="text-[11px] text-text-muted shrink-0">Adjust to:</span>
               <input
                 type="datetime-local"
                 value={inputTime}
                 onChange={(e) => setInputTime(e.target.value)}
-                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 w-full"
+                className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 w-full"
               />
             </div>
 
@@ -320,7 +320,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="px-2.5 py-1 text-xs text-slate-400 hover:text-slate-200 transition"
+                className="px-2.5 py-1 text-xs text-text-muted hover:text-slate-200 transition"
               >
                 Cancel
               </button>
@@ -328,7 +328,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
                 type="button"
                 disabled={isSavingTime}
                 onClick={handleSaveTime}
-                className="px-3 py-1 bg-teal-600 hover:bg-teal-500 text-slate-900 font-semibold text-xs rounded transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1 bg-text hover:bg-text/90 text-bg text-slate-900 font-semibold text-xs rounded transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
               >
                 {isSavingTime ? (
                   <Loader2 className="w-3 h-3 animate-spin" />

@@ -40,15 +40,15 @@ export function TransitionCard({
   const getIcon = () => {
     switch (proposal.type) {
       case 'start_task':
-        return <Play className="w-4 h-4 text-teal-400 fill-current" />;
+        return <Play className="w-4 h-4 text-text fill-current" />;
       case 'pause_task':
       case 'pause_all':
         return <Coffee className="w-4 h-4 text-amber-300" />;
       case 'resume_task':
       case 'resume_last_paused':
-        return <Play className="w-4 h-4 text-teal-400 fill-current" />;
+        return <Play className="w-4 h-4 text-text fill-current" />;
       case 'finish_task':
-        return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
+        return <CheckCircle2 className="w-4 h-4 text-text" />;
     }
   };
 
@@ -98,13 +98,13 @@ export function TransitionCard({
         {/* Resolved Timestamp Box */}
         <div className="p-3 bg-[#000000] rounded-xl border border-[#1a1a1a] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-teal-400 flex-shrink-0" />
+            <Clock className="w-4 h-4 text-text flex-shrink-0" />
             <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold text-slate-500">
+              <span className="text-[10px] uppercase font-bold text-text-muted">
                 Action Timestamp
               </span>
               {!isEditing ? (
-                <span className="text-sm font-bold text-slate-100 font-mono">
+                <span className="text-sm font-bold text-text font-mono">
                   {proposal.payload.timeDisplay || localTime.replace('T', ' ')}
                 </span>
               ) : (
@@ -112,7 +112,7 @@ export function TransitionCard({
                   type="datetime-local"
                   value={localTime}
                   onChange={(e) => setLocalTime(e.target.value)}
-                  className="bg-[#0a0a0a] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 mt-1"
+                  className="bg-surface text-text border border-[#1a1a1a] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 mt-1"
                 />
               )}
             </div>
@@ -122,7 +122,7 @@ export function TransitionCard({
             <button
               type="button"
               onClick={() => setIsEditing(!isEditing)}
-              className="text-xs font-semibold text-teal-400 hover:text-teal-300"
+              className="text-xs font-semibold text-text hover:text-text"
             >
               {isEditing ? 'Done' : 'Change Time'}
             </button>

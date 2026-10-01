@@ -106,13 +106,13 @@ export function WrapUpCard({
               </div>
 
               {selectedTaskIds.length > 0 ? (
-                <ul className="list-disc pl-4 space-y-1 text-xs text-slate-300">
+                <ul className="list-disc pl-4 space-y-1 text-xs text-text-secondary">
                   {selectedTaskIds.map((id, i) => (
                     <li key={id}>{getTaskTitle(id, carryoverPayload?.taskTitles, i)}</li>
                   ))}
                 </ul>
               ) : (
-                <div className="text-xs text-slate-500 italic">No tasks selected for carryover.</div>
+                <div className="text-xs text-text-muted italic">No tasks selected for carryover.</div>
               )}
             </>
           ) : (
@@ -125,26 +125,26 @@ export function WrapUpCard({
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="text-xs text-slate-400 hover:text-slate-200"
+                  className="text-xs text-text-muted hover:text-slate-200"
                 >
                   Close Edit
                 </button>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   Target Date
                 </label>
                 <input
                   type="date"
                   value={carryoverTargetDate}
                   onChange={(e) => setCarryoverTargetDate(e.target.value)}
-                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-amber-500 font-mono text-xs w-full sm:w-48"
+                  className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-amber-500 font-mono text-xs w-full sm:w-48"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   Select Tasks to Roll Over ({selectedTaskIds.length} selected)
                 </label>
                 <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
@@ -159,13 +159,13 @@ export function WrapUpCard({
                         className={`flex items-center gap-2 p-2 rounded-lg border text-left transition ${
                           isChecked
                             ? 'bg-amber-950/30 border-amber-800/50 text-slate-200'
-                            : 'bg-[#080808] border-[#161616] text-slate-400 opacity-60'
+                            : 'bg-surface-2 border-[#161616] text-text-muted opacity-60'
                         }`}
                       >
                         {isChecked ? (
                           <CheckSquare className="w-4 h-4 text-amber-400 shrink-0" />
                         ) : (
-                          <Square className="w-4 h-4 text-slate-500 shrink-0" />
+                          <Square className="w-4 h-4 text-text-muted shrink-0" />
                         )}
                         <span className="text-xs truncate">{title}</span>
                       </button>
@@ -214,9 +214,9 @@ export function WrapUpCard({
         {/* Metric Badges */}
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="p-2.5 bg-[#000000] rounded-lg border border-[#1a1a1a] flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-text flex-shrink-0" />
             <div>
-              <span className="text-[10px] text-slate-500 uppercase block font-bold">
+              <span className="text-[10px] text-text-muted uppercase block font-bold">
                 Completed
               </span>
               <span className="font-bold text-slate-200">{completedTasksCount} tasks</span>
@@ -224,12 +224,12 @@ export function WrapUpCard({
           </div>
 
           <div className="p-2.5 bg-[#000000] rounded-lg border border-[#1a1a1a] flex items-center gap-2">
-            <Clock className="w-4 h-4 text-teal-400 flex-shrink-0" />
+            <Clock className="w-4 h-4 text-text flex-shrink-0" />
             <div>
-              <span className="text-[10px] text-slate-500 uppercase block font-bold">
+              <span className="text-[10px] text-text-muted uppercase block font-bold">
                 Tracked Effort
               </span>
-              <span className="font-bold text-teal-300 font-mono">
+              <span className="font-bold text-text font-mono">
                 {formatDuration(totalTrackedSeconds)}
               </span>
             </div>
@@ -241,7 +241,7 @@ export function WrapUpCard({
           <>
             {/* Narrative Summary */}
             {narrative && (
-              <div className="p-3 bg-[#000000] rounded-xl border border-[#1a1a1a] text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+              <div className="p-3 bg-[#000000] rounded-xl border border-[#1a1a1a] text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
                 {narrative}
               </div>
             )}
@@ -262,7 +262,7 @@ export function WrapUpCard({
                   </div>
                 </div>
 
-                <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-slate-300 mt-1">
+                <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-text-secondary mt-1">
                   {selectedWrapUpTaskIds.map((id) => (
                     <li key={id}>{getTaskTitle(id)}</li>
                   ))}
@@ -280,39 +280,39 @@ export function WrapUpCard({
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="text-xs text-slate-400 hover:text-slate-200"
+                className="text-xs text-text-muted hover:text-slate-200"
               >
                 Close Edit
               </button>
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-slate-400 font-semibold uppercase">
+              <label className="text-[10px] text-text-muted font-semibold uppercase">
                 Summary Narrative
               </label>
               <textarea
                 rows={3}
                 value={narrative}
                 onChange={(e) => setNarrative(e.target.value)}
-                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 resize-none text-xs leading-relaxed"
+                className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 resize-none text-xs leading-relaxed"
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-slate-400 font-semibold uppercase">
+              <label className="text-[10px] text-text-muted font-semibold uppercase">
                 Target Carryover Date
               </label>
               <input
                 type="date"
                 value={wrapUpTargetDate}
                 onChange={(e) => setWrapUpTargetDate(e.target.value)}
-                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 font-mono text-xs w-full sm:w-48"
+                className="bg-surface-2 text-text border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 font-mono text-xs w-full sm:w-48"
               />
             </div>
 
             {initialWrapUpTaskIds.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-400 font-semibold uppercase">
+                <label className="text-[10px] text-text-muted font-semibold uppercase">
                   Select Tasks to Carry Over ({selectedWrapUpTaskIds.length} selected)
                 </label>
                 <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1">
@@ -327,13 +327,13 @@ export function WrapUpCard({
                         className={`flex items-center gap-2 p-2 rounded-lg border text-left transition ${
                           isChecked
                             ? 'bg-purple-950/30 border-purple-800/50 text-slate-200'
-                            : 'bg-[#080808] border-[#161616] text-slate-400 opacity-60'
+                            : 'bg-surface-2 border-[#161616] text-text-muted opacity-60'
                         }`}
                       >
                         {isChecked ? (
                           <CheckSquare className="w-4 h-4 text-purple-400 shrink-0" />
                         ) : (
-                          <Square className="w-4 h-4 text-slate-500 shrink-0" />
+                          <Square className="w-4 h-4 text-text-muted shrink-0" />
                         )}
                         <span className="text-xs truncate">{title}</span>
                       </button>
@@ -347,8 +347,8 @@ export function WrapUpCard({
 
         {/* Proposed Journal blocks */}
         {proposedJournalEvents && proposedJournalEvents.length > 0 && (
-          <div className="text-xs text-slate-400 flex flex-col gap-1">
-            <span className="font-semibold text-slate-300">
+          <div className="text-xs text-text-muted flex flex-col gap-1">
+            <span className="font-semibold text-text-secondary">
               Generate {proposedJournalEvents.length} Work Journal blocks from your time segments:
             </span>
             <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
