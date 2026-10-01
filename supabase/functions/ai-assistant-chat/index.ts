@@ -486,6 +486,27 @@ function buildOperationalSystemPrompt(
     return `- ${relative} (${dayName}): "${isoDate}"`;
   }).join('\n');
 
+  let currentLocal24h = '12:00';
+  let currentLocal12h = '12:00 PM';
+  try {
+    const d = new Date(currentTimeISO);
+    currentLocal24h = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(d);
+    currentLocal12h = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(d);
+  } catch (_e) {
+    currentLocal24h = context.currentTimeLocal || '12:00';
+    currentLocal12h = context.currentTimeLocal || '12:00 PM';
+  }
+
   const runningTaskInfo = context.runningTask
     ? `Task "${context.runningTask.title}" (ID: ${context.runningTask.id}) is actively RUNNING since ${context.runningTask.startedAt} with ${context.runningTask.trackedSeconds}s tracked.`
     : context.lastPausedTask
@@ -722,16 +743,29 @@ ${emailMeetingsList}
    - User Timezone: ${timezone}
    - Today's Date: ${context.today} (${todayDayOfWeek})
    - Tomorrow's Date: ${tomorrowDate}
-   - Current Local Time: ${context.currentTimeLocal}
+   - Current Local Time (24-Hour Clock): "${currentLocal24h}" (e.g. 23:45)
+   - Current Local Time (12-Hour Clock): "${currentLocal12h}" (e.g. 11:45 PM)
    - Upcoming Week Schedule (Use this table to deterministically map relative deadlines e.g. "by Friday", "by next Monday"):
 ${upcomingDaysTable}
+
+   - CRITICAL RELATIVE WORK DURATION ARITHMETIC (PAST WORK REPORTS):
+     When the user reports completed work or learning over a past duration (e.g. "for the past 2 hours I have been doing X", "I spent the last 90 minutes on Y", "just finished 3 hours of Z"):
+     1. The work concluded right NOW. Therefore:
+        - endTime = "${currentLocal24h}" (the Current Local Time in 24-hour "HH:mm" format).
+     2. Calculate startTime backwards from endTime:
+        - startTime = endTime minus reported duration.
+        - Example: If Current Local Time is "${currentLocal24h}" (e.g. 23:45) and user says "for the past 2 hours":
+          * endTime = "${currentLocal24h}"
+          * startTime = [2 hours prior in 24h format, e.g. 21:45]
+     3. NEVER default to morning or daytime hours (like 09:00 or 11:00) when the user is speaking in the evening or at night (${currentLocal12h})! Always use the actual 24-hour clock anchor "${currentLocal24h}".
+
    - Relative Dates:
      * "today", "this morning", "this afternoon" -> "${context.today}"
      * "yesterday", "yesterday at night", "last night" -> "${yesterdayDate}"
      * "tomorrow", "tomorrow morning", "next day" -> "${tomorrowDate}"
    - Relative & 12/24h Times:
      * "from 9 to 10 at night" -> startTime: "21:00", endTime: "22:00"
-     * "from 9 to 10" (daytime/morning) -> startTime: "09:00", endTime: "10:00"
+     * "from 9 to 10 in the morning" -> startTime: "09:00", endTime: "10:00"
      * "from 2 to 3pm" -> startTime: "14:00", endTime: "15:00"
      * "from 1030 to 1130" -> startTime: "10:30", endTime: "11:30"
      * "half an hour ago", "now" -> resolve to exact ISO string
@@ -1404,12 +1438,9 @@ Deno.serve(async (req: Request) => {
     let systemPrompt = '';
     if (isPromptRequest) {
       systemPrompt = buildPromptEngineeringSystemPrompt(promptRefinementTarget);
-    } else if (isOperational) {
-      systemPrompt = buildOperationalSystemPrompt(currentTimeISO, timezone, context, mode);
     } else {
-      const resolvedLocation = resolveLocationFromTimezone(timezone);
-      const currentTimeLocal = context?.currentTimeLocal || new Date().toLocaleTimeString();
-      systemPrompt = buildSentientCompanionSystemPrompt(currentTimeLocal, timezone, resolvedLocation, context);
+      // Unified Agentic Brain: Always equip Jarvis with full engineering mastery AND operational capabilities
+      systemPrompt = buildOperationalSystemPrompt(currentTimeISO, timezone, context, mode);
     }
 
     systemPrompt += searchAddendum;
@@ -1568,8 +1599,8 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ABSOLUTE GUARDRAIL: If it's a prompt engineering request, engineeredPrompt is present, or NOT an operational request, NEVER output proposals!
-    if (isExplicitPromptRequest || parsedResult.engineeredPrompt || !isOperational) {
+    // Only wipe proposals if it's explicitly a prompt engineering request or engineeredPrompt is present
+    if (isExplicitPromptRequest || parsedResult.engineeredPrompt) {
       parsedResult.proposals = [];
     }
 
