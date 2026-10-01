@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom';
 import { Lock, Unlock, Settings, LogOut, ChevronDown, FileText } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useSettingsStore } from '../../store/settingsStore';
-import { useJarvisStore } from '../../store/jarvisStore';
-import { JarvisOrb } from '../jarvis/JarvisOrb';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { SegmentedTabs } from './SegmentedTabs';
 
@@ -23,7 +21,6 @@ export function TopBar({
 }: TopBarProps) {
   const { profile, user, signOut } = useAuthStore();
   const { isReadOnly, toggleReadOnly } = useSettingsStore();
-  const { orbState, audioLevel, isRecording } = useJarvisStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -57,24 +54,6 @@ export function TopBar({
 
         {/* Right: Actions */}
         <div className="flex-1 flex justify-end items-center gap-1.5">
-          {/* Jarvis Capsule */}
-          <button
-            type="button"
-            onClick={() => onTabChange('jarvis-cockpit')}
-            className="flex items-center gap-1.5 bg-panel border border-border rounded-full px-2 py-1 hover:border-border-strong transition-colors duration-200 relative group"
-            title="Switch to Jarvis AI (Alt+J)"
-          >
-            <div className="relative flex items-center justify-center">
-              <JarvisOrb size={20} state={orbState} audioLevel={audioLevel} glow={false} />
-              {isRecording && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-ping" />
-              )}
-            </div>
-            <kbd className="hidden md:inline-block px-1 py-0.5 rounded-[4px] bg-bg text-[10px] text-accent font-mono border border-border leading-none">
-              Alt+J
-            </kbd>
-          </button>
-
           {/* Career Ledger Button */}
           <button
             onClick={onCareerLedgerOpen}
