@@ -32,11 +32,17 @@ export function ConversationStream() {
   const {
     messages,
     isSending,
-    startNewConversation
+    startNewConversation,
+    fetchConversations
   } = useAssistantStore();
 
   const [inputVal, setInputVal] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch initial conversations on mount
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
 
   // Sync transcript into inputVal
   useEffect(() => {
