@@ -349,7 +349,17 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             orbState: 'idle',
             statusMessage: 'Ready for your approval, sir.',
           });
-          if (!get().isMuted) jarvisVoice.speak('I have drafted the entry for your approval, sir.');
+          if (!get().isMuted) {
+            const rawContent = (lastMsg.content || '').trim();
+            // If the LLM answered a technical or conceptual question alongside the proposal
+            if (rawContent && !rawContent.toLowerCase().startsWith('i have drafted') && rawContent.length > 30) {
+              const cleanText = rawContent.replace(/[#*`_~]/g, '').slice(0, 280).trim();
+              jarvisVoice.speak(`${cleanText}... I have also drafted the proposal below for your approval, sir.`);
+            } else {
+              const typeDesc = targetProp?.type === 'create_tasks' ? 'tasks' : targetProp?.type === 'create_work_event' ? 'work journal entry' : 'entry';
+              jarvisVoice.speak(`I have drafted the ${typeDesc} for your approval, sir.`);
+            }
+          }
         } else if (autoExecuted.length > 0) {
           set({ isSubmitting: false, orbState: 'success', statusMessage: 'Action completed!' });
           if (!get().isMuted) jarvisVoice.speak('The action has been executed, sir.');

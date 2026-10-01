@@ -917,7 +917,7 @@ ${pastUnfinishedList}
 ### OUTPUT FORMAT:
 You MUST respond with a single JSON object matching this structure:
 {
-  "replyText": "Markdown formatted conversational response to the user. CRITICAL: If you generate proposals, DO NOT repeat the task details, journal text, or payload contents here! Keep this text extremely brief (e.g. 'I have drafted the entry for your approval.') because the user will see the data in the interactive card.",
+  "replyText": "Markdown formatted conversational response to the user. When creating proposals or answering questions, provide a natural 1-2 sentence conversational summary acknowledging the specific items created and answering any technical questions asked (e.g. 'I have set up tasks for the Redis caching integration and p95 latency benchmarks for your review. Regarding RLS subqueries: ...'). DO NOT dump raw JSON or repeat full duplicate card markdown blocks in this text, as the user has the interactive proposal card below.",
   "engineeredPrompt": "Markdown formatted context-engineered prompt string if Category C, otherwise null or omitted.",
   "proposals": [ ...array of proposals if any action is needed, otherwise empty array... ],
   "suggestedFollowups": ["Short quick-action phrase 1", "Short phrase 2"]
@@ -943,6 +943,7 @@ You MUST respond with a single JSON object matching this structure:
        ]
      }
    }
+   NOTE ON PLANNED DATE: Always default plannedDate to "${context.today}" so tasks appear on today's active Kanban board, unless the user explicitly specifies a different scheduled date (e.g. "schedule this for next Wednesday").
 
 2. start_task:
    {

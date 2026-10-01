@@ -791,7 +791,9 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         case 'create_tasks': {
           const p = proposal as CreateTasksProposal;
           const createdIds: string[] = [];
+          let targetDate = taskStore.selectedDate;
           for (const item of p.payload.tasks) {
+            if (item.plannedDate) targetDate = item.plannedDate;
             const created = await taskStore.createTask({
               title: item.title,
               description: item.description,
@@ -801,7 +803,13 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             if (created) createdIds.push(created.id);
           }
           createdRecordIds.taskIds = createdIds;
-          toast.success(`Created ${createdIds.length} tasks in To Do!`);
+
+          // Sync active view to the date of the created tasks and reload
+          if (targetDate) {
+            taskStore.setSelectedDate(targetDate);
+            await taskStore.fetchTasks(targetDate);
+          }
+          toast.success(`Created ${createdIds.length} tasks in To Do (${targetDate})!`);
           break;
         }
 
