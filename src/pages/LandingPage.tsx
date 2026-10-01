@@ -9,7 +9,7 @@ import { LandingFooter } from '../components/landing/LandingFooter';
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0f1117] text-slate-100 font-sans">
+    <div className="min-h-screen bg-[#000000] text-slate-100 font-sans">
       <LandingNav />
       <Hero />
       <GapSection />

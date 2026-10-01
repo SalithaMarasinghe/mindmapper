@@ -10,10 +10,13 @@ import {
   Briefcase,
   User,
   Link2,
+  Video,
+  ExternalLink,
 } from 'lucide-react';
 import type {
   CreateWorkEventProposal,
   CreateMeetingEventProposal,
+  UpdateMeetingEventProposal,
   TaskItem,
   MeetingActionItem,
 } from '../../../types';
@@ -21,7 +24,7 @@ import { ProposalCard } from './ProposalCard';
 import { MarkdownViewer } from '../../common/MarkdownViewer';
 import { useTimelineStore } from '../../../store/timelineStore';
 
-type JournalProposal = CreateWorkEventProposal | CreateMeetingEventProposal;
+type JournalProposal = CreateWorkEventProposal | CreateMeetingEventProposal | UpdateMeetingEventProposal;
 
 interface WorkJournalCardProps {
   proposal: JournalProposal;
@@ -36,16 +39,56 @@ export function WorkJournalCard({
   onReject,
   isSubmitting,
 }: WorkJournalCardProps) {
-  const isMeeting = proposal.type === 'create_meeting_event';
+  const isUpdateMeeting = proposal.type === 'update_meeting_event';
+  const isMeeting = proposal.type === 'create_meeting_event' || isUpdateMeeting;
+
+  // Candidate events for disambiguation
+  const updatePayload = isUpdateMeeting ? (proposal as UpdateMeetingEventProposal).payload : null;
+  const candidateEvents = updatePayload?.candidateEvents || [];
+  const [selectedEventId, setSelectedEventId] = useState(updatePayload?.targetEventId || '');
+
+  const selectedCandidate = useMemo(() => {
+    if (!isUpdateMeeting) return null;
+    return candidateEvents.find((c) => c.id === selectedEventId) || candidateEvents[0] || null;
+  }, [isUpdateMeeting, candidateEvents, selectedEventId]);
 
   const [isEditing, setIsEditing] = useState(false);
 
   // Common editable state
-  const [title, setTitle] = useState(proposal.payload.title);
-  const [date, setDate] = useState(proposal.payload.date);
-  const [startTime, setStartTime] = useState(proposal.payload.startTime || '');
-  const [endTime, setEndTime] = useState(proposal.payload.endTime || '');
-  const [projectTag, setProjectTag] = useState(proposal.payload.projectTag || '');
+  const initialTitle = proposal.payload.title || selectedCandidate?.title || '';
+  const [title, setTitle] = useState(initialTitle);
+  const [date, setDate] = useState(
+    ('date' in proposal.payload ? proposal.payload.date : null) ||
+      selectedCandidate?.date ||
+      new Date().toISOString().slice(0, 10)
+  );
+  const [startTime, setStartTime] = useState(
+    ('startTime' in proposal.payload ? proposal.payload.startTime : null) ||
+      selectedCandidate?.startTime ||
+      ''
+  );
+  const [endTime, setEndTime] = useState(
+    ('endTime' in proposal.payload ? proposal.payload.endTime : null) ||
+      selectedCandidate?.endTime ||
+      ''
+  );
+  const [projectTag, setProjectTag] = useState(
+    ('projectTag' in proposal.payload ? proposal.payload.projectTag : null) ||
+      selectedCandidate?.projectTag ||
+      ''
+  );
+
+  const handleSelectCandidate = (candId: string) => {
+    setSelectedEventId(candId);
+    const cand = candidateEvents.find((c) => c.id === candId);
+    if (cand) {
+      if (cand.title) setTitle(cand.title);
+      if (cand.date) setDate(cand.date);
+      if (cand.startTime) setStartTime(cand.startTime || '');
+      if (cand.endTime) setEndTime(cand.endTime || '');
+      if (cand.projectTag) setProjectTag(cand.projectTag);
+    }
+  };
 
   // Lineage / Chaining state
   const eventsByDate = useTimelineStore((state) => state.eventsByDate);
@@ -74,7 +117,9 @@ export function WorkJournalCard({
   }, [previousEventTitle, previousEventId, availableEvents]);
 
   // Meeting specific editable state
-  const meetingPayload = isMeeting ? (proposal as CreateMeetingEventProposal).payload : null;
+  const meetingPayload = isMeeting
+    ? (proposal as CreateMeetingEventProposal | UpdateMeetingEventProposal).payload
+    : null;
   const [discussionSummary, setDiscussionSummary] = useState(
     meetingPayload?.discussionSummary || ''
   );
@@ -98,7 +143,7 @@ export function WorkJournalCard({
             text,
             assignee,
             isForUser: isSalitha || !matchOther,
-            deadlineDate: meetingPayload?.date,
+            deadlineDate: ('date' in (meetingPayload || {})) ? (meetingPayload as any).date : date,
             done: false,
           };
         });
@@ -117,6 +162,48 @@ export function WorkJournalCard({
   );
 
   const handleApprove = () => {
+    if (isUpdateMeeting) {
+      const assignedTasks: TaskItem[] = actionItemsText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((text) => ({ text, done: false }));
+
+      const updatedActionItems: MeetingActionItem[] = assignedTasks.map((t) => {
+        const existing = rawActionItems.find((a) => a.text === t.text);
+        if (existing) return existing;
+
+        const text = t.text;
+        const isSalitha = /salitha|you|trainee/i.test(text);
+        const matchOther = text.match(/^\[(.*?)\]/);
+        const assignee = isSalitha ? 'Salitha Marasinghe' : matchOther ? matchOther[1] : undefined;
+        return {
+          text,
+          assignee,
+          isForUser: isSalitha || !matchOther,
+          deadlineDate: date,
+          done: false,
+        };
+      });
+
+      const updateProp = proposal as UpdateMeetingEventProposal;
+      const updated: UpdateMeetingEventProposal = {
+        ...updateProp,
+        payload: {
+          ...updateProp.payload,
+          targetEventId: selectedEventId || updateProp.payload.targetEventId,
+          title: title || selectedCandidate?.title || updateProp.payload.title,
+          discussionSummary,
+          decisions,
+          tasksAssigned: assignedTasks,
+          actionItems: updatedActionItems,
+          addTasksToKanban,
+        },
+      };
+      onApprove(updated);
+      return;
+    }
+
     if (isMeeting) {
       const assignedTasks: TaskItem[] = actionItemsText
         .split('\n')
@@ -155,6 +242,8 @@ export function WorkJournalCard({
           tasksAssigned: assignedTasks,
           actionItems: updatedActionItems,
           addTasksToKanban,
+          links: meetingPayload?.links,
+          meetingUrl: meetingPayload?.meetingUrl,
           previousEventId: previousEventId || null,
           previousEventTitle: resolvedPreviousTitle || null,
         },
@@ -184,7 +273,14 @@ export function WorkJournalCard({
   return (
     <ProposalCard
       proposal={proposal}
-      title={isMeeting ? 'Proposed Meeting Entry' : 'Proposed Work Journal Entry'}
+      title={
+        isUpdateMeeting
+          ? 'Update Meeting Entry (Zero Duplicates)'
+          : isMeeting
+          ? 'Proposed Meeting Entry'
+          : 'Proposed Work Journal Entry'
+      }
+      approveLabel={isUpdateMeeting ? 'Approve & Update Entry' : undefined}
       icon={
         isMeeting ? (
           <Users className="w-4 h-4 text-purple-400" />
@@ -198,34 +294,118 @@ export function WorkJournalCard({
       isSubmitting={isSubmitting}
     >
       <div className="flex flex-col gap-2.5">
+        {/* Candidate Disambiguation Selector if multiple candidate meetings exist */}
+        {isUpdateMeeting && candidateEvents.length > 1 && (
+          <div className="p-3 bg-purple-950/20 rounded-xl border border-purple-800/40 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300 uppercase tracking-wider">
+                <Users className="w-3.5 h-3.5 text-purple-400" />
+                Select Which Meeting to Update:
+              </div>
+              <span className="text-[10px] text-purple-400 font-mono px-2 py-0.5 rounded bg-purple-950/70 border border-purple-800/50">
+                {candidateEvents.length} candidates found
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Jarvis detected multiple recent meetings on your schedule. Choose which entry to populate with these notes:
+            </p>
+            <div className="space-y-1.5 mt-1">
+              {candidateEvents.map((c) => {
+                const isSelected = selectedEventId === c.id;
+                return (
+                  <label
+                    key={c.id}
+                    onClick={() => handleSelectCandidate(c.id)}
+                    className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition select-none ${
+                      isSelected
+                        ? 'bg-purple-900/40 border-purple-500 ring-1 ring-purple-500/50 text-purple-200'
+                        : 'bg-[#000000] border-[#1a1a1a] text-slate-300 hover:border-[#333]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="radio"
+                        name="candidateMeeting"
+                        checked={isSelected}
+                        onChange={() => handleSelectCandidate(c.id)}
+                        className="rounded-full bg-[#080808] border-[#333] text-purple-600 focus:ring-0"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-semibold text-xs text-slate-100 truncate">{c.title}</span>
+                        <span className="text-[10px] text-slate-400">{c.date}</span>
+                      </div>
+                    </div>
+                    {(c.startTime || c.endTime) && (
+                      <span className="text-[11px] font-mono font-medium text-purple-300 px-2 py-0.5 rounded bg-purple-950/60 border border-purple-800/40 shrink-0">
+                        {c.startTime || '??'} – {c.endTime || '??'}
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* In-Place Target Banner if single candidate or direct update */}
+        {isUpdateMeeting && candidateEvents.length <= 1 && (
+          <div className="flex items-center justify-between px-3 py-2 bg-purple-950/30 rounded-lg border border-purple-800/40 text-xs">
+            <div className="flex items-center gap-2 text-purple-300">
+              <CheckSquare className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              <span>
+                Target Meeting: <strong className="text-white">{title || selectedCandidate?.title || 'Existing Meeting Entry'}</strong>
+              </span>
+            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800/60">
+              In-Place Update
+            </span>
+          </div>
+        )}
+
         {/* View Mode */}
         {!isEditing ? (
-          <div className="p-3.5 bg-[#0e121a] rounded-xl border border-[#232b3b] flex flex-col gap-2.5">
+          <div className="p-3.5 bg-[#000000] rounded-xl border border-[#161616] flex flex-col gap-2.5">
             {/* Header / Type & Title */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-col gap-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                      isMeeting
+                      isUpdateMeeting
+                        ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
+                        : isMeeting
                         ? 'bg-purple-950/60 text-purple-300 border-purple-800/60'
                         : 'bg-teal-950/60 text-teal-300 border-teal-800/60'
                     }`}
                   >
-                    {isMeeting ? 'Meeting Log' : 'Work Log'}
+                    {isUpdateMeeting ? 'Update Meeting Log' : isMeeting ? 'Meeting Log' : 'Work Log'}
                   </span>
                   {projectTag && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a2130] text-slate-300 border border-[#2d3748]">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#0a0a0a] text-slate-300 border border-[#1a1a1a]">
                       <Tag className="w-3 h-3 text-teal-400" />
                       {projectTag}
                     </span>
                   )}
                 </div>
                 <h4 className="font-semibold text-sm text-slate-100">{title}</h4>
-                {isMeeting && meetingPayload?.attendees && meetingPayload.attendees.length > 0 && (
+                {isMeeting && 'attendees' in (meetingPayload || {}) && (meetingPayload as any)?.attendees && (meetingPayload as any).attendees.length > 0 && (
                   <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
                     <Users className="w-3 h-3 text-purple-400 shrink-0" />
-                    <span>Attendees: {meetingPayload.attendees.join(', ')}</span>
+                    <span>Attendees: {(meetingPayload as any).attendees.join(', ')}</span>
+                  </div>
+                )}
+                {isMeeting && (meetingPayload?.meetingUrl || (meetingPayload?.links && meetingPayload.links.length > 0)) && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <a
+                      href={meetingPayload.meetingUrl || meetingPayload.links?.[0]?.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/60 border border-emerald-600/50 hover:border-emerald-500 text-emerald-300 hover:text-white text-xs font-medium transition group"
+                    >
+                      <Video className="w-3.5 h-3.5 text-emerald-400 group-hover:animate-pulse" />
+                      <span>Direct Join Link</span>
+                      <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100" />
+                    </a>
                   </div>
                 )}
                 {isLinkedToTask && (
@@ -272,7 +452,7 @@ export function WorkJournalCard({
             {isMeeting && (
               <div className="flex flex-col gap-2.5 mt-1 text-xs">
                 {discussionSummary && (
-                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
                     <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                       <FileText className="w-3 h-3 text-purple-400" />
                       Discussion Summary
@@ -292,7 +472,7 @@ export function WorkJournalCard({
                 )}
 
                 {actionItemsText && (
-                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
                         <CheckSquare className="w-3 h-3 text-teal-400" />
@@ -345,12 +525,12 @@ export function WorkJournalCard({
                     </ul>
 
                     {salithaTasksCount > 0 && (
-                      <label className="flex items-center gap-2 cursor-pointer pt-2.5 mt-2.5 border-t border-[#1e2638] text-slate-300 select-none">
+                      <label className="flex items-center gap-2 cursor-pointer pt-2.5 mt-2.5 border-t border-[#111111] text-slate-300 select-none">
                         <input
                           type="checkbox"
                           checked={addTasksToKanban}
                           onChange={(e) => setAddTasksToKanban(e.target.checked)}
-                          className="rounded bg-[#141a24] border-[#2d3748] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                          className="rounded bg-[#080808] border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
                         />
                         <span className="text-[11px] text-teal-300 font-medium">
                           Automatically add Salitha's action items ({salithaTasksCount}) to Kanban To Do upon approval
@@ -366,7 +546,7 @@ export function WorkJournalCard({
             {!isMeeting && (
               <div className="flex flex-col gap-2 mt-1 text-xs">
                 {description && (
-                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
                     <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                       Description
                     </div>
@@ -374,7 +554,7 @@ export function WorkJournalCard({
                   </div>
                 )}
                 {implementationNotes && (
-                  <div className="bg-[#141924] p-3 rounded-lg border border-[#1f2637]">
+                  <div className="bg-[#080808] p-3 rounded-lg border border-[#111111]">
                     <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1.5">
                       Implementation Notes
                     </div>
@@ -386,8 +566,8 @@ export function WorkJournalCard({
           </div>
         ) : (
           /* Edit Mode Form */
-          <div className="p-3.5 bg-[#0b0e14] rounded-xl border border-teal-800/50 flex flex-col gap-3 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-[#1e2638]">
+          <div className="p-3.5 bg-[#000000] rounded-xl border border-teal-800/50 flex flex-col gap-3 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-[#111111]">
               <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">
                 Edit {isMeeting ? 'Meeting' : 'Work'} Entry
               </span>
@@ -410,7 +590,7 @@ export function WorkJournalCard({
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
+                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -422,7 +602,7 @@ export function WorkJournalCard({
                   value={projectTag}
                   placeholder="e.g. Auth, Frontend"
                   onChange={(e) => setProjectTag(e.target.value)}
-                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
+                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500"
                 />
               </div>
             </div>
@@ -437,7 +617,7 @@ export function WorkJournalCard({
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -448,7 +628,7 @@ export function WorkJournalCard({
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -459,13 +639,13 @@ export function WorkJournalCard({
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1.5 focus:outline-none focus:border-teal-500 font-mono text-xs"
                 />
               </div>
             </div>
 
             {/* Chained Predecessor Event Selector */}
-            <div className="flex flex-col gap-1.5 p-2.5 bg-[#121622] rounded-lg border border-[#232b3b]">
+            <div className="flex flex-col gap-1.5 p-2.5 bg-[#080808] rounded-lg border border-[#161616]">
               <label className="text-[10px] text-teal-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <Link2 className="w-3.5 h-3.5 text-teal-400" />
                 Chained from Previous Event (Lineage & Audit Trail)
@@ -478,7 +658,7 @@ export function WorkJournalCard({
                   const match = availableEvents.find((ev) => ev.id === id);
                   setPreviousEventTitle(match ? match.title : null);
                 }}
-                className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 cursor-pointer"
+                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 cursor-pointer"
               >
                 <option value="">None (Independent / Standalone)</option>
                 {availableEvents.map((ev) => (
@@ -505,7 +685,7 @@ export function WorkJournalCard({
                     rows={6}
                     value={discussionSummary}
                     onChange={(e) => setDiscussionSummary(e.target.value)}
-                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
@@ -517,7 +697,7 @@ export function WorkJournalCard({
                     rows={3}
                     value={decisions}
                     onChange={(e) => setDecisions(e.target.value)}
-                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
@@ -529,7 +709,7 @@ export function WorkJournalCard({
                     rows={4}
                     value={actionItemsText}
                     onChange={(e) => setActionItemsText(e.target.value)}
-                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed"
+                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed"
                   />
                 </div>
 
@@ -538,7 +718,7 @@ export function WorkJournalCard({
                     type="checkbox"
                     checked={addTasksToKanban}
                     onChange={(e) => setAddTasksToKanban(e.target.checked)}
-                    className="rounded bg-[#141a24] border-[#2d3748] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                    className="rounded bg-[#080808] border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
                   />
                   <span className="text-xs text-teal-300">
                     Also add Salitha's action items to Kanban To Do upon approval
@@ -558,7 +738,7 @@ export function WorkJournalCard({
                     rows={7}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
@@ -570,7 +750,7 @@ export function WorkJournalCard({
                     rows={3}
                     value={implementationNotes}
                     onChange={(e) => setImplementationNotes(e.target.value)}
-                    className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
+                    className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-teal-500 resize-y text-xs leading-relaxed font-mono"
                   />
                 </div>
 
@@ -580,7 +760,7 @@ export function WorkJournalCard({
                       type="checkbox"
                       checked={syncToTaskLog}
                       onChange={(e) => setSyncToTaskLog(e.target.checked)}
-                      className="rounded bg-[#141a24] border-[#2d3748] text-teal-500 focus:ring-0 focus:ring-offset-0"
+                      className="rounded bg-[#080808] border-[#1a1a1a] text-teal-500 focus:ring-0 focus:ring-offset-0"
                     />
                     <span className="text-xs">
                       Also update completed task description in Task Log upon approval

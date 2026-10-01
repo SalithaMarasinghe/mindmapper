@@ -12,7 +12,7 @@ import { MarkdownEditor } from '../common/MarkdownEditor';
 // ─── Shared input/label class tokens ─────────────────────────────────────────
 
 const INPUT_CLS =
-  'w-full rounded-lg border border-[#2d3748] bg-[#0f1117] px-3 py-2 text-sm text-slate-200 ' +
+  'w-full rounded-lg border border-[#1a1a1a] bg-[#000000] px-3 py-2 text-sm text-slate-200 ' +
   'placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 ' +
   'focus:ring-teal-500/30 transition-shadow';
 
@@ -110,7 +110,7 @@ function TasksEditor({ tasks, onChange }: { tasks: TaskItem[]; onChange: (t: Tas
               type="checkbox"
               checked={task.done}
               onChange={e => update(i, 'done', e.target.checked)}
-              className="w-4 h-4 rounded border-[#2d3748] accent-teal-500 flex-shrink-0 cursor-pointer"
+              className="w-4 h-4 rounded border-[#1a1a1a] accent-teal-500 flex-shrink-0 cursor-pointer"
               aria-label="Task done"
             />
             <input
@@ -311,10 +311,10 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
       aria-label={isEditing ? 'Edit event' : 'New event'}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] w-full max-w-4xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] w-full max-w-4xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="px-6 py-4 border-b border-[#2d3748] flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-100">
             {isEditing ? 'Edit Event' : 'New Event'}
           </h2>
@@ -322,7 +322,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="p-1.5 hover:bg-[#2d3748] rounded-full text-slate-400 hover:text-slate-200 transition"
+            className="p-1.5 hover:bg-[#141414] rounded-full text-slate-400 hover:text-slate-200 transition"
           >
             <X className="h-5 w-5" />
           </button>
@@ -333,13 +333,13 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
 
           {/* Type toggle — only shown when creating */}
           {!isEditing && (
-            <div className="flex bg-[#0f1117] p-1 rounded-lg border border-[#2d3748] self-start">
+            <div className="flex bg-[#000000] p-1 rounded-lg border border-[#1a1a1a] self-start">
               <button
                 type="button"
                 onClick={() => setEventType('work')}
                 className={`flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                   eventType === 'work'
-                    ? 'bg-[#1e2433] text-teal-400 shadow-sm'
+                    ? 'bg-[#0a0a0a] text-teal-400 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -350,7 +350,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                 onClick={() => setEventType('meeting')}
                 className={`flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
                   eventType === 'meeting'
-                    ? 'bg-[#1e2433] text-violet-400 shadow-sm'
+                    ? 'bg-[#0a0a0a] text-violet-400 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -470,7 +470,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
           </div>
 
           {/* ── Divider ──────────────────────────────────────────────── */}
-          <div className="border-t border-[#2d3748]" />
+          <div className="border-t border-[#1a1a1a]" />
 
           {/* ── Work form ────────────────────────────────────────────── */}
           {eventType === 'work' && (
@@ -530,10 +530,10 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                   aria-checked={isOptional}
                   onClick={() => setIsOptional(v => !v)}
                   className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${
-                    isOptional ? 'bg-teal-600' : 'bg-[#2d3748]'
+                    isOptional ? 'bg-teal-600' : 'bg-[#141414]'
                   }`}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[#e2e8f0] shadow transition-transform ${
                     isOptional ? 'translate-x-5' : 'translate-x-0'
                   }`} />
                 </button>
@@ -571,7 +571,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
           )}
 
           {/* ── Divider ──────────────────────────────────────────────── */}
-          <div className="border-t border-[#2d3748]" />
+          <div className="border-t border-[#1a1a1a]" />
 
           {/* ── Continue from (chain linker) ──────────────────────────── */}
           <div className={SECTION_CLS}>
@@ -608,13 +608,13 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                   onBlur={() => setTimeout(() => setChainOpen(false), 150)}
                 />
                 {chainOpen && filteredChainEvents.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#1e2433] border border-[#2d3748] rounded-lg shadow-xl overflow-hidden">
+                  <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg shadow-xl overflow-hidden">
                     {filteredChainEvents.map(ev => (
                       <button
                         key={ev.id}
                         type="button"
                         onMouseDown={() => { setPreviousEventId(ev.id); setChainSearch(''); setChainOpen(false); }}
-                        className="w-full text-left px-3 py-2.5 hover:bg-[#2d3748] transition flex items-center gap-3"
+                        className="w-full text-left px-3 py-2.5 hover:bg-[#141414] transition flex items-center gap-3"
                       >
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.type === 'work' ? 'bg-teal-400' : 'bg-violet-400'}`} />
                         <span className="text-xs text-slate-500 flex-shrink-0">{ev.date}</span>
@@ -637,11 +637,11 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
         </form>
 
         {/* ── Footer ──────────────────────────────────────────────────── */}
-        <div className="px-6 py-4 border-t border-[#2d3748] bg-[#0f1117]/50 flex justify-end gap-3 rounded-b-2xl">
+        <div className="px-6 py-4 border-t border-[#1a1a1a] bg-[#000000]/50 flex justify-end gap-3 rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-slate-300 bg-[#2d3748]/50 hover:bg-[#2d3748] rounded-lg transition"
+            className="px-4 py-2 text-sm font-semibold text-slate-300 bg-[#141414]/50 hover:bg-[#141414] rounded-lg transition"
           >
             Cancel
           </button>

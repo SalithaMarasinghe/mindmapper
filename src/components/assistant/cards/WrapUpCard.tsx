@@ -117,8 +117,8 @@ export function WrapUpCard({
             </>
           ) : (
             /* Edit Mode */
-            <div className="flex flex-col gap-3 p-3 bg-[#0d1017] rounded-xl border border-amber-800/40 text-xs">
-              <div className="flex items-center justify-between pb-1 border-b border-[#1f2637]">
+            <div className="flex flex-col gap-3 p-3 bg-[#000000] rounded-xl border border-amber-800/40 text-xs">
+              <div className="flex items-center justify-between pb-1 border-b border-[#111111]">
                 <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
                   Edit Carryover Tasks & Date
                 </span>
@@ -139,7 +139,7 @@ export function WrapUpCard({
                   type="date"
                   value={carryoverTargetDate}
                   onChange={(e) => setCarryoverTargetDate(e.target.value)}
-                  className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-amber-500 font-mono text-xs w-full sm:w-48"
+                  className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-amber-500 font-mono text-xs w-full sm:w-48"
                 />
               </div>
 
@@ -159,7 +159,7 @@ export function WrapUpCard({
                         className={`flex items-center gap-2 p-2 rounded-lg border text-left transition ${
                           isChecked
                             ? 'bg-amber-950/30 border-amber-800/50 text-slate-200'
-                            : 'bg-[#141a24] border-[#222a3d] text-slate-400 opacity-60'
+                            : 'bg-[#080808] border-[#161616] text-slate-400 opacity-60'
                         }`}
                       >
                         {isChecked ? (
@@ -213,7 +213,7 @@ export function WrapUpCard({
       <div className="flex flex-col gap-3">
         {/* Metric Badges */}
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 bg-[#0f1117] rounded-lg border border-[#2d3748] flex items-center gap-2">
+          <div className="p-2.5 bg-[#000000] rounded-lg border border-[#1a1a1a] flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
             <div>
               <span className="text-[10px] text-slate-500 uppercase block font-bold">
@@ -223,7 +223,7 @@ export function WrapUpCard({
             </div>
           </div>
 
-          <div className="p-2.5 bg-[#0f1117] rounded-lg border border-[#2d3748] flex items-center gap-2">
+          <div className="p-2.5 bg-[#000000] rounded-lg border border-[#1a1a1a] flex items-center gap-2">
             <Clock className="w-4 h-4 text-teal-400 flex-shrink-0" />
             <div>
               <span className="text-[10px] text-slate-500 uppercase block font-bold">
@@ -241,7 +241,7 @@ export function WrapUpCard({
           <>
             {/* Narrative Summary */}
             {narrative && (
-              <div className="p-3 bg-[#0f1117] rounded-xl border border-[#2d3748] text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+              <div className="p-3 bg-[#000000] rounded-xl border border-[#1a1a1a] text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
                 {narrative}
               </div>
             )}
@@ -272,8 +272,8 @@ export function WrapUpCard({
           </>
         ) : (
           /* Edit Mode Form */
-          <div className="flex flex-col gap-3 p-3 bg-[#0d1017] rounded-xl border border-purple-800/40 text-xs">
-            <div className="flex items-center justify-between pb-1 border-b border-[#1f2637]">
+          <div className="flex flex-col gap-3 p-3 bg-[#000000] rounded-xl border border-purple-800/40 text-xs">
+            <div className="flex items-center justify-between pb-1 border-b border-[#111111]">
               <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider">
                 Edit Wrap-Up Summary & Tasks
               </span>
@@ -294,7 +294,7 @@ export function WrapUpCard({
                 rows={3}
                 value={narrative}
                 onChange={(e) => setNarrative(e.target.value)}
-                className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 resize-none text-xs leading-relaxed"
+                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 resize-none text-xs leading-relaxed"
               />
             </div>
 
@@ -306,7 +306,7 @@ export function WrapUpCard({
                 type="date"
                 value={wrapUpTargetDate}
                 onChange={(e) => setWrapUpTargetDate(e.target.value)}
-                className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 font-mono text-xs w-full sm:w-48"
+                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1.5 focus:outline-none focus:border-purple-500 font-mono text-xs w-full sm:w-48"
               />
             </div>
 
@@ -327,7 +327,7 @@ export function WrapUpCard({
                         className={`flex items-center gap-2 p-2 rounded-lg border text-left transition ${
                           isChecked
                             ? 'bg-purple-950/30 border-purple-800/50 text-slate-200'
-                            : 'bg-[#141a24] border-[#222a3d] text-slate-400 opacity-60'
+                            : 'bg-[#080808] border-[#161616] text-slate-400 opacity-60'
                         }`}
                       >
                         {isChecked ? (

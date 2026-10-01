@@ -262,6 +262,7 @@ export type ProposalType =
   | 'create_project'
   | 'create_work_event'
   | 'create_meeting_event'
+  | 'update_meeting_event'
   | 'carry_over_tasks'
   | 'daily_wrap_up';
 
@@ -429,8 +430,35 @@ export interface CreateMeetingEventProposal extends BaseProposal {
     actionItems?: MeetingActionItem[];
     addTasksToKanban?: boolean;
     attendees?: string[];
+    links?: EventLink[];
+    meetingUrl?: string;
     previousEventId?: string | null;
     previousEventTitle?: string | null;
+  };
+}
+
+export interface CandidateMeetingEvent {
+  id: string;
+  title: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  projectTag: string | null;
+}
+
+export interface UpdateMeetingEventProposal extends BaseProposal {
+  type: 'update_meeting_event';
+  payload: {
+    targetEventId: string;
+    candidateEvents?: CandidateMeetingEvent[];
+    title?: string;
+    discussionSummary: string;
+    decisions: string;
+    tasksAssigned: TaskItem[];
+    actionItems?: MeetingActionItem[];
+    addTasksToKanban?: boolean;
+    links?: EventLink[];
+    meetingUrl?: string;
   };
 }
 
@@ -478,6 +506,7 @@ export type AssistantProposal =
   | CreateProjectProposal
   | CreateWorkEventProposal
   | CreateMeetingEventProposal
+  | UpdateMeetingEventProposal
   | CarryOverTasksProposal
   | DailyWrapUpProposal;
 
@@ -489,6 +518,12 @@ export interface AssistantConversation {
   updatedAt: string;
 }
 
+export interface SearchSource {
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
 export interface AssistantMessage {
   id: string;
   conversationId: string;
@@ -497,7 +532,50 @@ export interface AssistantMessage {
   content: string;
   proposals: AssistantProposal[];
   createdAt: string;
+  engineeredPrompt?: string;
+  searchSources?: SearchSource[];
 }
 
+// ─── Email & Meeting Notification System ────────────────────────────────────
 
+export interface ParsedMeeting {
+  title: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // e.g. "10:00 AM" or "10:00"
+  endTime?: string; // e.g. "11:00 AM" or "11:00"
+  meetingUrl?: string; // Google Meet, Zoom, Teams URL
+  platform: 'google_meet' | 'zoom' | 'teams' | 'other';
+  organizer?: string;
+  organizerEmail?: string;
+  attendees?: string[];
+  summary?: string;
+  isConfirmed?: boolean;
+}
 
+export interface EmailMessage {
+  id: string;
+  sender: string;
+  senderEmail: string;
+  subject: string;
+  date: string; // ISO date string
+  snippet: string;
+  body: string;
+  hasMeetingInvite: boolean;
+  meetingDetails?: ParsedMeeting;
+}
+
+export interface AppNotification {
+  id: string;
+  type: 'meeting_invite' | 'meeting_upcoming' | 'meeting_live' | 'system';
+  title: string;
+  message: string;
+  meetingLink?: string;
+  meetingDate?: string;
+  meetingTime?: string;
+  platform?: 'google_meet' | 'zoom' | 'teams' | 'other';
+  eventId?: string;
+  read: boolean;
+  createdAt: string; // ISO string
+  actionLabel?: string;
+  actionUrl?: string;
+}

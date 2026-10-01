@@ -59,7 +59,7 @@ export function TaskProposalCard({
             return (
               <div
                 key={task.tempId || idx}
-                className="p-3 bg-[#0f1117] rounded-xl border border-[#2d3748] flex flex-col gap-1.5 transition"
+                className="p-3 bg-[#000000] rounded-xl border border-[#1a1a1a] flex flex-col gap-1.5 transition"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">

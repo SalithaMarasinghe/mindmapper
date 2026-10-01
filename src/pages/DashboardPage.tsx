@@ -7,12 +7,11 @@ import { Plus, Search, Sparkles, FileText } from 'lucide-react';
 import { useSettingsStore } from '../store/settingsStore';
 import { WorkJournal } from '../components/timeline/WorkJournal';
 import { TaskLog } from '../components/tasklog/TaskLog';
-import { AIAssistant } from '../components/assistant/AIAssistant';
+import { JarvisCockpit } from '../components/jarvis/JarvisCockpit';
 import { CareerLedgerModal } from '../components/ledger/CareerLedgerModal';
-import { JarvisActionHUD } from '../components/jarvis/JarvisActionHUD';
 
 export function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<'task-log' | 'work-journal' | 'mind-maps' | 'ai-assistant'>('task-log');
+  const [activeTab, setActiveTab] = useState<'jarvis-cockpit' | 'task-log' | 'work-journal' | 'mind-maps'>('jarvis-cockpit');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
@@ -24,12 +23,23 @@ export function DashboardPage() {
   }, [fetchMaps]);
 
   const tabs = (
-    <div className="flex bg-[#0f1117] p-1 rounded-lg border border-[#2d3748]">
+    <div className="flex bg-[#000000] p-1 rounded-lg border border-[#1a1a1a]">
+      <button
+        onClick={() => setActiveTab('jarvis-cockpit')}
+        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
+          activeTab === 'jarvis-cockpit' 
+            ? 'bg-[#0a0a0a] text-cyan-300 shadow-sm border border-cyan-500/30' 
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+        <span>Jarvis AI</span>
+      </button>
       <button
         onClick={() => setActiveTab('task-log')}
         className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
           activeTab === 'task-log' 
-            ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
+            ? 'bg-[#0a0a0a] text-teal-400 shadow-sm' 
             : 'text-slate-400 hover:text-slate-200'
         }`}
       >
@@ -39,7 +49,7 @@ export function DashboardPage() {
         onClick={() => setActiveTab('work-journal')}
         className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
           activeTab === 'work-journal' 
-            ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
+            ? 'bg-[#0a0a0a] text-teal-400 shadow-sm' 
             : 'text-slate-400 hover:text-slate-200'
         }`}
       >
@@ -49,30 +59,20 @@ export function DashboardPage() {
         onClick={() => setActiveTab('mind-maps')}
         className={`px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
           activeTab === 'mind-maps' 
-            ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
+            ? 'bg-[#0a0a0a] text-teal-400 shadow-sm' 
             : 'text-slate-400 hover:text-slate-200'
         }`}
       >
         Mind Maps
       </button>
-      <button
-        onClick={() => setActiveTab('ai-assistant')}
-        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-md transition-all ${
-          activeTab === 'ai-assistant' 
-            ? 'bg-[#1e2433] text-teal-400 shadow-sm' 
-            : 'text-slate-400 hover:text-slate-200'
-        }`}
-      >
-        <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-        <span>AI Assistant</span>
-      </button>
     </div>
   );
 
   return (
-    <div className={`min-h-screen bg-[#0f1117] font-sans ${activeTab !== 'mind-maps' ? 'h-screen flex flex-col overflow-hidden' : 'pb-20'}`}>
+    <div className={`min-h-screen bg-[#000000] font-sans ${activeTab !== 'mind-maps' ? 'h-screen flex flex-col overflow-hidden' : 'pb-20'}`}>
       <AppHeader
         centerContent={tabs}
+        onJarvisClick={() => setActiveTab('jarvis-cockpit')}
         rightContent={
           <button
             onClick={() => setIsLedgerOpen(true)}
@@ -100,9 +100,9 @@ export function DashboardPage() {
             <WorkJournal />
           </div>
         )}
-        {activeTab === 'ai-assistant' && (
+        {activeTab === 'jarvis-cockpit' && (
           <div className="flex-1 flex flex-col min-h-0 w-full h-full">
-            <AIAssistant />
+            <JarvisCockpit />
           </div>
         )}
         {activeTab === 'mind-maps' && (
@@ -128,7 +128,7 @@ export function DashboardPage() {
                   placeholder="Search mindmaps..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#1e2433] rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-[#252b3d] transition-all text-slate-200 border border-[#2d3748] placeholder:text-slate-500"
+                  className="w-full bg-[#0a0a0a] rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-[#141414] transition-all text-slate-200 border border-[#1a1a1a] placeholder:text-slate-500"
                 />
               </div>
 
@@ -154,7 +154,6 @@ export function DashboardPage() {
 
       {isModalOpen && <CreateMapModal onClose={() => setIsModalOpen(false)} />}
       {isLedgerOpen && <CareerLedgerModal isOpen={isLedgerOpen} onClose={() => setIsLedgerOpen(false)} />}
-      <JarvisActionHUD />
     </div>
   );
 }

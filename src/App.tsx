@@ -13,11 +13,22 @@ import { NodePage } from './pages/NodePage';
 import { SharedMapPage } from './pages/SharedMapPage';
 import { SettingsPage } from './pages/SettingsPage';
 
+import { useEmailStore } from './store/emailStore';
+
 export default function App() {
   useEffect(() => {
     testSupabaseConnection().then(result => {
       console.log('Supabase connection test result:', result);
     });
+
+    // Autonomous background meeting & email sync on boot and every 15 minutes
+    useEmailStore.getState().syncEmails();
+    const intervalMinutes = useEmailStore.getState().autoCheckIntervalMinutes || 15;
+    const intervalId = setInterval(() => {
+      useEmailStore.getState().syncEmails();
+    }, intervalMinutes * 60 * 1000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   return (

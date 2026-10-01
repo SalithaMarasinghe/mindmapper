@@ -252,25 +252,25 @@ export function WorkJournal() {
   return (
     <div className="flex flex-col w-full h-full min-h-0 flex-1">
       {/* Main Calendar View */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#0f1117] overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#000000] overflow-hidden">
         {/* Calendar Header / Nav */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2d3748] bg-[#1e2433] flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a] bg-[#0a0a0a] flex-shrink-0">
           <div className="flex items-center gap-2">
             <button 
               onClick={handlePrevWeek}
-              className="p-1.5 hover:bg-[#2d3748] rounded-md transition text-slate-400 hover:text-slate-200"
+              className="p-1.5 hover:bg-[#141414] rounded-md transition text-slate-400 hover:text-slate-200"
             >
               &larr;
             </button>
             <button 
               onClick={handleToday}
-              className="px-3 py-1 hover:bg-[#2d3748] rounded-md transition text-sm font-semibold text-slate-300"
+              className="px-3 py-1 hover:bg-[#141414] rounded-md transition text-sm font-semibold text-slate-300"
             >
               Today
             </button>
             <button 
               onClick={handleNextWeek}
-              className="p-1.5 hover:bg-[#2d3748] rounded-md transition text-slate-400 hover:text-slate-200"
+              className="p-1.5 hover:bg-[#141414] rounded-md transition text-slate-400 hover:text-slate-200"
             >
               &rarr;
             </button>
@@ -280,7 +280,7 @@ export function WorkJournal() {
             <button 
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition border ${
                 isGenerating 
-                  ? 'bg-slate-800 text-slate-400 border-slate-700 cursor-not-allowed' 
+                  ? 'bg-[#0a0a0a] text-slate-400 border-slate-700 cursor-not-allowed' 
                   : 'bg-teal-900/40 text-teal-300 hover:bg-teal-900/60 hover:text-teal-200 border-teal-700/50'
               }`}
               onClick={handleGenerateSummary}

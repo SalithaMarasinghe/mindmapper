@@ -44,7 +44,7 @@ export function ChatInputBar({
   };
 
   return (
-    <div className="border-t border-[#1e2433] bg-[#0d1017]/90 backdrop-blur-md px-4 py-3 shrink-0">
+    <div className="border-t border-[#111111] bg-[#000000]/90 backdrop-blur-md px-4 py-3 shrink-0">
       <div className="max-w-4xl mx-auto space-y-2.5">
         {/* Quick prompt chips */}
         <div className="overflow-x-auto pb-1 scrollbar-thin">
@@ -60,7 +60,7 @@ export function ChatInputBar({
         </div>
 
         {/* Input box */}
-        <div className="relative flex items-end gap-2 bg-[#161b26] border border-[#232a3b] rounded-2xl p-2 focus-within:border-teal-500/50 focus-within:ring-1 focus-within:ring-teal-500/30 transition-all shadow-inner">
+        <div className="relative flex items-end gap-2 bg-[#0a0a0a] border border-[#161616] rounded-2xl p-2 focus-within:border-teal-500/50 focus-within:ring-1 focus-within:ring-teal-500/30 transition-all shadow-inner">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -79,7 +79,7 @@ export function ChatInputBar({
             type="button"
             onClick={handleSend}
             disabled={disabled || !currentText.trim()}
-            className="w-9 h-9 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 flex items-center justify-center shrink-0 transition-all shadow-sm disabled:cursor-not-allowed cursor-pointer"
+            className="w-9 h-9 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:bg-[#0a0a0a] disabled:text-slate-600 text-slate-950 flex items-center justify-center shrink-0 transition-all shadow-sm disabled:cursor-not-allowed cursor-pointer"
             title="Send message (Enter)"
           >
             <ArrowUp className="w-5 h-5 font-bold" />

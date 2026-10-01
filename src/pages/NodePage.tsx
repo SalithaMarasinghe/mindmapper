@@ -114,15 +114,15 @@ export function NodePage() {
   }, []);
 
   if (!isLoaded || !mapId || !nodeId) return (
-    <div className="min-h-screen bg-[#0f1117] flex justify-center items-center">
+    <div className="min-h-screen bg-[#000000] flex justify-center items-center">
        <div className="w-8 h-8 rounded-full border-4 border-slate-700 border-t-teal-500 animate-spin" />
     </div>
   );
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-[#1e2433] border border-[#2d3748] rounded-2xl shadow-xl p-6 text-center">
+      <div className="min-h-screen bg-[#000000] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl shadow-xl p-6 text-center">
           <p className="text-slate-200 font-semibold mb-4">Could not load this node. Check your connection.</p>
           <div className="flex items-center justify-center gap-3">
             <button
@@ -133,7 +133,7 @@ export function NodePage() {
             </button>
             <button
               onClick={() => navigate(mapId ? `/map/${mapId}` : '/')}
-              className="px-4 py-2 rounded-lg border border-[#2d3748] bg-[#0f1117] hover:bg-[#1a2030] text-slate-300 font-semibold transition"
+              className="px-4 py-2 rounded-lg border border-[#1a1a1a] bg-[#000000] hover:bg-[#0a0a0a] text-slate-300 font-semibold transition"
             >
               Go Back
             </button>
@@ -169,7 +169,7 @@ export function NodePage() {
   const LeftContent = (
     <button 
       onClick={() => navigate(`/map/${mapId}`, { state: { focusRoot: true } })}
-      className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#2d3748] active:scale-95 border border-transparent"
+      className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#141414] active:scale-95 border border-transparent"
     >
       <ChevronLeft className="h-4 w-4" />
       Back to Map
@@ -178,7 +178,7 @@ export function NodePage() {
 
   return (
     <div
-      className="nodrag nowheel nopan flex flex-col min-h-screen bg-[#0f1117] font-sans"
+      className="nodrag nowheel nopan flex flex-col min-h-screen bg-[#000000] font-sans"
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
@@ -223,7 +223,7 @@ export function NodePage() {
             )}
           </nav>
 
-          <span className="node-type-badge inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-[#2d3748] text-slate-400 border border-[#3d4a60] w-fit">
+          <span className="node-type-badge inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-[#141414] text-slate-400 border border-[#222222] w-fit">
             {node.type} Node
           </span>
 
@@ -236,11 +236,11 @@ export function NodePage() {
             Child of: <span className="text-slate-200">{parentNode?.label || 'None'}</span>
           </p>
 
-          <hr className="border-[#2d3748]" />
+          <hr className="border-[#1a1a1a]" />
 
           <button
             onClick={() => setIsTestMode(!isTestMode)}
-            className={`btn-test-yourself w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isTestMode ? 'bg-orange-600 text-white border-transparent hover:bg-orange-700' : 'bg-[#2d3748] text-orange-400 border-[#3d4a60] hover:bg-[#364155]'}`}
+            className={`btn-test-yourself w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isTestMode ? 'bg-orange-600 text-white border-transparent hover:bg-orange-700' : 'bg-[#141414] text-orange-400 border-[#222222] hover:bg-[#1e1e1e]'}`}
           >
             <Brain className="h-5 w-5" />
             {isTestMode ? 'Exit Test Mode' : '🧠 Test Yourself'}
@@ -248,13 +248,13 @@ export function NodePage() {
 
           <button
             onClick={handleStudyToggle}
-            className={`btn-mark-studied w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isCompleted ? 'bg-[#2d3748] text-green-400 border-[#3d4a60] hover:bg-[#364155]' : 'bg-green-600 text-white border-transparent hover:bg-green-700 hover:shadow'}`}
+            className={`btn-mark-studied w-full py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-sm active:scale-95 border ${isCompleted ? 'bg-[#141414] text-green-400 border-[#222222] hover:bg-[#1e1e1e]' : 'bg-green-600 text-white border-transparent hover:bg-green-700 hover:shadow'}`}
           >
             <Check className="h-5 w-5" />
             {isCompleted ? '✓ Studied' : 'Mark as Studied'}
           </button>
 
-          <div className="panel-sibling-nav mt-auto pt-6 border-t border-[#2d3748] flex items-center justify-between gap-3">
+          <div className="panel-sibling-nav mt-auto pt-6 border-t border-[#1a1a1a] flex items-center justify-between gap-3">
             <button
               disabled={!prevSibling}
               onClick={() => {
@@ -263,7 +263,7 @@ export function NodePage() {
                   setPanelOpen(false);
                 }
               }}
-              className="flex-1 flex flex-col items-start px-3 py-2 rounded-xl bg-[#0f1117] hover:bg-[#1a2030] disabled:opacity-30 disabled:hover:bg-[#0f1117] transition border border-[#2d3748] text-left active:scale-95 disabled:active:scale-100"
+              className="flex-1 flex flex-col items-start px-3 py-2 rounded-xl bg-[#000000] hover:bg-[#0a0a0a] disabled:opacity-30 disabled:hover:bg-[#000000] transition border border-[#1a1a1a] text-left active:scale-95 disabled:active:scale-100"
             >
               <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-0.5">← Previous</span>
               <span className="text-sm font-bold text-slate-200 truncate w-full">{prevSibling ? prevSibling.label : '-'}</span>
@@ -276,7 +276,7 @@ export function NodePage() {
                   setPanelOpen(false);
                 }
               }}
-              className="flex-1 flex flex-col items-end px-3 py-2 rounded-xl bg-[#0f1117] hover:bg-[#1a2030] disabled:opacity-30 disabled:hover:bg-[#0f1117] transition border border-[#2d3748] text-right active:scale-95 disabled:active:scale-100"
+              className="flex-1 flex flex-col items-end px-3 py-2 rounded-xl bg-[#000000] hover:bg-[#0a0a0a] disabled:opacity-30 disabled:hover:bg-[#000000] transition border border-[#1a1a1a] text-right active:scale-95 disabled:active:scale-100"
             >
               <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-0.5">Next →</span>
               <span className="text-sm font-bold text-slate-200 truncate w-full">{nextSibling ? nextSibling.label : '-'}</span>

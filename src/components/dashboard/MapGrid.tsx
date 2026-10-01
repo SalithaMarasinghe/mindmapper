@@ -50,7 +50,7 @@ export function MapGrid({ maps, searchQuery, onNew }: MapGridProps) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="h-48 bg-[#1e2433] rounded-xl animate-pulse border border-[#2d3748]" />
+          <div key={i} className="h-48 bg-[#0a0a0a] rounded-xl animate-pulse border border-[#1a1a1a]" />
         ))}
       </div>
     );
@@ -58,7 +58,7 @@ export function MapGrid({ maps, searchQuery, onNew }: MapGridProps) {
 
   if (maps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center bg-[#1e2433] rounded-2xl border border-dashed border-[#2d3748] shadow-sm mt-8">
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-[#0a0a0a] rounded-2xl border border-dashed border-[#1a1a1a] shadow-sm mt-8">
         <div className="text-6xl mb-4">🗺️</div>
         <h3 className="text-xl font-semibold text-slate-100 mb-2">No mindmaps yet</h3>
         <p className="text-slate-400 mb-6 max-w-sm">Capture your knowledge, visualize ideas, and build mental models layer by layer.</p>

@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #F3F1EC;
-  --color-ink: #1C2230;
-  --color-ink-soft: #5B6472;
+  --color-paper: #0a0a0a;
+  --color-ink: #e2e8f0;
+  --color-ink-soft: #94a3b8;
   --color-root: #E8A33D;
   --color-branch: #2F8F84;
   --color-leaf: #6E6ADE;
@@ -13,7 +13,7 @@
    DARK MODE GLOBAL DEFAULTS
    ===================================================== */
 html, body {
-  background-color: #0f1117;
+  background-color: #000000;
   color: #e2e8f0;
   color-scheme: dark;
 }
@@ -28,17 +28,17 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f1117;
+  background: #000000;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2d3748;
+  background: #1a1a1a;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a5568;
+  background: #2a2a2a;
 }
 * {
-  scrollbar-color: #2d3748 #0f1117;
+  scrollbar-color: #1a1a1a #000000;
   scrollbar-width: thin;
 }
 
@@ -48,25 +48,25 @@ body {
 .react-flow__pane,
 .react-flow__renderer,
 .react-flow__background {
-  background-color: #0f1117 !important;
+  background-color: #000000 !important;
 }
 
 .react-flow__controls {
-  background: #1e2433 !important;
-  border: 1px solid #2d3748 !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  background: #0a0a0a !important;
+  border: 1px solid #1a1a1a !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6) !important;
   border-radius: 8px !important;
 }
 
 .react-flow__controls-button {
-  background: #1e2433 !important;
-  border-bottom: 1px solid #2d3748 !important;
+  background: #0a0a0a !important;
+  border-bottom: 1px solid #1a1a1a !important;
   color: #94a3b8 !important;
   fill: #94a3b8 !important;
 }
 
 .react-flow__controls-button:hover {
-  background: #2d3748 !important;
+  background: #141414 !important;
 }
 
 .react-flow__controls-button svg {
@@ -74,7 +74,7 @@ body {
 }
 
 .react-flow__minimap {
-  background: #1e2433 !important;
+  background: #0a0a0a !important;
 }
 
 
@@ -97,7 +97,7 @@ body {
 
 .bn-menu-item:hover,
 .bn-suggestion-menu-item:hover {
-  background-color: #1e293b !important;
+  background-color: #0a0a0a !important;
 }
 
 .notes-hidden .bn-editor {
@@ -178,7 +178,7 @@ body {
   justify-content: center;
   color: white;
   z-index: 60;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.6);
   transition: width 150ms ease;
 }
 
@@ -200,7 +200,7 @@ body {
 .panel-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(2px);
   z-index: 40;
   opacity: 0;
@@ -222,9 +222,9 @@ body {
   top: 0;
   height: 100vh;
   width: 300px;
-  background: #1e2433;
-  border-right: 1px solid #2d3748;
-  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.5);
+  background: #0a0a0a;
+  border-right: 1px solid #1a1a1a;
+  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.7);
   z-index: 50;
   padding: 1.5rem;
   display: flex;
@@ -252,7 +252,7 @@ body {
 }
 
 .panel-close-btn:hover {
-  background: #2d3748;
+  background: #141414;
 }
 
 /* =====================================================
@@ -270,7 +270,7 @@ body {
   position: fixed !important;
   inset: 0 !important;
   z-index: 9998 !important;
-  background: rgba(0, 0, 0, 0.75) !important;
+  background: rgba(0, 0, 0, 0.85) !important;
   backdrop-filter: blur(5px) !important;
 }
 
@@ -288,14 +288,14 @@ body {
   flex-direction: column !important;
   border-radius: 16px !important;
   overflow: hidden !important;
-  background: #1e2433 !important;
-  border: 1px solid #2d3748 !important;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6) !important;
+  background: #0a0a0a !important;
+  border: 1px solid #1a1a1a !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8) !important;
 }
 
 .preview-modal-header {
-  background: #1e2433 !important;
-  border-bottom: 1px solid #2d3748 !important;
+  background: #0a0a0a !important;
+  border-bottom: 1px solid #1a1a1a !important;
   padding: 1.25rem 1.5rem !important;
   flex-shrink: 0 !important;
 }
@@ -304,14 +304,14 @@ body {
   flex: 1 !important;
   overflow-y: auto !important;
   min-height: 0 !important;
-  background: #1a2030 !important;
+  background: #050505 !important;
   position: relative !important;
   isolation: isolate !important;
 }
 
 .preview-modal-footer {
-  background: #1e2433 !important;
-  border-top: 1px solid #2d3748 !important;
+  background: #0a0a0a !important;
+  border-top: 1px solid #1a1a1a !important;
   padding: 1rem 1.5rem !important;
   flex-shrink: 0 !important;
   display: flex !important;
@@ -321,7 +321,7 @@ body {
 /* Force BlockNote editor to be opaque inside the modal */
 .preview-modal-content .bn-container,
 .preview-modal-content .bn-editor {
-  background: #1a2030 !important;
+  background: #050505 !important;
 }
 
 /* =====================================================
@@ -386,7 +386,7 @@ body {
 }
 .notion-markdown blockquote {
   border-left: 3px solid #14b8a6;
-  background-color: rgba(15, 23, 42, 0.5);
+  background-color: rgba(0, 0, 0, 0.5);
   padding: 0.4rem 0.75rem;
   margin: 0.6rem 0;
   color: #cbd5e1;
@@ -394,8 +394,8 @@ body {
   border-radius: 0 0.375rem 0.375rem 0;
 }
 .notion-markdown pre {
-  background-color: #0b0e14;
-  border: 1px solid #2d3748;
+  background-color: #050505;
+  border: 1px solid #1a1a1a;
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   margin: 0.6rem 0;
@@ -404,13 +404,13 @@ body {
   font-size: 0.8125rem;
 }
 .notion-markdown code {
-  background-color: #1a202c;
+  background-color: #0a0a0a;
   color: #5eead4;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.8125rem;
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
-  border: 1px solid rgba(45, 55, 72, 0.6);
+  border: 1px solid rgba(26, 26, 26, 0.6);
 }
 .notion-markdown pre code {
   background-color: transparent;
@@ -421,7 +421,7 @@ body {
 }
 .notion-markdown hr {
   border: 0;
-  border-top: 1px solid #2d3748;
+  border-top: 1px solid #1a1a1a;
   margin: 1rem 0;
 }
 .notion-markdown a {

@@ -36,11 +36,11 @@ export function ChatMessageItem({
             <span className="text-[11px] text-slate-500">{timeFormatted}</span>
             <span className="text-xs font-medium text-slate-300">You</span>
           </div>
-          <div className="bg-[#1e2433] border border-[#2d3748] text-slate-100 px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm whitespace-pre-wrap leading-relaxed shadow-sm">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] text-slate-100 px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm whitespace-pre-wrap leading-relaxed shadow-sm">
             {message.content}
           </div>
         </div>
-        <div className="w-8 h-8 rounded-full bg-slate-700/60 border border-slate-600 flex items-center justify-center shrink-0 mt-5">
+        <div className="w-8 h-8 rounded-full bg-[#141414]/60 border border-slate-600 flex items-center justify-center shrink-0 mt-5">
           <User className="w-4 h-4 text-slate-300" />
         </div>
       </div>
@@ -62,7 +62,7 @@ export function ChatMessageItem({
 
         {/* Text bubble */}
         {message.content && (
-          <div className="bg-[#161b26] border border-[#232a3b] text-slate-200 px-4 py-3 rounded-2xl rounded-tl-sm text-sm shadow-sm">
+          <div className="bg-[#0a0a0a] border border-[#161616] text-slate-200 px-4 py-3 rounded-2xl rounded-tl-sm text-sm shadow-sm">
             <MarkdownViewer content={message.content} />
           </div>
         )}
@@ -114,6 +114,7 @@ export function ChatMessageItem({
 
                 case 'create_work_event':
                 case 'create_meeting_event':
+                case 'update_meeting_event':
                   return (
                     <WorkJournalCard
                       key={proposal.id}

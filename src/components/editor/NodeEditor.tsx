@@ -144,8 +144,8 @@ export function NodeEditor({
   };
 
   return (
-    <div className="node-study-page flex flex-col h-full bg-[#0f1117] w-full pb-16">
-      <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#0f1117]/95 backdrop-blur z-10 border-b border-[#2d3748] mb-4">
+    <div className="node-study-page flex flex-col h-full bg-[#000000] w-full pb-16">
+      <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-[#000000]/95 backdrop-blur z-10 border-b border-[#1a1a1a] mb-4">
         <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-3">
           {currentNode?.label || 'Study Material'}
           <div className="text-sm font-semibold flex items-center gap-1.5 transition-colors">
@@ -180,7 +180,7 @@ export function NodeEditor({
               }
             }}
             title="Toggle with Cmd/Ctrl + T"
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${isTestMode ? 'bg-orange-900/40 text-orange-300 hover:bg-orange-900/60' : 'text-slate-400 hover:bg-[#2d3748]'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${isTestMode ? 'bg-orange-900/40 text-orange-300 hover:bg-orange-900/60' : 'text-slate-400 hover:bg-[#141414]'}`}
           >
             {isTestMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {isTestMode ? '📖 Study Mode' : '🧠 Test Mode'}
@@ -227,7 +227,7 @@ export function NodeEditor({
                   e.stopPropagation();
                 }
               }}
-              className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'bg-[#2d3748] text-green-400 border-green-800 hover:bg-[#3d4a60]' : 'bg-green-600 text-white border-transparent hover:bg-green-700'}`}
+              className={`text-sm font-bold px-4 py-2 rounded-lg border transition ${isCompleted ? 'bg-[#141414] text-green-400 border-green-800 hover:bg-[#1e1e1e]' : 'bg-green-600 text-white border-transparent hover:bg-green-700'}`}
             >
               {isCompleted ? '✓ Studied' : 'Mark as Studied'}
             </button>
@@ -240,7 +240,7 @@ export function NodeEditor({
           <span>🧠 Test Mode — read your notes, then hide them to test recall</span>
           <button
             onClick={() => setIsNotesHidden((prev) => !prev)}
-            className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-orange-700 border border-orange-200 hover:bg-orange-100 transition"
+            className="rounded-md bg-[#0a0a0a] px-3 py-1.5 text-xs font-bold text-orange-700 border border-orange-200 hover:bg-orange-100 transition"
           >
             {isNotesHidden ? 'Reveal' : 'Hide Notes'}
           </button>

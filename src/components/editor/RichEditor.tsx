@@ -270,7 +270,7 @@ export default function RichEditor({
       />
       {copyButtonState && (
         <button
-          className="code-copy-btn absolute z-10 p-1.5 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          className="code-copy-btn absolute z-10 p-1.5 rounded-md bg-gray-100 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#141414] transition-colors cursor-pointer"
           style={{ top: copyButtonState.top, right: copyButtonState.right }}
           onClick={handleCopyClick}
           title="Copy code"

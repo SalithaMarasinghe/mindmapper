@@ -40,7 +40,7 @@ export function ChatMessageList({
           I can organize your daily task list, start and pause task timers, log work & meeting notes to your journal, or prepare your daily wrap-up.
         </p>
 
-        <div className="w-full bg-[#161b26]/80 border border-[#232a3b] rounded-xl p-5 text-left">
+        <div className="w-full bg-[#0a0a0a]/80 border border-[#161616] rounded-xl p-5 text-left">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
             Suggested Prompts
           </p>
@@ -67,7 +67,7 @@ export function ChatMessageList({
           <div className="w-8 h-8 rounded-full bg-teal-500/10 border border-teal-500/30 flex items-center justify-center shrink-0 mt-1">
             <Bot className="w-4 h-4 text-teal-400" />
           </div>
-          <div className="bg-[#161b26] border border-[#232a3b] text-slate-300 px-4 py-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2.5 shadow-sm">
+          <div className="bg-[#0a0a0a] border border-[#161616] text-slate-300 px-4 py-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-2.5 shadow-sm">
             <Loader2 className="w-4 h-4 animate-spin text-teal-400" />
             <span className="text-xs text-slate-400">Thinking & preparing response...</span>
           </div>

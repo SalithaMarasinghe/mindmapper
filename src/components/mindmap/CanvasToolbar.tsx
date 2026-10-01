@@ -90,11 +90,11 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
   };
 
   return (
-    <div className="h-14 bg-[#1e2433] border-b border-[#2d3748] flex items-center justify-between px-2 sm:px-4 gap-2 z-40 relative shadow-lg">
+    <div className="h-14 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center justify-between px-2 sm:px-4 gap-2 z-40 relative shadow-lg">
       <div className="flex items-center gap-2 shrink-0">
         <button 
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#2d3748] active:scale-95"
+          className="flex items-center gap-1.5 text-slate-400 hover:text-slate-100 transition text-sm font-semibold px-2.5 py-1.5 rounded-lg hover:bg-[#141414] active:scale-95"
         >
           <span>← Dashboard</span>
         </button>
@@ -102,7 +102,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
 
       <div className="flex-1 min-w-0 flex justify-center items-center">
         {isEditingTitle ? (
-          <div className="flex items-center gap-2 bg-[#0f1117] px-2 py-1 rounded-lg border border-teal-500 ring-4 ring-teal-900/40">
+          <div className="flex items-center gap-2 bg-[#000000] px-2 py-1 rounded-lg border border-teal-500 ring-4 ring-teal-900/40">
             <input 
               autoFocus
               className="text-sm font-bold text-slate-100 bg-transparent px-1 focus:outline-none min-w-[200px]"
@@ -140,12 +140,12 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
             </span>
           </button>
           {sharePopoverOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-[#1e2433] border border-[#2d3748] rounded-xl shadow-xl p-3 z-50">
+            <div className="absolute right-0 mt-2 w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl shadow-xl p-3 z-50">
               <p className="text-xs font-semibold text-slate-400 mb-2">Shareable link</p>
               <input
                 readOnly
                 value={shareUrl}
-                className="w-full text-sm bg-[#0f1117] border border-[#2d3748] rounded-lg px-3 py-2 text-slate-300"
+                className="w-full text-sm bg-[#000000] border border-[#1a1a1a] rounded-lg px-3 py-2 text-slate-300"
               />
               <div className="mt-3 flex justify-between items-center">
                 <button
@@ -175,10 +175,10 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
             <span>+ Add Branch</span>
           </button>
         )}
-        <div className="w-px h-6 bg-[#2d3748] mx-1.5 shrink-0" />
+        <div className="w-px h-6 bg-[#141414] mx-1.5 shrink-0" />
         <button 
            onClick={onFitView}
-          className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#2d3748] rounded-lg transition whitespace-nowrap"
+          className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition whitespace-nowrap"
           title="Fit View"
         >
           <span className="inline-flex items-center gap-1.5">
@@ -189,7 +189,7 @@ export function CanvasToolbar({ map, onFitView, onAddBranch, onTidyUp }: CanvasT
         {!isReadOnly && (
           <button
             onClick={onTidyUp}
-            className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#2d3748] rounded-lg transition whitespace-nowrap"
+            className="px-3 py-1.5 text-sm font-semibold text-slate-400 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition whitespace-nowrap"
             title="Tidy Up"
           >
             Tidy Up

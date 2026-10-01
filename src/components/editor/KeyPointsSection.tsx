@@ -52,11 +52,11 @@ export function KeyPointsSection({ nodeId }: { nodeId: string }) {
                 onChange={e => updateKeyPoint(nodeId, point.id, e.target.value)}
                 onKeyDown={e => handleKeyDown(e, idx, point.id, point.text)}
                 placeholder="Enter a key point..."
-                className="flex-1 min-h-[44px] px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all text-gray-800"
+                className="flex-1 min-h-[44px] px-4 py-2.5 bg-[#080808]/50 border border-[#1a1a1a] rounded-lg focus:bg-[#141414] focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all text-slate-200"
               />
               <button 
                 onClick={() => removeKeyPoint(nodeId, point.id)}
-                className="p-2.5 text-gray-300 hover:text-red-500 transition-colors mt-0.5"
+                className="p-2.5 text-slate-500 hover:text-red-500 transition-colors mt-0.5"
               >
                 <X className="h-4 w-4" />
               </button>

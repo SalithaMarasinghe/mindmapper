@@ -34,7 +34,7 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
 
   return (
     <div 
-      className="group relative flex flex-col justify-between bg-[#1e2433] rounded-xl border border-[#2d3748] p-5 shadow-sm hover:shadow-md hover:border-slate-600 transition-all cursor-pointer h-48"
+      className="group relative flex flex-col justify-between bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] p-5 shadow-sm hover:shadow-md hover:border-slate-600 transition-all cursor-pointer h-48"
       onClick={onClick}
     >
       <div className="flex justify-between items-start">
@@ -48,12 +48,12 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
           </div>
           <div className="flex gap-1.5 mt-1 overflow-hidden">
             {map.tags?.slice(0, 3).map(tag => (
-              <span key={tag} className="inline-block bg-[#2d3748] text-slate-400 text-xs px-2 py-0.5 rounded flex-shrink-0 max-w-[80px] truncate">
+              <span key={tag} className="inline-block bg-[#141414] text-slate-400 text-xs px-2 py-0.5 rounded flex-shrink-0 max-w-[80px] truncate">
                 {tag}
               </span>
             ))}
             {map.tags?.length > 3 && (
-              <span className="inline-block bg-[#2d3748] text-slate-400 text-xs px-2 py-0.5 rounded flex-shrink-0">
+              <span className="inline-block bg-[#141414] text-slate-400 text-xs px-2 py-0.5 rounded flex-shrink-0">
                 +{map.tags.length - 3}
               </span>
             )}
@@ -61,7 +61,7 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
         </div>
         
         {isCompleted && (
-          <CheckCircle2 className="absolute top-5 right-5 h-5 w-5 text-green-500 bg-[#1e2433] rounded-full flex-shrink-0" />
+          <CheckCircle2 className="absolute top-5 right-5 h-5 w-5 text-green-500 bg-[#0a0a0a] rounded-full flex-shrink-0" />
         )}
       </div>
 
@@ -70,7 +70,7 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
           <span>{map.completedCount} / {map.nodeCount} node{map.nodeCount !== 1 && 's'}</span>
           <span className={percent === 100 ? "text-green-600" : ""}>{percent}%</span>
         </div>
-        <div className="w-full bg-[#2d3748] rounded-full h-1.5 mb-4 overflow-hidden">
+        <div className="w-full bg-[#141414] rounded-full h-1.5 mb-4 overflow-hidden">
           <div 
             className="h-1.5 rounded-full transition-all duration-300"
             style={{ width: `${percent}%`, backgroundColor: percent === 100 ? '#22c55e' : map.color || '#0d9488' }}
@@ -83,7 +83,7 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button 
               onClick={() => setMenuOpen(!menuOpen)}
-              className="p-1 hover:bg-[#2d3748] rounded-md text-slate-500 hover:text-slate-200 transition opacity-0 group-hover:opacity-100 focus:opacity-100 ui-open:opacity-100 -mr-1"
+              className="p-1 hover:bg-[#141414] rounded-md text-slate-500 hover:text-slate-200 transition opacity-0 group-hover:opacity-100 focus:opacity-100 ui-open:opacity-100 -mr-1"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
@@ -91,18 +91,18 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 bottom-8 w-48 bg-[#1e2433] rounded-lg shadow-xl shadow-black/40 border border-[#2d3748] py-1.5 z-40">
+                <div className="absolute right-0 bottom-8 w-48 bg-[#0a0a0a] rounded-lg shadow-xl shadow-black/40 border border-[#1a1a1a] py-1.5 z-40">
                   {!isReadOnly && (
                     <>
                       <button 
                         onClick={() => { setMenuOpen(false); onRename(); }}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-[#2d3748] transition"
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-[#141414] transition"
                       >
                         <Edit2 className="h-3.5 w-3.5 text-gray-400" /> Rename
                       </button>
                       <button 
                         onClick={() => { setMenuOpen(false); onDuplicate(); }}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-[#2d3748] transition"
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-[#141414] transition"
                       >
                         <Copy className="h-3.5 w-3.5 text-gray-400" /> Duplicate
                       </button>
@@ -113,14 +113,14 @@ export function MapCard({ map, onClick, onDuplicate, onDelete, onRename }: MapCa
                       setMenuOpen(false); 
                       await useOfflineStore.getState().toggleOffline(map.id);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-[#2d3748] transition"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:bg-[#141414] transition"
                   >
                     {isOffline ? <CloudOff className="h-3.5 w-3.5 text-gray-400" /> : <CloudDownload className="h-3.5 w-3.5 text-gray-400" />}
                     {isOffline ? 'Remove offline access' : 'Make available offline'}
                   </button>
                   {!isReadOnly && (
                     <>
-                      <div className="h-px bg-[#2d3748] my-1 font-medium" />
+                      <div className="h-px bg-[#141414] my-1 font-medium" />
                       <button 
                         onClick={() => { 
                           setMenuOpen(false); 

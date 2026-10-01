@@ -43,7 +43,7 @@ export function BranchNode({ data }: BranchNodeProps) {
         }
       }}
       onContextMenu={handleContextMenu}
-      className="group bg-[#1e2433] px-4 py-3 rounded-lg shadow-sm border-l-4 border-y border-r border-[#2d3748] min-w-[160px] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all relative"
+      className="group bg-[#0a0a0a] px-4 py-3 rounded-lg shadow-sm border-l-4 border-y border-r border-[#1a1a1a] min-w-[160px] cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all relative"
       style={{ borderLeftColor: node.color || '#0d9488' }}
     >
       <Handle id="t-left" type="target" position={Position.Left} className="opacity-0" />

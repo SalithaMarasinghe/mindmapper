@@ -19,11 +19,11 @@ export function ConfirmDeleteModal({
   return createPortal(
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-[#0f1117]/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-[#000000]/80 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d3748] bg-[#161b26]">
+      <div className="relative w-full max-w-md bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a]">
           <div className="flex items-center gap-2 text-rose-400">
             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             <h3 className="text-sm font-bold text-slate-100">Delete Confirmation</h3>
@@ -31,7 +31,7 @@ export function ConfirmDeleteModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-lg transition"
+            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -47,7 +47,7 @@ export function ConfirmDeleteModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#2d3748] rounded-lg transition"
+              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition"
             >
               Cancel
             </button>

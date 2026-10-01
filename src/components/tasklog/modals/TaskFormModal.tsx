@@ -70,14 +70,14 @@ export function TaskFormModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#0f1117]/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-3xl bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] overflow-hidden my-auto flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] overflow-hidden my-auto flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d3748] bg-[#161b26] flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a] flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-teal-900/40 text-teal-300 border border-teal-700/50">
               {isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -94,7 +94,7 @@ export function TaskFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-lg transition"
+            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -123,7 +123,7 @@ export function TaskFormModal({
                 setTitle(e.target.value);
                 if (error) setError(null);
               }}
-              className="w-full bg-[#0f1117] text-slate-100 border border-[#2d3748] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 placeholder:text-slate-500 transition-all font-medium"
+              className="w-full bg-[#000000] text-slate-100 border border-[#1a1a1a] rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 placeholder:text-slate-500 transition-all font-medium"
             />
           </div>
 
@@ -134,7 +134,7 @@ export function TaskFormModal({
               <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Flag className="w-3.5 h-3.5 text-slate-400" /> Priority
               </label>
-              <div className="grid grid-cols-3 gap-2 bg-[#0f1117] p-1 rounded-lg border border-[#2d3748]">
+              <div className="grid grid-cols-3 gap-2 bg-[#000000] p-1 rounded-lg border border-[#1a1a1a]">
                 {(['low', 'medium', 'high'] as const).map((p) => {
                   const active = priority === p;
                   let activeCls = 'bg-teal-900/70 text-teal-300 border-teal-700/60 shadow-sm';
@@ -149,7 +149,7 @@ export function TaskFormModal({
                       className={`px-3 py-1.5 text-xs font-bold capitalize rounded-md border border-transparent transition-all ${
                         active
                           ? activeCls
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-[#1e2433]'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-[#0a0a0a]'
                       }`}
                     >
                       {p}
@@ -168,7 +168,7 @@ export function TaskFormModal({
                 type="date"
                 value={plannedDate}
                 onChange={(e) => setPlannedDate(e.target.value)}
-                className="w-full bg-[#0f1117] text-slate-100 border border-[#2d3748] rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all font-mono"
+                className="w-full bg-[#000000] text-slate-100 border border-[#1a1a1a] rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all font-mono"
               />
             </div>
           </div>
@@ -194,11 +194,11 @@ export function TaskFormModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#2d3748] flex-shrink-0">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1a1a1a] flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#2d3748] rounded-lg transition"
+              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition"
             >
               Cancel
             </button>

@@ -39,10 +39,10 @@ export function CreateMapModal({ onClose }: CreateMapModalProps) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-opacity">
-      <div className="bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-[#2d3748] flex items-center justify-between">
+      <div className="bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-100">New Mindmap</h2>
-          <button onClick={onClose} className="p-1 hover:bg-[#2d3748] rounded-full text-slate-400 hover:text-slate-200 transition">
+          <button onClick={onClose} className="p-1 hover:bg-[#141414] rounded-full text-slate-400 hover:text-slate-200 transition">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -56,7 +56,7 @@ export function CreateMapModal({ onClose }: CreateMapModalProps) {
               autoFocus
               required
               type="text"
-              className="w-full rounded-lg border border-[#2d3748] bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-shadow"
+              className="w-full rounded-lg border border-[#1a1a1a] bg-[#000000] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-shadow"
               placeholder="e.g., Fundamentals of React"
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -71,7 +71,7 @@ export function CreateMapModal({ onClose }: CreateMapModalProps) {
                   key={e}
                   type="button"
                   onClick={() => setEmoji(e)}
-                  className={`h-10 w-10 text-xl flex items-center justify-center rounded-lg transition-all ${emoji === e ? 'bg-teal-900/50 border-2 border-teal-500 shadow-sm' : 'bg-[#0f1117] border border-[#2d3748] hover:bg-[#2d3748]'}`}
+                  className={`h-10 w-10 text-xl flex items-center justify-center rounded-lg transition-all ${emoji === e ? 'bg-teal-900/50 border-2 border-teal-500 shadow-sm' : 'bg-[#000000] border border-[#1a1a1a] hover:bg-[#141414]'}`}
                 >
                   {e}
                 </button>
@@ -98,7 +98,7 @@ export function CreateMapModal({ onClose }: CreateMapModalProps) {
             <label className="block text-sm font-semibold text-slate-300 mb-1.5">Tags</label>
             <input
               type="text"
-              className="w-full rounded-lg border border-[#2d3748] bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-shadow"
+              className="w-full rounded-lg border border-[#1a1a1a] bg-[#000000] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-shadow"
               placeholder="programming, frontend, learning (comma separated)"
               value={tagsInput}
               onChange={e => setTagsInput(e.target.value)}
@@ -109,7 +109,7 @@ export function CreateMapModal({ onClose }: CreateMapModalProps) {
             <label className="block text-sm font-semibold text-slate-300 mb-1.5">Description<span className="text-slate-500 font-normal"> - Optional</span></label>
             <textarea
               rows={3}
-              className="w-full rounded-lg border border-[#2d3748] bg-[#0f1117] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 resize-none transition-shadow"
+              className="w-full rounded-lg border border-[#1a1a1a] bg-[#000000] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 resize-none transition-shadow"
               placeholder="What is this mindmap about?"
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -117,11 +117,11 @@ export function CreateMapModal({ onClose }: CreateMapModalProps) {
           </div>
         </form>
 
-        <div className="px-6 py-4 border-t border-[#2d3748] bg-[#0f1117]/50 flex justify-end gap-3 rounded-b-2xl">
+        <div className="px-6 py-4 border-t border-[#1a1a1a] bg-[#000000]/50 flex justify-end gap-3 rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-[#2d3748] bg-[#2d3748]/50 rounded-lg transition"
+            className="px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-[#141414] bg-[#141414]/50 rounded-lg transition"
           >
             Cancel
           </button>

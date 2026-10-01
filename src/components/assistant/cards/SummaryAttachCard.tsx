@@ -51,12 +51,12 @@ export function SummaryAttachCard({
         </div>
 
         {!isEditing ? (
-          <div className="p-3 bg-[#0f1117] rounded-xl border border-[#2d3748] max-h-56 overflow-y-auto">
+          <div className="p-3 bg-[#000000] rounded-xl border border-[#1a1a1a] max-h-56 overflow-y-auto">
             <MarkdownViewer content={summaryMarkdown} className="text-xs" />
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between pb-1 border-b border-[#1e2638]">
+            <div className="flex items-center justify-between pb-1 border-b border-[#111111]">
               <span className="text-[10px] text-teal-400 font-bold uppercase tracking-wider">
                 Edit Work Summary (Markdown)
               </span>
@@ -72,7 +72,7 @@ export function SummaryAttachCard({
               rows={6}
               value={summaryMarkdown}
               onChange={(e) => setSummaryMarkdown(e.target.value)}
-              className="bg-[#141a24] text-slate-100 border border-teal-700/60 rounded-lg p-2.5 text-xs font-mono focus:outline-none focus:border-teal-500 leading-relaxed resize-y"
+              className="bg-[#080808] text-slate-100 border border-teal-700/60 rounded-lg p-2.5 text-xs font-mono focus:outline-none focus:border-teal-500 leading-relaxed resize-y"
             />
           </div>
         )}

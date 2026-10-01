@@ -624,12 +624,12 @@ export function MindmapCanvas() {
                 Share
               </button>
             {sharePopoverOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-[#1e2433] border border-[#2d3748] rounded-xl shadow-xl p-3 z-[120]">
+              <div className="absolute right-0 mt-2 w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl shadow-xl p-3 z-[120]">
                 <p className="text-xs font-semibold text-slate-400 mb-2">Shareable link</p>
                 <input
                   readOnly
                   value={shareUrl}
-                  className="w-full text-sm bg-[#0f1117] border border-[#2d3748] rounded-lg px-3 py-2 text-slate-300"
+                  className="w-full text-sm bg-[#000000] border border-[#1a1a1a] rounded-lg px-3 py-2 text-slate-300"
                 />
                 <div className="mt-3 flex justify-between items-center">
                   <button
@@ -658,7 +658,7 @@ export function MindmapCanvas() {
         onAddBranch={handleAddBranch}
         onTidyUp={handleTidyUp}
       />
-      <div className="flex-1 w-full bg-[#0f1117] relative">
+      <div className="flex-1 w-full bg-[#000000] relative">
         <ReactFlow
           nodes={interactiveFlowNodes}
           edges={flowEdges}
@@ -704,10 +704,10 @@ export function MindmapCanvas() {
             nodeColor={(n) => {
               if (n.type === 'root') return '#0f766e';
               if (n.type === 'branch') return (n.data?.node as MindmapNode)?.color || '#94a3b8';
-              return '#2d3748';
+              return '#1a1a1a';
             }}
-            maskColor="rgba(15, 17, 23, 0.75)"
-            style={{ background: '#1e2433', border: '1px solid #2d3748' }}
+            maskColor="rgba(0, 0, 0, 0.75)"
+            style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}
             className="rounded-lg shadow-md"
           />
         </ReactFlow>
@@ -723,7 +723,7 @@ export function MindmapCanvas() {
         {paneMenuInfo && (
           <div
             style={{ top: paneMenuInfo.y, left: paneMenuInfo.x }}
-            className="fixed z-[100] min-w-44 bg-[#1e2433] rounded-lg border border-[#2d3748] shadow-xl py-1"
+            className="fixed z-[100] min-w-44 bg-[#0a0a0a] rounded-lg border border-[#1a1a1a] shadow-xl py-1"
           >
             <button
               onClick={handleAddBranchFromPane}

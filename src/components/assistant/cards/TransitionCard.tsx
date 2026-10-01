@@ -96,7 +96,7 @@ export function TransitionCard({
         )}
 
         {/* Resolved Timestamp Box */}
-        <div className="p-3 bg-[#0f1117] rounded-xl border border-[#2d3748] flex items-center justify-between gap-3">
+        <div className="p-3 bg-[#000000] rounded-xl border border-[#1a1a1a] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-teal-400 flex-shrink-0" />
             <div className="flex flex-col">
@@ -112,7 +112,7 @@ export function TransitionCard({
                   type="datetime-local"
                   value={localTime}
                   onChange={(e) => setLocalTime(e.target.value)}
-                  className="bg-[#1e2433] text-slate-100 border border-[#2d3748] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 mt-1"
+                  className="bg-[#0a0a0a] text-slate-100 border border-[#1a1a1a] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 mt-1"
                 />
               )}
             </div>

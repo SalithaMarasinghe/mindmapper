@@ -80,12 +80,12 @@ export function TaskCard({
   return (
     <div
       onClick={onClick}
-      className={`group relative bg-[#1e2433] hover:bg-[#232b3d] border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col gap-3 cursor-pointer select-none ${
+      className={`group relative bg-[#0a0a0a] hover:bg-[#141414] border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col gap-3 cursor-pointer select-none ${
         isRunning
           ? 'border-teal-600/70 shadow-teal-950/30 ring-1 ring-teal-500/20'
           : isPaused
-          ? 'border-amber-700/60 bg-[#1e2433]/90'
-          : 'border-[#2d3748] hover:border-slate-600'
+          ? 'border-amber-700/60 bg-[#0a0a0a]/90'
+          : 'border-[#1a1a1a] hover:border-slate-600'
       }`}
     >
       {/* Top Meta: Priority, Date, Status Pill, Menu */}
@@ -116,7 +116,7 @@ export function TaskCard({
               className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
                 isOverdue
                   ? 'bg-amber-950/40 text-amber-300 border-amber-800/60'
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                  : 'bg-[#0a0a0a] text-slate-400 border-slate-700'
               }`}
             >
               {isOverdue && <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />}
@@ -131,7 +131,7 @@ export function TaskCard({
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-md transition opacity-80 group-hover:opacity-100"
+            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-md transition opacity-80 group-hover:opacity-100"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -139,14 +139,14 @@ export function TaskCard({
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 mt-1 w-44 bg-[#161b26] rounded-xl shadow-xl border border-[#2d3748] py-1 z-40 text-xs">
+              <div className="absolute right-0 mt-1 w-44 bg-[#0a0a0a] rounded-xl shadow-xl border border-[#1a1a1a] py-1 z-40 text-xs">
                 <button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false);
                     onEdit();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#232936] hover:text-white transition"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#0f0f0f] hover:text-white transition"
                 >
                   <Edit2 className="w-3.5 h-3.5 text-teal-400" />
                   Edit Task
@@ -161,7 +161,7 @@ export function TaskCard({
                           setMenuOpen(false);
                           onPause();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-amber-300 hover:bg-[#232936] transition"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-amber-300 hover:bg-[#0f0f0f] transition"
                       >
                         <Pause className="w-3.5 h-3.5" />
                         Pause Task
@@ -173,7 +173,7 @@ export function TaskCard({
                           setMenuOpen(false);
                           onResume();
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-teal-300 hover:bg-[#232936] transition"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-teal-300 hover:bg-[#0f0f0f] transition"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
                         Resume Task
@@ -186,7 +186,7 @@ export function TaskCard({
                         setMenuOpen(false);
                         onRevertToTodo();
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#232936] hover:text-white transition"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#0f0f0f] hover:text-white transition"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
                       Move back to To Do
@@ -201,14 +201,14 @@ export function TaskCard({
                       setMenuOpen(false);
                       onRevertToInProgress();
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#232936] hover:text-white transition"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-[#0f0f0f] hover:text-white transition"
                   >
                     <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
                     Reopen to In Progress
                   </button>
                 )}
 
-                <div className="my-1 border-t border-[#2d3748]" />
+                <div className="my-1 border-t border-[#1a1a1a]" />
 
                 <button
                   type="button"
@@ -240,7 +240,7 @@ export function TaskCard({
       )}
 
       {/* Timing and Status Details */}
-      <div className="pt-2 border-t border-[#2d3748]/60 flex items-center justify-between text-xs">
+      <div className="pt-2 border-t border-[#1a1a1a]/60 flex items-center justify-between text-xs">
         {/* Status Time Info */}
         <div className="flex items-center gap-1.5 text-slate-400">
           {task.status === 'todo' && (
@@ -339,7 +339,7 @@ export function TaskCard({
               type="button"
               onClick={onRevertToInProgress}
               title="Reopen to In Progress"
-              className="p-1.5 text-slate-500 hover:text-amber-300 hover:bg-[#2d3748] rounded-md transition"
+              className="p-1.5 text-slate-500 hover:text-amber-300 hover:bg-[#141414] rounded-md transition"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>

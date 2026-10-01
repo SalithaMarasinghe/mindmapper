@@ -5,8 +5,8 @@ export function RegisterPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0f1117] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 bg-[#1e2433] p-8 rounded-xl shadow-xl border border-[#2d3748]">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#000000] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8 bg-[#0a0a0a] p-8 rounded-xl shadow-xl border border-[#1a1a1a]">
         <div className="text-center">
           <h1 className="text-4xl font-bold tracking-tight text-slate-100">🧠 MindMap</h1>
           <h2 className="mt-4 text-2xl font-semibold text-slate-200">Create a new account</h2>

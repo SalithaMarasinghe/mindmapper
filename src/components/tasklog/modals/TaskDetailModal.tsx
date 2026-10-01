@@ -162,7 +162,7 @@ export function TaskDetailModal({
   }[task.priority];
 
   const statusStyles = {
-    todo: 'bg-slate-800 text-slate-300 border-slate-700',
+    todo: 'bg-[#0a0a0a] text-slate-300 border-slate-700',
     in_progress: 'bg-teal-950/70 text-teal-300 border-teal-800/70',
     done: 'bg-emerald-950/70 text-emerald-300 border-emerald-800/70',
   }[task.status];
@@ -180,14 +180,14 @@ export function TaskDetailModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#0f1117]/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-3xl bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] overflow-hidden my-auto flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] overflow-hidden my-auto flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-[#2d3748] bg-[#161b26] flex-shrink-0">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-[#1a1a1a] bg-[#0a0a0a] flex-shrink-0">
           <div className="flex flex-col gap-2 max-w-[80%]">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${statusStyles}`}>
@@ -197,7 +197,7 @@ export function TaskDetailModal({
                 <Flag className="w-3 h-3 inline mr-1" />
                 {task.priority}
               </span>
-              <span className="flex items-center gap-1 text-xs text-slate-400 bg-[#0f1117] px-2.5 py-0.5 rounded-full border border-[#2d3748]">
+              <span className="flex items-center gap-1 text-xs text-slate-400 bg-[#000000] px-2.5 py-0.5 rounded-full border border-[#1a1a1a]">
                 <Calendar className="w-3 h-3 text-slate-500" />
                 {task.plannedDate}
               </span>
@@ -212,7 +212,7 @@ export function TaskDetailModal({
               type="button"
               onClick={onEdit}
               title="Edit Task"
-              className="p-2 text-slate-400 hover:text-teal-300 hover:bg-[#2d3748] rounded-lg transition"
+              className="p-2 text-slate-400 hover:text-teal-300 hover:bg-[#141414] rounded-lg transition"
             >
               <Edit2 className="w-4 h-4" />
             </button>
@@ -227,7 +227,7 @@ export function TaskDetailModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-lg transition ml-1"
+              className="p-2 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition ml-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -237,7 +237,7 @@ export function TaskDetailModal({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
           {/* Quick Actions Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#131722] rounded-xl border border-[#2d3748]">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#080808] rounded-xl border border-[#1a1a1a]">
             <span className="text-xs font-semibold text-slate-400">Quick Status Transition</span>
             <div className="flex items-center gap-2">
               {task.status === 'todo' && (
@@ -281,7 +281,7 @@ export function TaskDetailModal({
                   <button
                     type="button"
                     onClick={() => revertToTodo(task.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-[#1e2433] hover:bg-[#2d3748] border border-[#2d3748] rounded-lg transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 bg-[#0a0a0a] hover:bg-[#141414] border border-[#1a1a1a] rounded-lg transition"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> Move to To Do
                   </button>
@@ -301,7 +301,7 @@ export function TaskDetailModal({
           </div>
 
           {/* Time Tracking Overview Panel */}
-          <div className="bg-[#131722] rounded-xl border border-[#2d3748] p-4 flex flex-col gap-4">
+          <div className="bg-[#080808] rounded-xl border border-[#1a1a1a] p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-teal-400" /> Tracked Time & Segments
@@ -312,7 +312,7 @@ export function TaskDetailModal({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3 bg-[#0f1117] rounded-lg border border-[#2d3748]/60">
+              <div className="p-3 bg-[#000000] rounded-lg border border-[#1a1a1a]/60">
                 <span className="text-[10px] uppercase font-bold text-slate-500">Total Effort</span>
                 <p className="text-base font-bold text-teal-400 font-mono mt-0.5">
                   {formatDuration(calculateLiveTrackedSeconds(task.trackedSeconds, task.activeSegmentStartedAt))}
@@ -324,14 +324,14 @@ export function TaskDetailModal({
                 )}
               </div>
 
-              <div className="p-3 bg-[#0f1117] rounded-lg border border-[#2d3748]/60">
+              <div className="p-3 bg-[#000000] rounded-lg border border-[#1a1a1a]/60">
                 <span className="text-[10px] uppercase font-bold text-slate-500">First Started</span>
                 <p className="text-xs font-semibold text-slate-200 mt-1">
                   {task.startedAt ? formatDateTime(task.startedAt) : 'Not started'}
                 </p>
               </div>
 
-              <div className="p-3 bg-[#0f1117] rounded-lg border border-[#2d3748]/60">
+              <div className="p-3 bg-[#000000] rounded-lg border border-[#1a1a1a]/60">
                 <span className="text-[10px] uppercase font-bold text-slate-500">Status Span</span>
                 <p className="text-xs font-semibold text-slate-200 mt-1">
                   {task.completedAt
@@ -344,7 +344,7 @@ export function TaskDetailModal({
             </div>
 
             {/* Segments Breakdown List */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-[#2d3748]/60">
+            <div className="flex flex-col gap-2 pt-2 border-t border-[#1a1a1a]/60">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-slate-400" /> Work Segments
               </span>
@@ -352,7 +352,7 @@ export function TaskDetailModal({
               {isLoadingSegments ? (
                 <div className="text-xs text-slate-500 py-3 text-center">Loading segments...</div>
               ) : segments.length === 0 ? (
-                <div className="text-xs text-slate-500 py-4 text-center bg-[#0f1117] rounded-lg border border-dashed border-[#2d3748]">
+                <div className="text-xs text-slate-500 py-4 text-center bg-[#000000] rounded-lg border border-dashed border-[#1a1a1a]">
                   No time segments recorded yet. Start working to log time.
                 </div>
               ) : (
@@ -366,7 +366,7 @@ export function TaskDetailModal({
                     const reasonBadge = {
                       paused: 'bg-amber-950/50 text-amber-300 border-amber-800/60',
                       done: 'bg-emerald-950/50 text-emerald-300 border-emerald-800/60',
-                      manual: 'bg-slate-800 text-slate-300 border-slate-700',
+                      manual: 'bg-[#0a0a0a] text-slate-300 border-slate-700',
                       auto_closed: 'bg-purple-950/50 text-purple-300 border-purple-800/60',
                     }[seg.endReason || 'manual'];
 
@@ -375,10 +375,10 @@ export function TaskDetailModal({
                         key={seg.id}
                         className={`p-3 rounded-lg border transition ${
                           isEditingThis
-                            ? 'bg-[#161b26] border-teal-600/70 ring-1 ring-teal-500/20'
+                            ? 'bg-[#0a0a0a] border-teal-600/70 ring-1 ring-teal-500/20'
                             : !isClosed
                             ? 'bg-teal-950/20 border-teal-800/50'
-                            : 'bg-[#0f1117] border-[#2d3748]/60 hover:border-slate-600'
+                            : 'bg-[#000000] border-[#1a1a1a]/60 hover:border-slate-600'
                         }`}
                       >
                         {!isEditingThis ? (
@@ -421,7 +421,7 @@ export function TaskDetailModal({
                                 type="button"
                                 onClick={() => handleStartEditSegment(seg)}
                                 title="Edit segment times"
-                                className="p-1.5 text-slate-400 hover:text-teal-300 hover:bg-[#2d3748] rounded transition"
+                                className="p-1.5 text-slate-400 hover:text-teal-300 hover:bg-[#141414] rounded transition"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
@@ -474,7 +474,7 @@ export function TaskDetailModal({
                                   type="datetime-local"
                                   value={editSegStart}
                                   onChange={(e) => setEditSegStart(e.target.value)}
-                                  className="w-full bg-[#0f1117] text-slate-200 border border-[#2d3748] rounded px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-teal-500"
+                                  className="w-full bg-[#000000] text-slate-200 border border-[#1a1a1a] rounded px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-teal-500"
                                 />
                               </div>
 
@@ -487,7 +487,7 @@ export function TaskDetailModal({
                                   value={editSegEnd}
                                   onChange={(e) => setEditSegEnd(e.target.value)}
                                   placeholder={isClosed ? '' : 'Leave empty for running'}
-                                  className="w-full bg-[#0f1117] text-slate-200 border border-[#2d3748] rounded px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-teal-500"
+                                  className="w-full bg-[#000000] text-slate-200 border border-[#1a1a1a] rounded px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-teal-500"
                                 />
                               </div>
 
@@ -498,7 +498,7 @@ export function TaskDetailModal({
                                 <select
                                   value={editSegReason}
                                   onChange={(e) => setEditSegReason(e.target.value as SegmentEndReason)}
-                                  className="w-full bg-[#0f1117] text-slate-200 border border-[#2d3748] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500"
+                                  className="w-full bg-[#000000] text-slate-200 border border-[#1a1a1a] rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500"
                                 >
                                   <option value="paused">paused</option>
                                   <option value="done">done</option>
@@ -548,7 +548,7 @@ export function TaskDetailModal({
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Description & Specifications
             </span>
-            <div className="p-4 rounded-xl bg-[#0f1117] border border-[#2d3748] min-h-[120px]">
+            <div className="p-4 rounded-xl bg-[#000000] border border-[#1a1a1a] min-h-[120px]">
               <MarkdownViewer
                 content={task.description}
                 emptyPlaceholder="No description provided for this task."
@@ -561,16 +561,16 @@ export function TaskDetailModal({
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <History className="w-3.5 h-3.5 text-slate-400" /> Audit History & Changes
             </span>
-            <div className="bg-[#131722] rounded-xl border border-[#2d3748] p-4">
+            <div className="bg-[#080808] rounded-xl border border-[#1a1a1a] p-4">
               {isLoadingHistory ? (
                 <div className="text-xs text-slate-500 py-3 text-center">Loading audit log...</div>
               ) : history.length === 0 ? (
                 <div className="text-xs text-slate-500 py-3 text-center">No history recorded yet.</div>
               ) : (
-                <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-[#2d3748]">
+                <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-[#141414]">
                   {history.map((item) => (
                     <div key={item.id} className="relative group">
-                      <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-teal-500 ring-4 ring-[#131722]" />
+                      <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-teal-500 ring-4 ring-[#080808]" />
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-slate-200">
@@ -579,7 +579,7 @@ export function TaskDetailModal({
                               : `${item.fromStatus} → ${item.toStatus}`}
                           </span>
                           {item.isManualEdit && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700">
+                            <span className="px-1.5 py-0.2 rounded text-[10px] bg-[#0a0a0a] text-slate-400 border border-slate-700">
                               Manual Edit
                             </span>
                           )}

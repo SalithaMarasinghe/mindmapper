@@ -49,12 +49,12 @@ export function CarryoverModal({ tasks, onClose, onCarryover }: CarryoverModalPr
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       <div
-        className="fixed inset-0 bg-[#0f1117]/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-xl bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] overflow-hidden my-auto flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-xl bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] overflow-hidden my-auto flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2d3748] bg-[#161b26]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a]">
           <div>
             <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
               <span>⚡ Carry Over Unfinished Tasks</span>
@@ -66,7 +66,7 @@ export function CarryoverModal({ tasks, onClose, onCarryover }: CarryoverModalPr
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-lg transition"
+            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -75,13 +75,13 @@ export function CarryoverModal({ tasks, onClose, onCarryover }: CarryoverModalPr
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
           {/* Target Date Picker */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#0f1117] border border-[#2d3748]">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#000000] border border-[#1a1a1a]">
             <span className="text-xs font-semibold text-slate-300">Move selected tasks to:</span>
             <input
               type="date"
               value={targetDate}
               onChange={(e) => setTargetDate(e.target.value)}
-              className="bg-[#1e2433] text-slate-200 border border-[#2d3748] rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-teal-500"
+              className="bg-[#0a0a0a] text-slate-200 border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-teal-500"
             />
           </div>
 
@@ -112,8 +112,8 @@ export function CarryoverModal({ tasks, onClose, onCarryover }: CarryoverModalPr
                   onClick={() => toggleTask(task.id)}
                   className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-[#1b2536] border-teal-600/50 text-slate-100 shadow-sm'
-                      : 'bg-[#0f1117] border-[#2d3748] text-slate-400 opacity-60 hover:opacity-100'
+                      ? 'bg-[#0a0a0a] border-teal-600/50 text-slate-100 shadow-sm'
+                      : 'bg-[#000000] border-[#1a1a1a] text-slate-400 opacity-60 hover:opacity-100'
                   }`}
                 >
                   <div className="mt-0.5">
@@ -143,11 +143,11 @@ export function CarryoverModal({ tasks, onClose, onCarryover }: CarryoverModalPr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-[#2d3748] bg-[#161b26]">
+        <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-[#1a1a1a] bg-[#0a0a0a]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#2d3748] rounded-lg transition"
+            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-[#141414] rounded-lg transition"
           >
             Cancel
           </button>

@@ -60,15 +60,15 @@ export function AIAssistant() {
   const currentConversation = conversations.find((c) => c.id === currentConversationId);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden bg-[#0a0d14]">
+    <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden bg-[#000000]">
       {/* Sidebar */}
       <aside
         className={`${
           sidebarOpen ? 'w-64 sm:w-72' : 'w-0'
-        } transition-all duration-300 ease-in-out border-r border-[#1e2433] bg-[#0d1017] flex flex-col shrink-0 overflow-hidden z-20`}
+        } transition-all duration-300 ease-in-out border-r border-[#111111] bg-[#000000] flex flex-col shrink-0 overflow-hidden z-20`}
       >
         {/* Sidebar Header */}
-        <div className="p-3.5 border-b border-[#1e2433] flex items-center justify-between shrink-0">
+        <div className="p-3.5 border-b border-[#111111] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-teal-400" />
             <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
@@ -112,7 +112,7 @@ export function AIAssistant() {
                   className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs cursor-pointer transition-all ${
                     isActive
                       ? 'bg-teal-500/15 border border-teal-500/30 text-teal-300 font-medium'
-                      : 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-transparent'
+                      : 'hover:bg-[#0a0a0a]/50 text-slate-400 hover:text-slate-200 border border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -148,14 +148,14 @@ export function AIAssistant() {
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0d1017]/50 relative">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#000000]/50 relative">
         {/* Chat Header */}
-        <header className="h-12 border-b border-[#1e2433] bg-[#0d1017]/80 backdrop-blur-md px-4 flex items-center justify-between shrink-0">
+        <header className="h-12 border-b border-[#111111] bg-[#000000]/80 backdrop-blur-md px-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#0a0a0a]/60 transition cursor-pointer"
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
               {sidebarOpen ? (

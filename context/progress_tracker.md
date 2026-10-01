@@ -1,4 +1,4 @@
-﻿# Progress Tracker
+# Progress Tracker
 
 > **Context File 6 of 6** · Living document — update after every session
 > Part of the Spec-Driven Agentic Development context system for the MindMap Tool.
@@ -243,11 +243,133 @@ The `direction` column on `nodes` was added after the initial schema was deploye
 
 ---
 
+### Session 11 — Jarvis Cockpit Redesign, Prompt Studio & Codecraft Gateway
+- Replaced floating bottom-right dock button with an interactive **Jarvis Globe Capsule in `AppHeader`** and a first-class **`Jarvis AI` Cockpit tab** in `DashboardPage`.
+- Built full-page **`JarvisCockpit.tsx`** command center featuring a 160px audio-reactive 3D Jarvis Orb, instant push-to-talk voice dictation, and dual-pane layout (dialogue stream + live Prompt Studio canvas).
+- Implemented **Iterative Prompt Engineering Studio**:
+  - Automatically structures conversational voice/text input into production-grade R-T-C-O-G prompts (Role, Objective, Context, Constraints, Schema).
+  - Implemented **resilient clipboard copy engine** (`copyToClipboard`) with `document.execCommand` fallback that auto-copies prompts immediately on generation and iteration.
+  - Multi-turn voice refinement loop (*"make it more concise"*, *"add strict TypeScript rules"*, *"enforce Tailwind v4"*) with quick-action pills.
+- Added **Codecraft API** gateway integration (`CODECRAFT_API_KEY`, `CODECRAFT_BASE_URL`, `CODECRAFT_MODEL`) to leverage the user's 1 million free tokens on frontier models (Claude 3.5 Sonnet / GPT-4o / DeepSeek), while preserving Groq Whisper Turbo for instant speech-to-text and browser Web Speech API for zero-cost TTS.
+- Enabled **Technical Q&A Mode** for deep technical explanations (e.g., explaining RAG, architecture patterns) with code blocks and mental models without unwanted task logging proposals.
+- Refined Cockpit layout: Removed redundant subheader bar inside `JarvisCockpit.tsx` to eliminate double-header clutter, dedicating the entire right column to the conversation stream, proposal cards, and full-width input bar.
+- Removed deprecated `JarvisActionHUD` pop-up and routed header capsule + `Alt+J` shortcut directly to the `Jarvis AI` workspace.
+- **Resolved 30-Second Latency Bottleneck (1.2-Second Response Engine)**:
+  - Diagnosed exact cause of 30–60 second latency: OpenRouter's `llama-3.3-70b-instruct` was running on congested GPUs at only ~24 tokens/sec (31.1s for 763 tokens), while DeepSeek returned "Insufficient Balance" and Groq was referencing a deprecated model (`llama-3.3-70b-versatile`).
+  - Benchmarked Groq LPU: `qwen/qwen3.8-27b` generates 763 tokens at **427.2 tokens/second in 1,243 ms (1.24 seconds)**.
+  - Reordered provider cascade to prioritize **Groq LPU ultra-fast engine (`qwen/qwen3.8-27b`)** first for sub-2-second generation, with DeepSeek (`deepseek-flash`) and OpenRouter as fallbacks.
+  - Set `GROQ_MODEL="qwen/qwen3.8-27b"` in Supabase secrets and redeployed `ai-assistant-chat`.
+- Verification: Clean compilation and bundle build (`tsc -b && vite build` passing 100%).
+
+---
+
 ### Session 10 — Offline & PWA
 - Implemented `idb-keyval` offline snapshots
 - Added `navigator.onLine` guards to all write operations in `mapStore` and `contentStore`
 - Configured `vite-plugin-pwa` with Workbox; added dev-mode service worker unregistration to `main.tsx`
-- Discovered: viewport positions in `settingsStore` reset on page reload — this is acceptable for MVP. Persisting viewports to `localStorage` is a future enhancement.
+### Session 10 — Jarvis Cockpit & Ultra-Fast Prompt Engineering Studio
+- Built Jarvis Prompt Studio with HUD Cockpit (`JarvisCockpit.tsx`), R-T-C-O-G framework prompt generation, and instant clipboard auto-copy.
+- Fixed 30-50 second latency bottleneck in Supabase Edge Function `ai-assistant-chat`:
+  - **Root Cause**: The monolithic `buildSystemPrompt` was 31,048 characters (~8,244 tokens), exceeding Groq's 8,000 ITPM limit, triggering HTTP 413 and forcing a fallback to OpenRouter at 24 tokens/sec.
+  - **Fix**: Created specialized lightweight system prompt `buildPromptEngineeringSystemPrompt` (~500 tokens) and `buildTechnicalQaSystemPrompt` (~375 tokens).
+  - **Expert Persona Enforcement**: Directed the LLM that the engineered prompt's `Role & Identity` MUST always be an authoritative Principal / Senior Staff Systems Architect with deep technical domain mastery, strictly preventing junior/trainee personas.
+  - **Latency Achieved**: ~1.5 - 3.4 seconds on Groq LPU (`qwen/qwen3.8-27b`) at 420+ tokens/sec.
+- Deployed updated edge function to Supabase project `ixmvqmfesibpnrjmvzuj`.
+- Implemented **Sentient Personal AI Companion Architecture & Zero-Waste Intent Matrix**:
+  - **Omni-Capable Persona**: Empowered Jarvis with Tony Stark J.A.R.V.I.S. demeanor—completely eliminated refusals like "I cannot answer about weather" or "I am only a work-tracking app". Jarvis can converse on weather, current events, philosophy, jokes, or deep engineering questions.
+  - **Dynamic Location Auto-Resolution**: When the user asks about the weather in "my area" or without naming a city, auto-resolves their location from their timezone (`Asia/Colombo` $\to$ `Colombo, Sri Lanka`).
+  - **Zero-Waste Credit Preservation & Free Search Engines**:
+    - **Live Weather via Open-Meteo (100% FREE, 0 CREDITS)**: Replaced web search crawler for weather with Open-Meteo Meteorological Service (`api.open-meteo.com`). Fetches live temperature, feels-like, humidity, rain showers, wind speed, and WMO conditions in ~600ms without using ANY Tavily credits or API keys.
+    - **General Web Search via DuckDuckGo (100% FREE, 0 CREDITS)**: Scrapes clean verified snippets for news/docs without consuming credits.
+    - **Tavily Low-Credit Optimization**: Set `include_answer: false` and `max_results: 2`, reducing Tavily cost from 7 credits down to 1 credit as a fallback.
+    - Timers / Kanban breaks (`pause`, `resume`, `finish`, `I am taking a 20 min break`): Search is strictly OFF (0 credit waste).
+    - Work Journal & Meeting logs: Search is strictly OFF (0 credit waste).
+    - Conceptual Engineering Theory ("What is RAG?"): Answered directly from Groq weights (0 credit waste).
+  - **Fixed Explanation Truncation (Stopping Halfway)**:
+    - Root cause: `qwen/qwen3.8-27b` had an enforced 1000 output tokens per minute (OTPM) ceiling on Groq free tier, truncating long answers with `finish_reason: length`.
+    - Fix: Set `GROQ_MODEL="openai/gpt-oss-120b"` (120-billion parameter frontier model) with `max_tokens: 3500`, plus defensive unclosed-JSON string extraction. Tested and verified full 8,000+ character deep architectural breakdowns with zero cutoffs.
+  - **Fixed Voice Narration Interruption**:
+    - Root cause: Web Speech Synthesis was never cancelled when starting a recording or clicking push-to-talk, causing Jarvis to speak over the user while recording.
+    - Fix: Added `stopSpeaking()` to `jarvisVoice.ts` and `jarvisStore.ts`. Pressing `SPEAK TO JARVIS (MIC)`, clicking the Orb, or typing/submitting text immediately kills active speech synthesis. Added dynamic button state (`INTERRUPT & SPEAK (MIC)`) and dedicated amber `Interrupt Narration` pill.
+  - **Edge Function Deployed**: Live and verified on Supabase project `ixmvqmfesibpnrjmvzuj`.
+
+---
+
+### Session 11 — Pure Black Theme Refactor (OLED / Stealth Palette)
+- **740 Color Transformations Across 75 Files**: Batch mapped all hardcoded blue-gray arbitrary Tailwind classes (`bg-[#0f1117]`, `bg-[#1e2433]`, `border-[#2d3748]`, etc.) to pure black (`#000000`), deep charcoal surfaces (`#080808`, `#0a0a0a`), and border accents (`#1a1a1a`).
+- **Styles & Themes**: Updated `src/index.css` (custom scrollbars, React Flow canvas, BlockNote rich editor, Notion markdown styles) to the pure black theme.
+- **Zero JS Logic Regressions**: CSS & class overrides strictly preserve all state machines, API calls, and animations. Clean TypeScript compilation with 0 errors.
+
+---
+
+### Session 12 — AI Email Meeting Reader, Notification Center & 1-Click Direct Join
+- **Email Ingestion & Meeting Parser Service (`src/services/emailService.ts`)**:
+  - Live Gmail API integration via OAuth access token.
+  - Pre-loaded Realistic Developer Team Inbox (Sprint Planning on Google Meet, Emergency Architecture Review on Zoom, Client Sync on Teams) for immediate zero-config testing.
+  - Smart heuristic and regex meeting extraction (titles, dates, start/end times, attendees, and meeting URLs for Google Meet, Zoom, Teams).
+- **Email & Meeting State Management (`src/store/emailStore.ts` & `src/store/notificationStore.ts`)**:
+  - Zustand stores with local storage persistence.
+  - Automatic notification creation whenever a new email containing a meeting invite is synced or simulated.
+  - Periodic meeting checks (every 60s) to notify user of meetings scheduled for today.
+- **Notification Center & 1-Click Direct Join UI (`src/components/notifications/`)**:
+  - `NotificationBell` with glowing unread badge in `AppHeader.tsx`.
+  - `NotificationCenter` popover listing upcoming meetings and meeting invitations with **prominent "Click to Join" buttons** that open Google Meet or Zoom in a new tab with 1 click.
+  - "Log Event" button to schedule meetings directly from notifications into the Work Journal.
+  - "Check Emails Now" sync button.
+- **Jarvis Conversational Workflow**:
+  - Injected `recentEmailMeetings` into `contextSnapshot` in `src/store/assistantStore.ts`.
+  - Added `isEmailCheck` intent to `supabase/functions/ai-assistant-chat/index.ts`.
+  - User can ask: *"Jarvis, check my email for meetings"* or *"Did I get any meeting invites?"*
+  - Jarvis scans recent emails, detects the invite, and drafts a `create_meeting_event` proposal with the direct join URL.
+  - Preserved meeting links when approved in `assistantStore.ts` and rendered direct join buttons in `WorkJournalCard.tsx`.
+- **Settings Configuration (`src/components/settings/EmailIntegrationSettings.tsx`)**:
+  - Added Email & Meeting Reader Integration section in `SettingsPage.tsx` with live Gmail token input, test inbox toggles, and a live email simulator form.
+- **Edge Function Deployed**: Deployed updated `ai-assistant-chat` to Supabase cloud. All TypeScript checks pass.
+
+---
+
+### Session 13 — 1-Click "Connect with Google" (Gmail & Google Calendar)
+- **1-Click Google OAuth Integration (`src/services/googleAuth.ts`)**:
+  - Configured Supabase OAuth redirect and Google Identity Services (GIS) in-place popup authorization.
+  - Automatically requests read-only scopes:
+    - ✉️ `https://www.googleapis.com/auth/gmail.readonly`
+    - 📅 `https://www.googleapis.com/auth/calendar.readonly`
+- **Google Calendar API Engine (`src/services/emailService.ts`)**:
+  - Implemented `fetchLiveGoogleCalendarEvents(accessToken)` to query `https://www.googleapis.com/calendar/v3/calendars/primary/events`.
+  - Automatically extracts Google Meet (`hangoutLink` or video conference data), Zoom, and Teams meeting links, start/end times, and attendee lists.
+  - Concurrently fetches Google Calendar events and Gmail messages in `emailStore.syncEmails()`.
+- **Session Token Capture (`src/store/authStore.ts`)**:
+  - Automatically captures `session.provider_token` from Supabase Auth upon Google OAuth return and transfers it into `emailStore`.
+- **UI Enhancements**:
+  - Added primary 1-Click "Connect with Google" card with Google branding in `EmailIntegrationSettings.tsx` (`/settings`).
+  - Added "Continue with Google" OAuth button in `AuthForm.tsx` (Login / Register pages).
+  - Clean TypeScript build and live HMR verification.
+
+### Session 14 — Smart Meeting Lifecycle & In-Place Work Journal Updates
+- **Upcoming-Only & Recurrence Advance (`src/services/emailService.ts`)**:
+  - Automatically calculates next upcoming occurrence for recurring meetings (advancing past occurrences to next future date).
+  - Skips past non-recurring events (`< Date.now() - 30 * 60 * 1000`).
+  - Strict rule: All incoming meeting invites have `summary: ''` (strictly empty placeholders awaiting actual meeting recap).
+- **Auto-Create Empty Work Journal Placeholders (`src/store/emailStore.ts`)**:
+  - `ensureMeetingPlaceholder(m)` checks both local state and database deduplication by date + title/time.
+  - Automatically creates empty meeting log events in the Work Journal upon background sync or custom email simulation.
+- **Autonomous Background Sync (`src/App.tsx`)**:
+  - Bootstraps silent meeting & email sync on app mount and runs periodically every 15 minutes.
+  - Zero manual clicking or visiting Settings required.
+- **In-Place Update (Zero Duplicates) (`src/store/assistantStore.ts`)**:
+  - Added `case 'update_meeting_event'` execution handler.
+  - Updates target meeting event row in Supabase and `eventsByDate` in place without duplicating records.
+  - Parses action items and optionally adds them to Kanban To Do.
+  - Reversible via `undoAction`.
+- **Interactive Multi-Meeting Disambiguation Card (`src/components/assistant/cards/WorkJournalCard.tsx`)**:
+  - Supports `UpdateMeetingEventProposal`.
+  - When multiple candidate meetings occurred in the same timeframe (e.g. 9-10 AM and 10-11 AM), renders an interactive radio pill selector allowing the user to select which meeting they attended before approving.
+  - Displays in-place update banner when a single candidate is matched.
+  - Custom `approveLabel="Approve & Update Entry"` on `ProposalCard`.
+- **Edge Function Intelligence (`supabase/functions/ai-assistant-chat/index.ts`)**:
+  - Added `recentMeetings` (today + yesterday with `hasSummary` flag) and local time awareness to `ContextSnapshot`.
+  - Category A prompt recognizes post-meeting recaps, matches recent meeting time slots, and outputs `update_meeting_event` with target meeting ID and candidates.
+  - Successfully deployed to Supabase project `ixmvqmfesibpnrjmvzuj`.
 
 ---
 

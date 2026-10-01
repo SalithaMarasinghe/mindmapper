@@ -126,9 +126,9 @@ export function TaskTableView({
   }, [tasks, segmentsByTaskId]);
 
   return (
-    <div className="flex flex-col bg-[#131722] border border-[#2d3748] rounded-2xl overflow-hidden shadow-sm">
+    <div className="flex flex-col bg-[#080808] border border-[#1a1a1a] rounded-2xl overflow-hidden shadow-sm">
       {/* Table Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-[#161b26] border-b border-[#2d3748]">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-[#0a0a0a] border-b border-[#1a1a1a]">
         {/* Left: Title & Filter Toggles */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-slate-100">
@@ -136,21 +136,21 @@ export function TaskTableView({
               <TableIcon className="w-4 h-4" />
             </div>
             <h2 className="text-sm font-bold tracking-wide">Tasks & Break Analysis</h2>
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#1e2433] text-slate-300 border border-[#2d3748]">
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#0a0a0a] text-slate-300 border border-[#1a1a1a]">
               {displayedTasks.length}
             </span>
           </div>
 
-          <div className="h-4 w-[1px] bg-[#2d3748] mx-1 hidden sm:block" />
+          <div className="h-4 w-[1px] bg-[#141414] mx-1 hidden sm:block" />
 
           {/* Filter Toggle Buttons */}
-          <div className="flex items-center bg-[#0f1117] p-0.5 rounded-lg border border-[#2d3748] text-xs">
+          <div className="flex items-center bg-[#000000] p-0.5 rounded-lg border border-[#1a1a1a] text-xs">
             <button
               type="button"
               onClick={() => setFilterMode('all')}
               className={`px-3 py-1 rounded-md font-semibold transition ${
                 filterMode === 'all'
-                  ? 'bg-[#1e2433] text-teal-300 shadow-sm'
+                  ? 'bg-[#0a0a0a] text-teal-300 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -161,7 +161,7 @@ export function TaskTableView({
               onClick={() => setFilterMode('completed')}
               className={`px-3 py-1 rounded-md font-semibold transition ${
                 filterMode === 'completed'
-                  ? 'bg-[#1e2433] text-emerald-300 shadow-sm'
+                  ? 'bg-[#0a0a0a] text-emerald-300 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -172,7 +172,7 @@ export function TaskTableView({
 
         {/* Right: Summary Metrics & Expand/Collapse All */}
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <div className="flex items-center gap-2 bg-[#0f1117] px-3 py-1.5 rounded-xl border border-[#2d3748]/60">
+          <div className="flex items-center gap-2 bg-[#000000] px-3 py-1.5 rounded-xl border border-[#1a1a1a]/60">
             <div className="flex items-center gap-1.5 text-teal-300 font-mono font-bold">
               <Clock className="w-3.5 h-3.5 text-teal-400" />
               <span>Work: {formatDuration(totalWorkSeconds)}</span>
@@ -188,7 +188,7 @@ export function TaskTableView({
             <button
               type="button"
               onClick={expandAll}
-              className="px-2 py-1 hover:text-slate-200 hover:bg-[#1e2433] rounded transition"
+              className="px-2 py-1 hover:text-slate-200 hover:bg-[#0a0a0a] rounded transition"
             >
               Expand All
             </button>
@@ -196,7 +196,7 @@ export function TaskTableView({
             <button
               type="button"
               onClick={collapseAll}
-              className="px-2 py-1 hover:text-slate-200 hover:bg-[#1e2433] rounded transition"
+              className="px-2 py-1 hover:text-slate-200 hover:bg-[#0a0a0a] rounded transition"
             >
               Collapse All
             </button>
@@ -208,7 +208,7 @@ export function TaskTableView({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
-            <tr className="bg-[#121620] text-slate-400 uppercase text-[10px] font-bold tracking-wider border-b border-[#2d3748]/80 select-none">
+            <tr className="bg-[#080808] text-slate-400 uppercase text-[10px] font-bold tracking-wider border-b border-[#1a1a1a]/80 select-none">
               <th className="py-3 px-3 w-10 text-center"></th>
               <th className="py-3 px-4 min-w-[200px]">Task</th>
               <th className="py-3 px-3 min-w-[110px]">Status</th>
@@ -219,7 +219,7 @@ export function TaskTableView({
               <th className="py-3 px-4 min-w-[120px] text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#2d3748]/50">
+          <tbody className="divide-y divide-[#1a1a1a]/50">
             {displayedTasks.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-12 text-center text-slate-500">
@@ -253,7 +253,7 @@ export function TaskTableView({
                 }[task.priority];
 
                 const statusBadge = {
-                  todo: 'bg-slate-800 text-slate-300 border-slate-700',
+                  todo: 'bg-[#0a0a0a] text-slate-300 border-slate-700',
                   in_progress: isRunning
                     ? 'bg-teal-950/70 text-teal-300 border-teal-700/70'
                     : 'bg-amber-950/70 text-amber-300 border-amber-700/70',
@@ -271,10 +271,10 @@ export function TaskTableView({
                     key={task.id}
                     className={`group transition-colors ${
                       isExpanded
-                        ? 'bg-[#181e2b]'
+                        ? 'bg-[#0a0a0a]'
                         : isRunning
-                        ? 'bg-teal-950/10 hover:bg-[#1a2130]'
-                        : 'hover:bg-[#1a2130]'
+                        ? 'bg-teal-950/10 hover:bg-[#0a0a0a]'
+                        : 'hover:bg-[#0a0a0a]'
                     }`}
                   >
                     <td colSpan={8} className="p-0">
@@ -422,7 +422,7 @@ export function TaskTableView({
                                 type="button"
                                 onClick={() => onRevertToTodo(task)}
                                 title="Move back to To Do"
-                                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-md transition"
+                                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-md transition"
                               >
                                 <ArrowLeft className="w-3.5 h-3.5" />
                               </button>
@@ -434,7 +434,7 @@ export function TaskTableView({
                               type="button"
                               onClick={() => onRevertToInProgress(task)}
                               title="Reopen to In Progress"
-                              className="p-1.5 text-slate-400 hover:text-amber-300 hover:bg-[#2d3748] rounded-md transition"
+                              className="p-1.5 text-slate-400 hover:text-amber-300 hover:bg-[#141414] rounded-md transition"
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
                             </button>
@@ -444,7 +444,7 @@ export function TaskTableView({
                             type="button"
                             onClick={() => onEditTask(task)}
                             title="Edit Task"
-                            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-md transition"
+                            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-md transition"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -462,10 +462,10 @@ export function TaskTableView({
 
                       {/* Expanded Accordion Panel */}
                       {isExpanded && (
-                        <div className="px-8 pb-5 pt-1 bg-[#121620]/90 border-t border-[#2d3748]/40 animate-in fade-in duration-150">
+                        <div className="px-8 pb-5 pt-1 bg-[#080808]/90 border-t border-[#1a1a1a]/40 animate-in fade-in duration-150">
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-2">
                             {/* Panel 1: Full Description */}
-                            <div className="p-3.5 bg-[#0f1117] rounded-xl border border-[#2d3748]/60 flex flex-col gap-2">
+                            <div className="p-3.5 bg-[#000000] rounded-xl border border-[#1a1a1a]/60 flex flex-col gap-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                   Task Description
@@ -487,7 +487,7 @@ export function TaskTableView({
                             </div>
 
                             {/* Panel 2: Work Segments & Break Breakdown */}
-                            <div className="p-3.5 bg-[#0f1117] rounded-xl border border-[#2d3748]/60 flex flex-col gap-2">
+                            <div className="p-3.5 bg-[#000000] rounded-xl border border-[#1a1a1a]/60 flex flex-col gap-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                                   <Layers className="w-3.5 h-3.5 text-teal-400" /> Work & Break
@@ -509,7 +509,7 @@ export function TaskTableView({
                                       return (
                                         <div
                                           key={`work-${idx}`}
-                                          className="flex items-center justify-between p-2 rounded-lg bg-[#161b26] border border-teal-900/40 text-xs"
+                                          className="flex items-center justify-between p-2 rounded-lg bg-[#0a0a0a] border border-teal-900/40 text-xs"
                                         >
                                           <div className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />

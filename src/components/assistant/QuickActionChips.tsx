@@ -56,7 +56,7 @@ export function QuickActionChips({ onSelect, onSelectPrompt, disabled }: QuickAc
           type="button"
           disabled={disabled}
           onClick={() => handleSelect(chip.prompt)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1e2433] hover:bg-[#283145] border border-[#2d3748] text-slate-300 hover:text-white transition whitespace-nowrap active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-sm cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0a0a0a] hover:bg-[#141414] border border-[#1a1a1a] text-slate-300 hover:text-white transition whitespace-nowrap active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-sm cursor-pointer"
         >
           {chip.icon}
           <span>{chip.label}</span>

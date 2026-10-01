@@ -154,7 +154,7 @@ export function SharedMapPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#f8fafc]">
+    <div className="flex flex-col h-screen overflow-hidden bg-[#1e1e1e]">
       <div className="bg-teal-700 text-white text-center py-2.5 text-sm font-bold shadow-sm z-50 px-4">
         👁 Viewing {mapMeta.title} — shared by {ownerName}
       </div>
@@ -182,7 +182,7 @@ export function SharedMapPage() {
               return '#f1f5f9';
             }}
             maskColor="rgba(248, 250, 252, 0.7)"
-            className="rounded-lg shadow-sm border border-gray-200 mb-4 mr-4 bg-white/50"
+            className="rounded-lg shadow-sm border border-[#1a1a1a] mb-4 mr-4 bg-[#0a0a0a]/50"
           />
         </ReactFlow>
       </main>

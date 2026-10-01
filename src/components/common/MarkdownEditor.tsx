@@ -229,17 +229,17 @@ export function MarkdownEditor({
     <div
       onPaste={handlePaste}
       tabIndex={mode === 'preview' ? 0 : undefined}
-      className={`flex flex-col rounded-xl border border-[#2d3748] bg-[#0f1117] overflow-hidden focus-within:border-teal-500/70 focus-within:ring-2 focus-within:ring-teal-500/20 transition-all ${className}`}
+      className={`flex flex-col rounded-xl border border-[#1a1a1a] bg-[#000000] overflow-hidden focus-within:border-teal-500/70 focus-within:ring-2 focus-within:ring-teal-500/20 transition-all ${className}`}
     >
       {/* ── Toolbar ────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-1 px-3 py-2 bg-[#161b26] border-b border-[#2d3748] select-none">
+      <div className="flex flex-wrap items-center justify-between gap-1 px-3 py-2 bg-[#0a0a0a] border-b border-[#1a1a1a] select-none">
         {/* Formatting Actions (Visible in write or split modes) */}
         <div className={`flex flex-wrap items-center gap-0.5 ${mode === 'preview' ? 'opacity-40 pointer-events-none' : ''}`}>
           <button
             type="button"
             title="Heading 1 (# )"
             onClick={() => prefixLine('# ')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Heading1 className="w-4 h-4" />
           </button>
@@ -247,7 +247,7 @@ export function MarkdownEditor({
             type="button"
             title="Heading 2 (## )"
             onClick={() => prefixLine('## ')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Heading2 className="w-4 h-4" />
           </button>
@@ -255,18 +255,18 @@ export function MarkdownEditor({
             type="button"
             title="Heading 3 (### )"
             onClick={() => prefixLine('### ')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Heading3 className="w-4 h-4" />
           </button>
 
-          <div className="w-[1px] h-4 bg-[#2d3748] mx-1" />
+          <div className="w-[1px] h-4 bg-[#141414] mx-1" />
 
           <button
             type="button"
             title="Bold (**text**) (Ctrl+B)"
             onClick={() => insertFormatting('**', '**', 'bold')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Bold className="w-4 h-4" />
           </button>
@@ -274,7 +274,7 @@ export function MarkdownEditor({
             type="button"
             title="Italic (*text*) (Ctrl+I)"
             onClick={() => insertFormatting('*', '*', 'italic')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Italic className="w-4 h-4" />
           </button>
@@ -282,18 +282,18 @@ export function MarkdownEditor({
             type="button"
             title="Strikethrough (~~text~~)"
             onClick={() => insertFormatting('~~', '~~', 'strikethrough')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Strikethrough className="w-4 h-4" />
           </button>
 
-          <div className="w-[1px] h-4 bg-[#2d3748] mx-1" />
+          <div className="w-[1px] h-4 bg-[#141414] mx-1" />
 
           <button
             type="button"
             title="Bullet List (- )"
             onClick={() => prefixLine('- ')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <List className="w-4 h-4" />
           </button>
@@ -301,7 +301,7 @@ export function MarkdownEditor({
             type="button"
             title="Numbered List (1. )"
             onClick={() => prefixLine('1. ')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <ListOrdered className="w-4 h-4" />
           </button>
@@ -309,18 +309,18 @@ export function MarkdownEditor({
             type="button"
             title="Task / Checklist (- [ ] )"
             onClick={() => prefixLine('- [ ] ')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <CheckSquare className="w-4 h-4" />
           </button>
 
-          <div className="w-[1px] h-4 bg-[#2d3748] mx-1" />
+          <div className="w-[1px] h-4 bg-[#141414] mx-1" />
 
           <button
             type="button"
             title="Inline Code (`code`)"
             onClick={() => insertFormatting('`', '`', 'code')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Code className="w-4 h-4" />
           </button>
@@ -328,7 +328,7 @@ export function MarkdownEditor({
             type="button"
             title="Code Block (```)"
             onClick={() => insertFormatting('```\n', '\n```', 'code here')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <FileCode className="w-4 h-4" />
           </button>
@@ -336,7 +336,7 @@ export function MarkdownEditor({
             type="button"
             title="Blockquote (> )"
             onClick={() => prefixLine('> ')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Quote className="w-4 h-4" />
           </button>
@@ -344,21 +344,21 @@ export function MarkdownEditor({
             type="button"
             title="Link ([title](url)) (Ctrl+K)"
             onClick={() => insertFormatting('[', '](https://)', 'link text')}
-            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#232936] transition-colors"
+            className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-[#0f0f0f] transition-colors"
           >
             <Link className="w-4 h-4" />
           </button>
         </div>
 
         {/* View Mode Toggle: Write | Split | Preview */}
-        <div className="flex items-center bg-[#0f1117] p-0.5 rounded-lg border border-[#2d3748] text-xs">
+        <div className="flex items-center bg-[#000000] p-0.5 rounded-lg border border-[#1a1a1a] text-xs">
           <button
             type="button"
             onClick={() => setMode('write')}
             title="Write mode (edit markdown)"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-all ${
               mode === 'write'
-                ? 'bg-[#1e2433] text-teal-300 shadow-sm'
+                ? 'bg-[#0a0a0a] text-teal-300 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -371,7 +371,7 @@ export function MarkdownEditor({
             title="Split view (editor + live preview)"
             className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-all ${
               mode === 'split'
-                ? 'bg-[#1e2433] text-teal-300 shadow-sm'
+                ? 'bg-[#0a0a0a] text-teal-300 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -384,7 +384,7 @@ export function MarkdownEditor({
             title="Preview formatted markdown"
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-all ${
               mode === 'preview'
-                ? 'bg-[#1e2433] text-teal-300 shadow-sm'
+                ? 'bg-[#0a0a0a] text-teal-300 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -429,7 +429,7 @@ export function MarkdownEditor({
       )}
 
       {mode === 'split' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#2d3748]" style={{ minHeight }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#1a1a1a]" style={{ minHeight }}>
           <textarea
             id={id}
             ref={textareaRef}
@@ -443,7 +443,7 @@ export function MarkdownEditor({
           />
           <div
             style={{ minHeight }}
-            className="w-full p-4 overflow-y-auto bg-[#0b0e14]/50"
+            className="w-full p-4 overflow-y-auto bg-[#000000]/50"
           >
             <div className="text-[10px] font-semibold tracking-wider uppercase text-slate-500 mb-2">Live Preview</div>
             <MarkdownViewer
@@ -457,7 +457,7 @@ export function MarkdownEditor({
       {mode === 'preview' && (
         <div
           style={{ minHeight }}
-          className="relative w-full p-4 overflow-y-auto bg-[#0b0e14]/50 group"
+          className="relative w-full p-4 overflow-y-auto bg-[#000000]/50 group"
           onDoubleClick={() => setMode('write')}
         >
           {/* Quick Edit Overlay Button */}
@@ -465,7 +465,7 @@ export function MarkdownEditor({
             <button
               type="button"
               onClick={() => setMode('write')}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#1e2433] hover:bg-[#2d3748] border border-[#2d3748] text-slate-300 hover:text-slate-100 rounded-md shadow-sm transition-all"
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-[#0a0a0a] hover:bg-[#141414] border border-[#1a1a1a] text-slate-300 hover:text-slate-100 rounded-md shadow-sm transition-all"
             >
               <Edit3 className="w-3 h-3 text-teal-400" />
               Edit
@@ -480,7 +480,7 @@ export function MarkdownEditor({
       )}
 
       {/* ── Footer Info Bar ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#121620] border-t border-[#2d3748]/50 text-[11px] text-slate-400">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#080808] border-t border-[#1a1a1a]/50 text-[11px] text-slate-400">
         <div className="flex items-center gap-2">
           <span>AI Chat paste supported</span>
           <span className="text-slate-600">•</span>

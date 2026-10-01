@@ -79,6 +79,8 @@ export class JarvisVoiceService {
 
   // ── MediaRecorder: Start Recording ─────────────────────────────────────
   async startRecording(): Promise<boolean> {
+    // Immediately interrupt and kill any active speech narration
+    this.stopSpeaking();
     if (this.isRecording) return true;
 
     try {
@@ -233,11 +235,17 @@ export class JarvisVoiceService {
     return this.isSpeaking;
   }
 
-  cleanup() {
-    void this.stopRecording();
+  stopSpeaking() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    this.isSpeaking = false;
+    this.onOrbStateCallback?.('idle');
+  }
+
+  cleanup() {
+    void this.stopRecording();
+    this.stopSpeaking();
     if (this.audioContext) {
       void this.audioContext.close();
       this.audioContext = null;

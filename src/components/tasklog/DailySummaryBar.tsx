@@ -36,9 +36,9 @@ export function DailySummaryBar({ tasks }: DailySummaryBarProps) {
   }, 0);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 py-2.5 bg-[#131722] border-b border-[#2d3748]">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 py-2.5 bg-[#080808] border-b border-[#1a1a1a]">
       {/* 1. Completed Progress */}
-      <div className="flex items-center gap-3 bg-[#1e2433] px-3.5 py-2 rounded-xl border border-[#2d3748]/60">
+      <div className="flex items-center gap-3 bg-[#0a0a0a] px-3.5 py-2 rounded-xl border border-[#1a1a1a]/60">
         <div className="p-2 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/60">
           <CheckCircle2 className="w-4 h-4" />
         </div>
@@ -50,7 +50,7 @@ export function DailySummaryBar({ tasks }: DailySummaryBarProps) {
               <span className="text-slate-500 font-normal">({percentCompleted}%)</span>
             </span>
           </div>
-          <div className="w-full h-1.5 bg-[#0f1117] rounded-full overflow-hidden mt-1.5">
+          <div className="w-full h-1.5 bg-[#000000] rounded-full overflow-hidden mt-1.5">
             <div
               className="h-full bg-emerald-500 rounded-full transition-all duration-300"
               style={{ width: `${percentCompleted}%` }}
@@ -60,7 +60,7 @@ export function DailySummaryBar({ tasks }: DailySummaryBarProps) {
       </div>
 
       {/* 2. Total Tracked Time */}
-      <div className="flex items-center gap-3 bg-[#1e2433] px-3.5 py-2 rounded-xl border border-[#2d3748]/60">
+      <div className="flex items-center gap-3 bg-[#0a0a0a] px-3.5 py-2 rounded-xl border border-[#1a1a1a]/60">
         <div className="p-2 rounded-lg bg-teal-950/60 text-teal-400 border border-teal-800/60">
           <Clock className="w-4 h-4" />
         </div>
@@ -73,7 +73,7 @@ export function DailySummaryBar({ tasks }: DailySummaryBarProps) {
       </div>
 
       {/* 3. Open Tasks */}
-      <div className="flex items-center gap-3 bg-[#1e2433] px-3.5 py-2 rounded-xl border border-[#2d3748]/60">
+      <div className="flex items-center gap-3 bg-[#0a0a0a] px-3.5 py-2 rounded-xl border border-[#1a1a1a]/60">
         <div className="p-2 rounded-lg bg-amber-950/60 text-amber-400 border border-amber-800/60">
           <ListTodo className="w-4 h-4" />
         </div>

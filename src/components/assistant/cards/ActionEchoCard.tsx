@@ -204,8 +204,8 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
     <div
       className={`rounded-xl border transition-all my-2 overflow-hidden shadow-sm ${
         isUndone
-          ? 'bg-[#151922] border-slate-800/80 opacity-70'
-          : 'bg-[#101722] border-teal-900/40 hover:border-teal-700/50'
+          ? 'bg-[#080808] border-slate-800/80 opacity-70'
+          : 'bg-[#080808] border-teal-900/40 hover:border-teal-700/50'
       }`}
     >
       <div className="p-3 sm:p-3.5 flex flex-col gap-2">
@@ -215,7 +215,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
             <span
               className={`p-1.5 rounded-lg border flex items-center justify-center shrink-0 ${
                 isUndone
-                  ? 'bg-slate-800/60 border-slate-700/60 text-slate-500'
+                  ? 'bg-[#0a0a0a]/60 border-slate-700/60 text-slate-500'
                   : config.badgeColor
               }`}
             >
@@ -241,7 +241,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
           {/* Right badge / status */}
           <div className="shrink-0 flex items-center gap-1.5">
             {isUndone ? (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800/80 text-slate-400 border border-slate-700/60">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#0a0a0a]/80 text-slate-400 border border-slate-700/60">
                 <Undo2 className="w-2.5 h-2.5" />
                 Undone
               </span>
@@ -256,14 +256,14 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
 
         {/* Snippet preview if available */}
         {!isUndone && config.snippet && (
-          <div className="px-2.5 py-1.5 rounded bg-[#161d2b] border border-[#212b3e] text-[11px] text-slate-300 line-clamp-2">
+          <div className="px-2.5 py-1.5 rounded bg-[#0a0a0a] border border-[#161616] text-[11px] text-slate-300 line-clamp-2">
             {config.snippet}
           </div>
         )}
 
         {/* Action buttons (Undo & Edit Time) - only if not undone */}
         {!isUndone && (
-          <div className="flex items-center justify-between pt-1 border-t border-[#1e2638]/60">
+          <div className="flex items-center justify-between pt-1 border-t border-[#111111]/60">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -304,7 +304,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
 
         {/* Inline Time Editor */}
         {!isUndone && isEditing && hasTimePicker && (
-          <div className="mt-1 p-2.5 bg-[#0b0e14] border border-[#1e2638] rounded-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <div className="mt-1 p-2.5 bg-[#000000] border border-[#111111] rounded-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2 flex-1">
               <Calendar className="w-3.5 h-3.5 text-teal-400 shrink-0" />
               <span className="text-[11px] text-slate-400 shrink-0">Adjust to:</span>
@@ -312,7 +312,7 @@ export function ActionEchoCard({ proposal, messageId }: ActionEchoCardProps) {
                 type="datetime-local"
                 value={inputTime}
                 onChange={(e) => setInputTime(e.target.value)}
-                className="bg-[#141a24] text-slate-100 border border-[#2d3748] rounded px-2.5 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 w-full"
+                className="bg-[#080808] text-slate-100 border border-[#1a1a1a] rounded px-2.5 py-1 text-xs font-mono focus:outline-none focus:border-teal-500 w-full"
               />
             </div>
 

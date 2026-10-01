@@ -44,7 +44,7 @@ export function TaskLogHeader({
   const isCurrentToday = selectedDate === toDateStr(new Date());
 
   return (
-    <div className="flex flex-col bg-[#1e2433] border-b border-[#2d3748] flex-shrink-0">
+    <div className="flex flex-col bg-[#0a0a0a] border-b border-[#1a1a1a] flex-shrink-0">
       {/* Carryover notice banner if past tasks exist */}
       {pastUnfinishedCount > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-gradient-to-r from-amber-950/40 via-amber-900/30 to-amber-950/40 border-b border-amber-800/40 text-xs text-amber-200 animate-in fade-in duration-200">
@@ -74,7 +74,7 @@ export function TaskLogHeader({
             type="button"
             onClick={handlePrevDay}
             title="Previous Day"
-            className="p-1.5 hover:bg-[#2d3748] rounded-lg transition text-slate-400 hover:text-slate-200"
+            className="p-1.5 hover:bg-[#141414] rounded-lg transition text-slate-400 hover:text-slate-200"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -85,7 +85,7 @@ export function TaskLogHeader({
             className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
               isCurrentToday
                 ? 'bg-teal-900/40 text-teal-300 border border-teal-700/50'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#2d3748]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#141414]'
             }`}
           >
             Today
@@ -95,12 +95,12 @@ export function TaskLogHeader({
             type="button"
             onClick={handleNextDay}
             title="Next Day"
-            className="p-1.5 hover:bg-[#2d3748] rounded-lg transition text-slate-400 hover:text-slate-200"
+            className="p-1.5 hover:bg-[#141414] rounded-lg transition text-slate-400 hover:text-slate-200"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
 
-          <div className="h-4 w-[1px] bg-[#2d3748] mx-1" />
+          <div className="h-4 w-[1px] bg-[#141414] mx-1" />
 
           {/* Date Picker Input */}
           <div className="flex items-center gap-2 relative group">

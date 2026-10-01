@@ -12,10 +12,10 @@ export function SectionShell({ title, icon: Icon, defaultOpen = true, children }
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-5 transition-shadow hover:shadow-md">
+    <div className="bg-[#0a0a0a] rounded-xl shadow-sm border border-[#1a1a1a] overflow-hidden mb-5 transition-shadow hover:shadow-md">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-5 py-4 bg-gray-50/50 hover:bg-gray-50 transition-colors outline-none"
+        className="w-full flex items-center justify-between px-5 py-4 bg-[#080808]/50 hover:bg-[#0a0a0a] transition-colors outline-none"
       >
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-teal-100 text-teal-700 rounded-lg">

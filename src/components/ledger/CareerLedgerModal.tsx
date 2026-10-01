@@ -224,9 +224,9 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-[#121622] rounded-2xl shadow-2xl border border-[#232d42] w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden text-slate-200">
+      <div className="bg-[#080808] rounded-2xl shadow-2xl border border-[#161616] w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden text-slate-200">
         {/* ── Modal Header ──────────────────────────────────────────────────── */}
-        <div className="px-6 py-4 border-b border-[#232d42] bg-[#171d2b] flex items-center justify-between flex-shrink-0">
+        <div className="px-6 py-4 border-b border-[#161616] bg-[#0a0a0a] flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
               <FileText className="w-5 h-5" />
@@ -250,7 +250,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#202738] hover:bg-[#2b354c] border border-[#2e3952] text-xs font-semibold text-slate-200 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141414] hover:bg-[#141414] border border-[#1a1a1a] text-xs font-semibold text-slate-200 transition"
               title="Copy Markdown to Clipboard"
             >
               <Copy className="w-3.5 h-3.5 text-teal-400" />
@@ -268,7 +268,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 hover:bg-[#202738] rounded-full text-slate-400 hover:text-slate-200 transition ml-2"
+              className="p-1.5 hover:bg-[#141414] rounded-full text-slate-400 hover:text-slate-200 transition ml-2"
             >
               <X className="w-5 h-5" />
             </button>
@@ -276,7 +276,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
         </div>
 
         {/* ── Filters & Controls Bar ────────────────────────────────────────── */}
-        <div className="px-6 py-3 border-b border-[#1f2638] bg-[#141926] flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0">
+        <div className="px-6 py-3 border-b border-[#111111] bg-[#080808] flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0">
           {/* Presets */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">
@@ -294,7 +294,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                   className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
                     active
                       ? 'bg-amber-500 text-slate-950 font-bold'
-                      : 'bg-[#1b2233] text-slate-300 hover:bg-[#242d44]'
+                      : 'bg-[#0a0a0a] text-slate-300 hover:bg-[#141414]'
                   }`}
                 >
                   {label}
@@ -305,7 +305,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
 
           {/* Date Inputs */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 font-mono text-[11px] bg-[#10131c] px-2.5 py-1 rounded border border-[#232b3b]">
+            <div className="flex items-center gap-1 font-mono text-[11px] bg-[#080808] px-2.5 py-1 rounded border border-[#161616]">
               <Calendar className="w-3 h-3 text-slate-500" />
               <input
                 type="date"
@@ -335,7 +335,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                 <select
                   value={selectedTag}
                   onChange={(e) => setSelectedTag(e.target.value)}
-                  className="bg-[#10131c] text-slate-200 border border-[#232b3b] rounded px-2 py-1 text-xs outline-none cursor-pointer"
+                  className="bg-[#080808] text-slate-200 border border-[#161616] rounded px-2 py-1 text-xs outline-none cursor-pointer"
                 >
                   <option value="all">All Projects ({compiledLedger.projectTags.length})</option>
                   {compiledLedger.projectTags.map((t) => (
@@ -350,7 +350,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
         </div>
 
         {/* ── View Navigation Tabs ─────────────────────────────────────────── */}
-        <div className="px-6 border-b border-[#1f2638] bg-[#121622] flex items-center justify-between gap-4 flex-shrink-0">
+        <div className="px-6 border-b border-[#111111] bg-[#080808] flex items-center justify-between gap-4 flex-shrink-0">
           <div className="flex items-center gap-6">
             <button
               type="button"
@@ -420,7 +420,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
         </div>
 
         {/* ── Main Content Area ────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#0c0f17]">
+        <div className="flex-1 overflow-y-auto p-6 bg-[#000000]">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-2 text-slate-400 text-xs">
               <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
@@ -449,7 +449,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                   {compiledLedger.storylines.map((storyline, idx) => (
                     <div
                       key={storyline.chainId}
-                      className="p-5 bg-[#141824] rounded-xl border border-[#232c40] flex flex-col gap-4 shadow-sm"
+                      className="p-5 bg-[#080808] rounded-xl border border-[#161616] flex flex-col gap-4 shadow-sm"
                     >
                       {/* Storyline Header */}
                       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -470,7 +470,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                               </span>
                             )}
                             {storyline.projectTag && (
-                              <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1e2538] text-slate-300 border border-[#2e3852]">
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#0a0a0a] text-slate-300 border border-[#1a1a1a]">
                                 <Tag className="w-3 h-3 text-teal-400" />
                                 {storyline.projectTag}
                               </span>
@@ -491,7 +491,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                             </span>
                           </div>
                         </div>
-                        <span className="text-[10px] font-mono text-slate-500 bg-[#0e111a] px-2 py-1 rounded border border-[#1f2535]">
+                        <span className="text-[10px] font-mono text-slate-500 bg-[#000000] px-2 py-1 rounded border border-[#111111]">
                           Chain: {storyline.chainId.slice(0, 8)}…
                         </span>
                       </div>
@@ -506,8 +506,8 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                               <div
                                 className={`absolute -left-[23px] sm:-left-[25px] top-3.5 w-7 h-7 rounded-full flex items-center justify-center border-2 shadow-sm ${
                                   isMeeting
-                                    ? 'bg-[#19142b] border-purple-500 text-purple-300'
-                                    : 'bg-[#0f2424] border-teal-500 text-teal-300'
+                                    ? 'bg-[#0a0a0a] border-purple-500 text-purple-300'
+                                    : 'bg-[#0a0a0a] border-teal-500 text-teal-300'
                                 }`}
                               >
                                 {isMeeting ? (
@@ -521,8 +521,8 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                               <div
                                 className={`p-4 rounded-xl border text-xs flex flex-col gap-3 transition ${
                                   isMeeting
-                                    ? 'bg-[#151224]/90 border-purple-900/40 hover:border-purple-800/60'
-                                    : 'bg-[#0e1620]/90 border-teal-900/40 hover:border-teal-800/60'
+                                    ? 'bg-[#080808]/90 border-purple-900/40 hover:border-purple-800/60'
+                                    : 'bg-[#000000]/90 border-teal-900/40 hover:border-teal-800/60'
                                 }`}
                               >
                                 {/* Step Header */}
@@ -566,7 +566,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                                     )}
 
                                     {ev.tasksAssigned && ev.tasksAssigned.length > 0 && !ev.discussionSummary?.includes('Action Items') && (
-                                      <div className="p-2.5 bg-[#0e111a] rounded-lg border border-purple-950 flex flex-col gap-1.5 text-[11px]">
+                                      <div className="p-2.5 bg-[#000000] rounded-lg border border-purple-950 flex flex-col gap-1.5 text-[11px]">
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                           Action Items / To-Dos ({ev.tasksAssigned.filter((t) => t.done).length}/{ev.tasksAssigned.length} done):
                                         </span>
@@ -620,7 +620,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                                     )}
 
                                     {ev.implementationNotes && (
-                                      <div className="p-3 bg-[#0a0f16] rounded-lg border border-teal-950 text-[11px] font-mono text-slate-300 overflow-x-auto">
+                                      <div className="p-3 bg-[#000000] rounded-lg border border-teal-950 text-[11px] font-mono text-slate-300 overflow-x-auto">
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400 block mb-1">
                                           Technical Execution & Notes:
                                         </span>
@@ -656,7 +656,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
 
                   {/* Standalone Accomplishments */}
                   {compiledLedger.standaloneEvents.length > 0 && (
-                    <div className="p-4 bg-[#141824] rounded-xl border border-[#232c40] flex flex-col gap-3">
+                    <div className="p-4 bg-[#080808] rounded-xl border border-[#161616] flex flex-col gap-3">
                       <h4 className="font-bold text-sm text-slate-200">
                         Standalone Accomplishments ({compiledLedger.standaloneEvents.length})
                       </h4>
@@ -667,7 +667,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                         {compiledLedger.standaloneEvents.slice(0, 10).map((ev) => (
                           <div
                             key={ev.id}
-                            className="p-2.5 bg-[#0f131d] rounded-lg border border-[#202738] text-xs flex items-center justify-between"
+                            className="p-2.5 bg-[#000000] rounded-lg border border-[#161616] text-xs flex items-center justify-between"
                           >
                             <span className="font-medium text-slate-300">
                               [{ev.type.toUpperCase()}] {ev.title}
@@ -685,7 +685,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
               {activeTab === 'chronological' && (
                 <div className="flex flex-col gap-5 max-w-4xl mx-auto">
                   {/* Subheader & Sort Control */}
-                  <div className="flex items-center justify-between p-3.5 bg-[#141824] rounded-xl border border-[#232c40] text-xs">
+                  <div className="flex items-center justify-between p-3.5 bg-[#080808] rounded-xl border border-[#161616] text-xs">
                     <div className="flex items-center gap-2 text-slate-300">
                       <Calendar className="w-4 h-4 text-teal-400" />
                       <span>
@@ -694,7 +694,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                     </div>
                     <button
                       onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1e2538] hover:bg-[#252f47] text-teal-300 font-semibold border border-[#2e3b56] transition shadow-sm text-xs"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a0a0a] hover:bg-[#141414] text-teal-300 font-semibold border border-[#1a1a1a] transition shadow-sm text-xs"
                       title="Toggle chronological vs reverse-chronological order"
                     >
                       <ArrowUpDown className="w-3.5 h-3.5 text-teal-400" />
@@ -705,9 +705,9 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                   {compiledLedger.weeks.map((week) => (
                     <div
                       key={week.weekKey}
-                      className="p-4 bg-[#141824] rounded-xl border border-[#232c40] flex flex-col gap-4 shadow-sm"
+                      className="p-4 bg-[#080808] rounded-xl border border-[#161616] flex flex-col gap-4 shadow-sm"
                     >
-                      <div className="flex items-center justify-between pb-2 border-b border-[#222a3d]">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#161616]">
                         <h3 className="font-bold text-sm text-teal-300 flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-teal-400" />
                           {week.weekLabel}
@@ -724,11 +724,11 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                               {day.dayOfWeek}, {day.date}
                             </span>
 
-                            <div className="space-y-2.5 pl-2 border-l border-[#242d40]">
+                            <div className="space-y-2.5 pl-2 border-l border-[#161616]">
                               {day.events.map((ev) => (
                                 <div
                                   key={ev.id}
-                                  className="p-3.5 bg-[#0f131d] rounded-lg border border-[#1f2638] text-xs flex flex-col gap-2"
+                                  className="p-3.5 bg-[#000000] rounded-lg border border-[#111111] text-xs flex flex-col gap-2"
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -745,7 +745,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                                         {ev.title}
                                       </span>
                                       {ev.projectTag && (
-                                        <span className="text-[10px] font-mono text-slate-400 bg-[#1a2130] px-1.5 py-0.5 rounded border border-[#232b3d]">
+                                        <span className="text-[10px] font-mono text-slate-400 bg-[#0a0a0a] px-1.5 py-0.5 rounded border border-[#161616]">
                                           #{ev.projectTag}
                                         </span>
                                       )}
@@ -784,7 +784,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                                         </div>
                                       )}
                                       {ev.tasksAssigned && ev.tasksAssigned.length > 0 && (
-                                        <div className="flex flex-col gap-1 text-[11px] bg-[#121622] p-2 rounded-lg border border-[#1e2535]">
+                                        <div className="flex flex-col gap-1 text-[11px] bg-[#080808] p-2 rounded-lg border border-[#111111]">
                                           <strong className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
                                             Action Items ({ev.tasksAssigned.filter((t) => t.done).length}/{ev.tasksAssigned.length} completed):
                                           </strong>
@@ -813,7 +813,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
               {/* TAB 3: RAW MARKDOWN DOCUMENT */}
               {activeTab === 'markdown' && (
                 <div className="flex flex-col gap-3 max-w-4xl mx-auto">
-                  <div className="flex items-center justify-between p-3 bg-[#161c29] rounded-xl border border-[#232c40] text-xs">
+                  <div className="flex items-center justify-between p-3 bg-[#0a0a0a] rounded-xl border border-[#161616] text-xs">
                     <span className="text-slate-300">
                       Standardized Markdown compiled using Google XYZ format. Ready to export, download, or feed to external models.
                     </span>
@@ -827,7 +827,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                     </button>
                   </div>
 
-                  <div className="p-6 bg-[#0a0d14] rounded-xl border border-[#1f2638] text-xs font-mono leading-relaxed overflow-x-auto select-text whitespace-pre-wrap text-slate-300">
+                  <div className="p-6 bg-[#000000] rounded-xl border border-[#111111] text-xs font-mono leading-relaxed overflow-x-auto select-text whitespace-pre-wrap text-slate-300">
                     {markdownContent}
                   </div>
                 </div>
@@ -844,7 +844,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                       className={`p-3.5 rounded-xl border text-left transition flex flex-col gap-1 ${
                         synthesisMode === 'resume'
                           ? 'bg-rose-950/40 border-rose-700/60 text-rose-200'
-                          : 'bg-[#141824] border-[#222a3d] text-slate-400 hover:text-slate-200'
+                          : 'bg-[#080808] border-[#161616] text-slate-400 hover:text-slate-200'
                       }`}
                     >
                       <span className="font-bold text-xs text-rose-300 flex items-center gap-1.5">
@@ -862,7 +862,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                       className={`p-3.5 rounded-xl border text-left transition flex flex-col gap-1 ${
                         synthesisMode === 'promotion'
                           ? 'bg-amber-950/40 border-amber-700/60 text-amber-200'
-                          : 'bg-[#141824] border-[#222a3d] text-slate-400 hover:text-slate-200'
+                          : 'bg-[#080808] border-[#161616] text-slate-400 hover:text-slate-200'
                       }`}
                     >
                       <span className="font-bold text-xs text-amber-300 flex items-center gap-1.5">
@@ -880,7 +880,7 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                       className={`p-3.5 rounded-xl border text-left transition flex flex-col gap-1 ${
                         synthesisMode === 'linkedin'
                           ? 'bg-blue-950/40 border-blue-700/60 text-blue-200'
-                          : 'bg-[#141824] border-[#222a3d] text-slate-400 hover:text-slate-200'
+                          : 'bg-[#080808] border-[#161616] text-slate-400 hover:text-slate-200'
                       }`}
                     >
                       <span className="font-bold text-xs text-blue-300 flex items-center gap-1.5">
@@ -894,8 +894,8 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                   </div>
 
                   {/* AI Generation Output */}
-                  <div className="p-5 bg-[#141824] rounded-xl border border-[#232c40] flex flex-col gap-3 min-h-[300px]">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#202738]">
+                  <div className="p-5 bg-[#080808] rounded-xl border border-[#161616] flex flex-col gap-3 min-h-[300px]">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#161616]">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-rose-400" />
                         {synthesisMode === 'resume'

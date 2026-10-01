@@ -57,17 +57,17 @@ function WorkStep({
           <span className="text-xs font-bold text-teal-300">{index + 1}</span>
         </div>
         {/* Connecting line */}
-        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-teal-700/60 to-[#2d3748]/30 mt-1" style={{ minHeight: 24 }} />}
+        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-teal-700/60 to-[#141414]/30 mt-1" style={{ minHeight: 24 }} />}
       </div>
 
       {/* ── Card ──────────────────────────────────────────────────────── */}
       <div className="flex-1 pb-6">
         <button
           onClick={onEdit}
-          className="w-full text-left rounded-xl border border-[#2d3748] bg-[#1e2433] hover:border-teal-700/60 hover:bg-[#1e2433]/80 transition-all duration-150 overflow-hidden group"
+          className="w-full text-left rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] hover:border-teal-700/60 hover:bg-[#0a0a0a]/80 transition-all duration-150 overflow-hidden group"
         >
           {/* Header strip */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#2d3748] bg-teal-950/20">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1a1a1a] bg-teal-950/20">
             <Briefcase className="w-3.5 h-3.5 text-teal-400 flex-shrink-0" />
             <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">Work</span>
             <span className="ml-auto flex items-center gap-1.5 text-xs font-semibold">
@@ -86,7 +86,7 @@ function WorkStep({
                 </span>
               )}
               {event.projectTag && (
-                <span className="ml-auto text-[10px] font-semibold bg-[#2d3748] text-slate-400 px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-[10px] font-semibold bg-[#141414] text-slate-400 px-2 py-0.5 rounded-full">
                   {event.projectTag}
                 </span>
               )}
@@ -106,7 +106,7 @@ function WorkStep({
 
             {/* Implementation notes preview */}
             {event.implementationNotes && (
-              <p className="mt-2 text-xs text-slate-500 italic leading-relaxed line-clamp-2 border-l-2 border-[#2d3748] pl-2">
+              <p className="mt-2 text-xs text-slate-500 italic leading-relaxed line-clamp-2 border-l-2 border-[#1a1a1a] pl-2">
                 {event.implementationNotes}
               </p>
             )}
@@ -158,21 +158,21 @@ function MeetingStep({
         <div className="w-8 h-8 rounded-full bg-violet-900/70 border-2 border-violet-600 flex items-center justify-center flex-shrink-0 z-10">
           <span className="text-xs font-bold text-violet-300">{index + 1}</span>
         </div>
-        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-violet-700/60 to-[#2d3748]/30 mt-1" style={{ minHeight: 24 }} />}
+        {!isLast && <div className="w-px flex-1 bg-gradient-to-b from-violet-700/60 to-[#141414]/30 mt-1" style={{ minHeight: 24 }} />}
       </div>
 
       {/* ── Card ──────────────────────────────────────────────────────── */}
       <div className="flex-1 pb-6">
         <button
           onClick={onEdit}
-          className="w-full text-left rounded-xl border border-[#2d3748] bg-[#1e2433] hover:border-violet-700/60 transition-all duration-150 overflow-hidden group"
+          className="w-full text-left rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] hover:border-violet-700/60 transition-all duration-150 overflow-hidden group"
         >
           {/* Header strip */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#2d3748] bg-violet-950/20">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1a1a1a] bg-violet-950/20">
             <Users className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
             <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">Meeting</span>
             {event.isOptional && (
-              <span className="text-[10px] font-semibold text-slate-500 bg-[#2d3748] rounded-full px-2 py-0.5">optional</span>
+              <span className="text-[10px] font-semibold text-slate-500 bg-[#141414] rounded-full px-2 py-0.5">optional</span>
             )}
             {totalTasks > 0 && (
               <span className="ml-auto text-xs text-slate-500">
@@ -190,7 +190,7 @@ function MeetingStep({
                 </span>
               )}
               {event.projectTag && (
-                <span className="ml-auto text-[10px] font-semibold bg-[#2d3748] text-slate-400 px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-[10px] font-semibold bg-[#141414] text-slate-400 px-2 py-0.5 rounded-full">
                   {event.projectTag}
                 </span>
               )}
@@ -207,7 +207,7 @@ function MeetingStep({
             )}
 
             {event.decisions && (
-              <p className="mt-2 text-xs text-slate-500 italic leading-relaxed line-clamp-2 border-l-2 border-[#2d3748] pl-2">
+              <p className="mt-2 text-xs text-slate-500 italic leading-relaxed line-clamp-2 border-l-2 border-[#1a1a1a] pl-2">
                 ↳ {event.decisions}
               </p>
             )}
@@ -218,7 +218,7 @@ function MeetingStep({
                 {event.tasksAssigned.slice(0, 3).map((t, i) => (
                   <li key={i} className="flex items-center gap-1.5 text-xs text-slate-400">
                     <span className={`w-3 h-3 rounded-sm border flex items-center justify-center flex-shrink-0 ${
-                      t.done ? 'border-green-600 bg-green-900/40' : 'border-[#2d3748]'
+                      t.done ? 'border-green-600 bg-green-900/40' : 'border-[#1a1a1a]'
                     }`}>
                       {t.done && <span className="text-green-400 text-[8px] font-bold">✓</span>}
                     </span>
@@ -278,7 +278,7 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
     >
       {/* Panel — slides in from the right on mobile, centred modal on desktop */}
       <div className="
-        bg-[#0f1117] border-l sm:border border-[#2d3748]
+        bg-[#000000] border-l sm:border border-[#1a1a1a]
         w-full sm:w-[540px] h-[90vh] sm:h-auto sm:max-h-[80vh]
         rounded-t-2xl sm:rounded-2xl shadow-2xl
         flex flex-col overflow-hidden
@@ -286,7 +286,7 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
       ">
 
         {/* ── Header ───────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#2d3748] flex-shrink-0 bg-[#1e2433]">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#1a1a1a] flex-shrink-0 bg-[#0a0a0a]">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-teal-900/60 border border-teal-700 flex items-center justify-center">
               <Link2 className="w-3.5 h-3.5 text-teal-400" />
@@ -299,7 +299,7 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
           <button
             onClick={onClose}
             aria-label="Close chain view"
-            className="ml-auto p-1.5 hover:bg-[#2d3748] rounded-full text-slate-400 hover:text-slate-200 transition"
+            className="ml-auto p-1.5 hover:bg-[#141414] rounded-full text-slate-400 hover:text-slate-200 transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -343,7 +343,7 @@ export function ChainView({ chainId, onClose, onEditEvent }: ChainViewProps) {
         </div>
 
         {/* ── Footer note ──────────────────────────────────────────────── */}
-        <div className="px-6 py-3 border-t border-[#2d3748] flex-shrink-0">
+        <div className="px-6 py-3 border-t border-[#1a1a1a] flex-shrink-0">
           <p className="text-[10px] text-slate-600">
             Click any step to open it for editing. Chain ID: <span className="font-mono text-slate-700">{chainId.slice(0, 8)}…</span>
           </p>

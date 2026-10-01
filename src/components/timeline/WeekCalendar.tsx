@@ -123,9 +123,9 @@ function EventContextMenu({
     <div
       ref={ref}
       style={{ top: menu.y, left: menu.x, position: 'fixed' }}
-      className="z-[200] w-52 bg-[#1e2433] rounded-xl shadow-xl shadow-black/50 border border-[#2d3748] py-1.5 animate-in fade-in zoom-in-95 duration-100"
+      className="z-[200] w-52 bg-[#0a0a0a] rounded-xl shadow-xl shadow-black/50 border border-[#1a1a1a] py-1.5 animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="px-3 py-2 border-b border-[#2d3748] mb-1">
+      <div className="px-3 py-2 border-b border-[#1a1a1a] mb-1">
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate">
           {menu.event.title}
         </p>
@@ -141,7 +141,7 @@ function EventContextMenu({
         </button>
       )}
 
-      <div className="border-t border-[#2d3748] my-1" />
+      <div className="border-t border-[#1a1a1a] my-1" />
 
       <button onClick={() => { onDelete(); onClose(); }} className={`${ITEM} text-red-400 hover:bg-red-900/30`}>
         <Trash2 className="h-4 w-4" /> Delete event
@@ -182,7 +182,7 @@ function EventBlock({ event, startHour, isChained, onClick, onContextMenu }: Eve
   if (event.type === 'work') {
     if (event.status === 'done')        { statusLabel = '✓ Done';        statusClass = 'bg-green-900/60 text-green-300'; }
     else if (event.status === 'blocked')     { statusLabel = '⚠ Blocked';     statusClass = 'bg-red-900/60 text-red-300'; }
-    else                                     { statusLabel = '• In Progress'; statusClass = 'bg-slate-700/60 text-slate-400'; }
+    else                                     { statusLabel = '• In Progress'; statusClass = 'bg-[#141414]/60 text-slate-400'; }
   }
 
   return (
@@ -320,15 +320,15 @@ export function WeekCalendar({
 
   return (
     <>
-      <div className="flex flex-col select-none bg-[#0f1117] overflow-hidden h-full">
+      <div className="flex flex-col select-none bg-[#000000] overflow-hidden h-full">
 
         {/* Day headers */}
-        <div className="flex border-b border-[#2d3748] bg-[#1e2433] flex-shrink-0">
-          <div style={{ width: GUTTER_PX, minWidth: GUTTER_PX }} className="border-r border-[#2d3748]" />
+        <div className="flex border-b border-[#1a1a1a] bg-[#0a0a0a] flex-shrink-0">
+          <div style={{ width: GUTTER_PX, minWidth: GUTTER_PX }} className="border-r border-[#1a1a1a]" />
           {weekDates.map((dateStr) => {
             const { weekday, day, isToday } = formatDayHeader(dateStr);
             return (
-              <div key={dateStr} className="flex-1 flex flex-col items-center py-2 border-l border-[#2d3748] min-w-0">
+              <div key={dateStr} className="flex-1 flex flex-col items-center py-2 border-l border-[#1a1a1a] min-w-0">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{weekday}</span>
                 <span className={`
                   mt-1 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold transition-colors
@@ -346,7 +346,7 @@ export function WeekCalendar({
           <div className="flex relative" style={{ height: totalHeightPx }}>
 
             {/* Time gutter */}
-            <div className="relative flex-shrink-0 border-r border-[#2d3748]" style={{ width: GUTTER_PX, minWidth: GUTTER_PX }}>
+            <div className="relative flex-shrink-0 border-r border-[#1a1a1a]" style={{ width: GUTTER_PX, minWidth: GUTTER_PX }}>
               {hourLabels.map((h) => (
                 <div
                   key={h}
@@ -373,7 +373,7 @@ export function WeekCalendar({
                   key={dateStr}
                   role="gridcell"
                   aria-label={dateStr}
-                  className={`relative flex-1 border-l border-[#2d3748] cursor-crosshair min-w-0 ${isToday ? 'bg-teal-950/10' : ''}`}
+                  className={`relative flex-1 border-l border-[#1a1a1a] cursor-crosshair min-w-0 ${isToday ? 'bg-teal-950/10' : ''}`}
                   onMouseDown={(e) => handleColumnMouseDown(e, dateStr)}
                   onMouseMove={(e) => handleColumnMouseMove(e, dateStr)}
                 >
@@ -381,7 +381,7 @@ export function WeekCalendar({
                   {hourLabels.map((h) => (
                     <div
                       key={h}
-                      className="absolute left-0 right-0 border-t border-[#2d3748]/50"
+                      className="absolute left-0 right-0 border-t border-[#1a1a1a]/50"
                       style={{ top: (h - startHour) * HOUR_PX }}
                     />
                   ))}
@@ -390,7 +390,7 @@ export function WeekCalendar({
                   {hourLabels.slice(0, -1).map((h) => (
                     <div
                       key={`${h}-half`}
-                      className="absolute left-0 right-0 border-t border-dashed border-[#2d3748]/25"
+                      className="absolute left-0 right-0 border-t border-dashed border-[#1a1a1a]/25"
                       style={{ top: (h - startHour) * HOUR_PX + HOUR_PX / 2 }}
                     />
                   ))}

@@ -34,7 +34,7 @@ export function LeafNode({ data }: LeafNodeProps) {
         }
       }}
       onContextMenu={handleContextMenu}
-      className="group relative bg-[#1e2433] border border-[#2d3748] px-3 py-2 rounded-full shadow-sm text-sm cursor-pointer hover:bg-[#2d3748] hover:border-teal-600 hover:shadow hover:-translate-x-0.5 transition-all min-w-[140px] flex justify-between items-center"
+      className="group relative bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-2 rounded-full shadow-sm text-sm cursor-pointer hover:bg-[#141414] hover:border-teal-600 hover:shadow hover:-translate-x-0.5 transition-all min-w-[140px] flex justify-between items-center"
     >
       <Handle id="t-left" type="target" position={Position.Left} className="opacity-0" />
       <Handle id="t-right" type="target" position={Position.Right} className="opacity-0 w-0 h-0" />

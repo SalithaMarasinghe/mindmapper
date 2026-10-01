@@ -34,12 +34,12 @@ export function InviteByEmail({ mapId, onInviteSent }: { mapId: string, onInvite
         required
         value={email}
         onChange={e => setEmail(e.target.value)}
-        className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none font-medium text-sm transition-all"
+        className="flex-1 px-3 py-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none font-medium text-sm transition-all"
       />
       <select 
         value={permission}
         onChange={e => setPermission(e.target.value as SharePermission)}
-        className="px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-700 cursor-pointer w-[110px]"
+        className="px-2 py-2 bg-[#080808] border border-[#1a1a1a] rounded-lg outline-none text-sm font-bold text-slate-300 cursor-pointer w-[110px]"
       >
         <option value="view">Can view</option>
         <option value="edit">Can edit</option>
@@ -47,7 +47,7 @@ export function InviteByEmail({ mapId, onInviteSent }: { mapId: string, onInvite
       <button 
         type="submit"
         disabled={isLoading || !email.trim()}
-        className="bg-gray-900 hover:bg-black disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition shadow-sm active:scale-95"
+        className="bg-[#000000] hover:bg-black disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition shadow-sm active:scale-95"
       >
         <Send className="w-4 h-4 text-white" /> Invite
       </button>

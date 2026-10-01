@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import { useTaskStore } from './taskStore';
 import { useTimelineStore } from './timelineStore';
+import { useEmailStore } from './emailStore';
 import type {
   AssistantConversation,
   AssistantMessage,
@@ -16,6 +17,7 @@ import type {
   CreateProjectProposal,
   CreateWorkEventProposal,
   CreateMeetingEventProposal,
+  UpdateMeetingEventProposal,
   CarryOverTasksProposal,
   DailyWrapUpProposal,
 } from '../types';
@@ -52,7 +54,13 @@ interface AssistantState {
   fetchConversations: () => Promise<void>;
   selectConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (
+    text: string,
+    options?: {
+      mode?: 'assistant' | 'prompt_engineer' | 'technical_qa';
+      promptRefinementTarget?: string;
+    }
+  ) => Promise<void>;
   executeProposal: (messageId: string, proposal: AssistantProposal) => Promise<void>;
   rejectProposal: (messageId: string, proposalId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
@@ -122,15 +130,25 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
       if (error) throw error;
 
-      const msgs = (data as RawMessage[]).map((m) => ({
-        id: m.id,
-        conversationId: m.conversation_id,
-        userId: m.user_id,
-        role: m.role,
-        content: m.content,
-        proposals: Array.isArray(m.proposals) ? m.proposals : [],
-        createdAt: m.created_at,
-      }));
+      const msgs = (data as RawMessage[]).map((m) => {
+        let promptContent: string | undefined = undefined;
+        let displayContent = m.content;
+        const promptMatch = m.content.match(/```prompt\s*([\s\S]*?)\s*```/);
+        if (promptMatch) {
+          promptContent = promptMatch[1].trim();
+          displayContent = m.content.replace(/```prompt\s*[\s\S]*?\s*```/, '').trim();
+        }
+        return {
+          id: m.id,
+          conversationId: m.conversation_id,
+          userId: m.user_id,
+          role: m.role,
+          content: displayContent,
+          proposals: Array.isArray(m.proposals) ? m.proposals : [],
+          createdAt: m.created_at,
+          engineeredPrompt: promptContent,
+        };
+      });
 
       set({ messages: msgs, isLoadingMessages: false });
     } catch (err: unknown) {
@@ -145,7 +163,14 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
   },
 
   // ── sendMessage ─────────────────────────────────────────────────────────
-  sendMessage: async (text: string) => {
+  sendMessage: async (
+    text: string,
+    options?: {
+      mode?: 'assistant' | 'prompt_engineer' | 'technical_qa';
+      promptRefinementTarget?: string;
+      enableSearch?: boolean;
+    }
+  ) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -175,6 +200,25 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       ? taskStore.tasks.find((t) => t.id === taskStore.lastPausedTaskId) ?? null
       : null;
 
+    const yesterdayDate = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const recentTimelineMeetings = [
+      ...(timelineStore.eventsByDate[yesterdayDate] || []),
+      ...(timelineStore.eventsByDate[today] || []),
+    ].filter((e) => e.type === 'meeting');
+
+    const recentMeetings = recentTimelineMeetings.map((e) => {
+      const m = e as any;
+      return {
+        id: e.id,
+        date: e.date,
+        title: e.title,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        projectTag: e.projectTag,
+        hasSummary: Boolean(m.discussionSummary && m.discussionSummary.trim().length > 0),
+      };
+    });
+
     const todaysEvents = (timelineStore.eventsByDate[today] || []).map((e) => ({
       id: e.id,
       title: e.title,
@@ -183,6 +227,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       endTime: e.endTime,
       projectId: e.projectId,
       projectTag: e.projectTag,
+      hasSummary: e.type === 'meeting' ? Boolean((e as any).discussionSummary?.trim()) : undefined,
     }));
 
     const pastUnfinished = await taskStore.fetchPastUnfinishedTasks();
@@ -258,12 +303,23 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       })),
       todaysSegments,
       todaysEvents,
+      recentMeetings,
       pastUnfinishedTasks: pastUnfinished.slice(0, 10).map((t) => ({
         id: t.id,
         title: t.title,
         plannedDate: t.plannedDate,
         priority: t.priority,
       })),
+      recentEmailMeetings: useEmailStore
+        .getState()
+        .getMeetingInvites()
+        .map((e) => ({
+          id: e.id,
+          sender: e.sender,
+          subject: e.subject,
+          date: e.date,
+          meetingDetails: e.meetingDetails,
+        })),
     };
 
     // 2. Optimistic user message
@@ -305,16 +361,35 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           currentTimeISO: new Date().toISOString(),
           context: contextSnapshot,
+          mode: options?.mode,
+          promptRefinementTarget: options?.promptRefinementTarget,
+          enableSearch: options?.enableSearch,
         }),
       });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to call assistant.');
 
-      const { conversationId, messageId, replyText, proposals } = json;
+      const { conversationId, messageId, replyText, engineeredPrompt, proposals, searchSources } = json;
 
-      const rawProposals: AssistantProposal[] = proposals || [];
+      const isPromptRequest =
+        options?.mode === 'prompt_engineer' ||
+        Boolean(engineeredPrompt) ||
+        /\b(prompt|prompts|context engineer|context engineering|system prompt|agent prompt)\b/i.test(trimmed);
+
+      // If it's a prompt request, strictly suppress any stray proposals
+      const rawProposals: AssistantProposal[] = isPromptRequest ? [] : (proposals || []);
       const processedProposals: AssistantProposal[] = [];
+
+      let resolvedEngineeredPrompt = engineeredPrompt;
+      if (!resolvedEngineeredPrompt && isPromptRequest && replyText) {
+        const promptBlockMatch = replyText.match(/```(?:prompt|markdown)?\s*([\s\S]*?)\s*```/);
+        if (promptBlockMatch) {
+          resolvedEngineeredPrompt = promptBlockMatch[1].trim();
+        } else if (replyText.length > 50) {
+          resolvedEngineeredPrompt = replyText.trim();
+        }
+      }
 
       for (const prop of rawProposals) {
         const isTier1Candidate =
@@ -575,6 +650,8 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         content: replyText,
         proposals: processedProposals,
         createdAt: new Date().toISOString(),
+        engineeredPrompt: resolvedEngineeredPrompt || undefined,
+        searchSources: Array.isArray(searchSources) && searchSources.length > 0 ? searchSources : undefined,
       };
 
       set((state) => ({
@@ -589,6 +666,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       const msg = err instanceof Error ? err.message : 'Failed to send message';
       toast.error(msg);
       set({ error: msg, isSending: false });
+      throw err;
     }
   },
 
@@ -871,6 +949,18 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           const targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectTag);
           p.payload.projectId = targetProjectId;
 
+          const meetingLinks = [...(p.payload.links || [])];
+          if (p.payload.meetingUrl && !meetingLinks.some((l) => l.url === p.payload.meetingUrl)) {
+            const platformLabel = p.payload.meetingUrl.includes('meet.google')
+              ? 'Google Meet'
+              : p.payload.meetingUrl.includes('zoom.us')
+              ? 'Zoom Meeting'
+              : p.payload.meetingUrl.includes('teams.microsoft')
+              ? 'Microsoft Teams'
+              : 'Join Meeting';
+            meetingLinks.unshift({ label: platformLabel, url: p.payload.meetingUrl });
+          }
+
           const evId = await timelineStore.createMeetingEvent({
             date: p.payload.date,
             startTime: p.payload.startTime,
@@ -882,7 +972,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             discussionSummary: p.payload.discussionSummary,
             decisions: p.payload.decisions,
             tasksAssigned: p.payload.tasksAssigned,
-            links: [],
+            links: meetingLinks,
             previousEventId: p.payload.previousEventId ?? null,
           });
           if (evId) createdRecordIds.eventIds = [evId];
@@ -937,6 +1027,95 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             }
           } else {
             toast.success(`Logged meeting "${p.payload.title}" in Work Journal!`);
+          }
+          break;
+        }
+
+        case 'update_meeting_event': {
+          const p = proposal as UpdateMeetingEventProposal;
+          const targetId = p.payload.targetEventId;
+          if (!targetId) {
+            throw new Error('No target meeting event ID specified to update.');
+          }
+
+          const allEvents = Object.values(timelineStore.eventsByDate).flat();
+          const existing = allEvents.find((e) => e.id === targetId);
+
+          const eventUpdates: Partial<Pick<import('../types').TimelineEvent, 'title'>> = {};
+          if (p.payload.title && p.payload.title.trim()) {
+            eventUpdates.title = p.payload.title.trim();
+          }
+
+          const existingLinks = (existing && existing.type === 'meeting' ? existing.links : []) || [];
+          const meetingLinks = [...(p.payload.links || existingLinks)];
+          if (p.payload.meetingUrl && !meetingLinks.some((l) => l.url === p.payload.meetingUrl)) {
+            const platformLabel = p.payload.meetingUrl.includes('meet.google')
+              ? 'Google Meet'
+              : p.payload.meetingUrl.includes('zoom.us')
+              ? 'Zoom Meeting'
+              : p.payload.meetingUrl.includes('teams.microsoft')
+              ? 'Microsoft Teams'
+              : 'Join Meeting';
+            meetingLinks.unshift({ label: platformLabel, url: p.payload.meetingUrl });
+          }
+
+          const detailUpdates: Partial<import('../types').MeetingDetails> = {
+            discussionSummary: p.payload.discussionSummary,
+            decisions: p.payload.decisions,
+            tasksAssigned: p.payload.tasksAssigned,
+            links: meetingLinks,
+          };
+
+          await timelineStore.updateEvent(targetId, eventUpdates, detailUpdates);
+
+          // Check if action items should also be added to Kanban To Do
+          const shouldAddTasks = p.payload.addTasksToKanban ?? true;
+          const userActionItems = p.payload.actionItems?.filter((item) => item.isForUser !== false) || [];
+
+          const itemsToProcess =
+            userActionItems.length > 0
+              ? userActionItems
+              : (p.payload.tasksAssigned || [])
+                  .filter((t) => {
+                    const text = t.text.toLowerCase();
+                    const isForSomeoneElse =
+                      text.startsWith('[') && !text.includes('salitha') && !text.includes('you');
+                    return !isForSomeoneElse;
+                  })
+                  .map((t) => ({
+                    text: t.text,
+                    isForUser: true,
+                    priority: 'medium' as const,
+                    deadlineDate: existing?.date || new Date().toISOString().slice(0, 10),
+                  }));
+
+          if (shouldAddTasks && itemsToProcess.length > 0) {
+            const createdIds: string[] = [];
+            for (const item of itemsToProcess) {
+              const cleanTitle = item.text
+                .replace(/^\[.*?\]\s*/, '')
+                .replace(/\s*\([^)]*due[^)]*\)/i, '')
+                .trim();
+              const plannedDate = item.deadlineDate || existing?.date || new Date().toISOString().slice(0, 10);
+              const created = await taskStore.createTask({
+                title: cleanTitle,
+                description: `*Action item from updated meeting: "${p.payload.title || existing?.title || 'Meeting'}"*`,
+                priority: item.priority || 'medium',
+                plannedDate,
+              });
+              if (created) createdIds.push(created.id);
+            }
+
+            if (createdIds.length > 0) {
+              createdRecordIds.taskIds = createdIds;
+              toast.success(
+                `Meeting updated & added ${createdIds.length} task${createdIds.length === 1 ? '' : 's'} to Kanban To Do! 📋`
+              );
+            } else {
+              toast.success('Meeting log updated in Work Journal! 📅');
+            }
+          } else {
+            toast.success('Meeting log updated in Work Journal! 📅');
           }
           break;
         }
@@ -1130,6 +1309,17 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         if (evId) {
           await useTimelineStore.getState().deleteEvent(evId);
           toast.success(`Undone: Removed event from Work Journal`);
+        }
+      } else if (proposal.type === 'update_meeting_event') {
+        const createdTaskIds = proposal.createdRecordIds?.taskIds;
+        if (createdTaskIds && createdTaskIds.length > 0) {
+          for (const tId of createdTaskIds) {
+            await supabase.from('tasks').delete().eq('id', tId);
+          }
+          await taskStore.fetchTasks();
+          toast.success('Undone: Removed meeting action items from To Do');
+        } else {
+          toast.success('Undone');
         }
       }
 

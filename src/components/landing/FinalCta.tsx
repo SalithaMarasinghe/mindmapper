@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export function FinalCta() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#1e2433]">
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-[#0a0a0a]">
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-slate-100 tracking-tight">
           Map the big picture. Go deep on every idea.

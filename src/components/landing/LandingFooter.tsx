@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export function LandingFooter() {
   return (
-    <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-[#2d3748]">
+    <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-[#1a1a1a]">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">

@@ -38,7 +38,7 @@ export function CreateProjectCard({
     planning: 'bg-blue-950/70 text-blue-300 border-blue-700/60',
     completed: 'bg-purple-950/70 text-purple-300 border-purple-700/60',
     on_hold: 'bg-amber-950/70 text-amber-300 border-amber-700/60',
-  }[status] || 'bg-slate-800 text-slate-300 border-slate-700';
+  }[status] || 'bg-[#0a0a0a] text-slate-300 border-slate-700';
 
   return (
     <ProposalCard
@@ -56,7 +56,7 @@ export function CreateProjectCard({
         </p>
 
         {isEditing ? (
-          <div className="flex flex-col gap-2.5 p-3.5 bg-[#0f1117] rounded-xl border border-[#2d3748]">
+          <div className="flex flex-col gap-2.5 p-3.5 bg-[#000000] rounded-xl border border-[#1a1a1a]">
             <div>
               <label className="text-[11px] font-semibold text-slate-400 block mb-1">
                 Project Name
@@ -66,7 +66,7 @@ export function CreateProjectCard({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Reusable AI Prototype"
-                className="w-full bg-[#181c26] border border-[#2d3748] rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-teal-500"
+                className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-teal-500"
               />
             </div>
 
@@ -79,7 +79,7 @@ export function CreateProjectCard({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief summary of what this project encompasses..."
                 rows={2}
-                className="w-full bg-[#181c26] border border-[#2d3748] rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-teal-500 resize-none"
+                className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-teal-500 resize-none"
               />
             </div>
 
@@ -90,7 +90,7 @@ export function CreateProjectCard({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full bg-[#181c26] border border-[#2d3748] rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-teal-500"
+                className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-teal-500"
               >
                 <option value="active">Active (Currently In Progress)</option>
                 <option value="planning">Planning (Not Started)</option>
@@ -100,7 +100,7 @@ export function CreateProjectCard({
             </div>
           </div>
         ) : (
-          <div className="p-3.5 bg-[#0f1117] rounded-xl border border-[#2d3748] flex flex-col gap-2 transition hover:border-slate-700">
+          <div className="p-3.5 bg-[#000000] rounded-xl border border-[#1a1a1a] flex flex-col gap-2 transition hover:border-slate-700">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="font-bold text-slate-100 text-sm truncate flex items-center gap-1.5">
@@ -126,14 +126,14 @@ export function CreateProjectCard({
             </div>
 
             {description ? (
-              <p className="text-xs text-slate-300 leading-relaxed bg-[#141822] p-2.5 rounded-lg border border-[#232a3b]">
+              <p className="text-xs text-slate-300 leading-relaxed bg-[#080808] p-2.5 rounded-lg border border-[#161616]">
                 {description}
               </p>
             ) : (
               <p className="text-[11px] text-slate-500 italic">No description provided</p>
             )}
 
-            <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1 pt-2 border-t border-[#1e2433]">
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1 pt-2 border-t border-[#111111]">
               <span className="flex items-center gap-1">
                 <Tag className="w-3 h-3 text-slate-500" />
                 Initiative Tracker: <strong>Work Stories & Career Ledger</strong>

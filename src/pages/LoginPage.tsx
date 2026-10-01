@@ -28,8 +28,8 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0f1117] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 bg-[#1e2433] p-8 rounded-xl shadow-xl border border-[#2d3748]">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#000000] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8 bg-[#0a0a0a] p-8 rounded-xl shadow-xl border border-[#1a1a1a]">
         <div className="text-center">
           <h1 className="text-4xl font-bold tracking-tight text-slate-100">🧠 MindMap</h1>
           <h2 className="mt-4 text-2xl font-semibold text-slate-200">Sign in to your account</h2>
@@ -40,10 +40,10 @@ export function LoginPage() {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#2d3748]" />
+              <div className="w-full border-t border-[#1a1a1a]" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-[#1e2433] px-3 text-slate-400 font-medium">Or</span>
+              <span className="bg-[#0a0a0a] px-3 text-slate-400 font-medium">Or</span>
             </div>
           </div>
 
@@ -59,7 +59,7 @@ export function LoginPage() {
           <div className="mt-6">
             <button
               onClick={handleGoogleSignIn}
-              className="flex w-full items-center justify-center rounded-md border border-[#2d3748] bg-[#0f1117] py-2.5 px-4 text-sm font-semibold text-slate-200 hover:bg-[#1a2030] transition-colors shadow-sm"
+              className="flex w-full items-center justify-center rounded-md border border-[#1a1a1a] bg-[#000000] py-2.5 px-4 text-sm font-semibold text-slate-200 hover:bg-[#0a0a0a] transition-colors shadow-sm"
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

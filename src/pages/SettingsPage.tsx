@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { exportAllMaps, importMaps } from '../utils/exportImport';
 import { useMapsStore } from '../store/mapsStore';
+import { EmailIntegrationSettings } from '../components/settings/EmailIntegrationSettings';
 
 export function SettingsPage() {
   const { user, profile, updateProfile, signOut } = useAuthStore();
@@ -106,11 +107,11 @@ export function SettingsPage() {
   const initial = displayName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U';
 
   return (
-    <div className="min-h-screen bg-[#0f1117] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#000000] flex flex-col font-sans">
       
-      <header className="fixed top-0 left-0 right-0 h-14 bg-[#1e2433] border-b border-[#2d3748] z-50 px-4 sm:px-6 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-[#0a0a0a] border-b border-[#1a1a1a] z-50 px-4 sm:px-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="p-2 -ml-2 text-slate-400 hover:text-slate-100 transition hover:bg-[#2d3748] rounded-full active:scale-95">
+          <Link to="/dashboard" className="p-2 -ml-2 text-slate-400 hover:text-slate-100 transition hover:bg-[#141414] rounded-full active:scale-95">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="font-bold text-lg text-slate-100 tracking-tight">Settings</h1>
@@ -125,7 +126,7 @@ export function SettingsPage() {
         {/* 1. Profile Section */}
         <section className="mb-8">
           <h2 className="text-sm font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2"><User className="w-4 h-4" /> Profile</h2>
-          <div className="bg-[#1e2433] border border-[#2d3748] rounded-2xl p-5 sm:p-6 shadow-sm">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-5 sm:p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row gap-6">
                <div className="shrink-0 flex justify-center sm:block">
                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 text-white font-extrabold text-3xl flex items-center justify-center shadow-md">
@@ -140,12 +141,12 @@ export function SettingsPage() {
                        type="text" 
                        value={displayName}
                        onChange={e => setDisplayName(e.target.value)}
-                       className="flex-1 bg-[#0f1117] border border-[#2d3748] rounded-lg px-4 py-2 text-sm font-medium text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-[#1a2030] transition-all outline-none"
+                       className="flex-1 bg-[#000000] border border-[#1a1a1a] rounded-lg px-4 py-2 text-sm font-medium text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:bg-[#0a0a0a] transition-all outline-none"
                      />
                      <button
                        onClick={handleSaveProfile}
                        disabled={isSavingProfile || displayName === profile?.displayName}
-                       className="bg-teal-600 hover:bg-teal-700 disabled:bg-[#2d3748] disabled:text-slate-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95"
+                       className="bg-teal-600 hover:bg-teal-700 disabled:bg-[#141414] disabled:text-slate-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all active:scale-95"
                      >
                        {isSavingProfile ? 'Saving...' : 'Save'}
                      </button>
@@ -157,7 +158,7 @@ export function SettingsPage() {
                      type="text" 
                      readOnly
                      value={user?.email || ''}
-                     className="w-full bg-[#0f1117] border border-[#2d3748] rounded-lg px-4 py-2 text-sm font-medium text-slate-500 cursor-not-allowed"
+                     className="w-full bg-[#000000] border border-[#1a1a1a] rounded-lg px-4 py-2 text-sm font-medium text-slate-500 cursor-not-allowed"
                    />
                  </div>
                </div>
@@ -168,19 +169,19 @@ export function SettingsPage() {
         {/* 2. Appearance */}
         <section className="mb-8">
           <h2 className="text-sm font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Palette className="w-4 h-4" /> Appearance</h2>
-          <div className="bg-[#1e2433] border border-[#2d3748] rounded-2xl p-0 overflow-hidden shadow-sm divide-y divide-[#2d3748]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-0 overflow-hidden shadow-sm divide-y divide-[#1a1a1a]">
              
              <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                <div>
                  <div className="font-bold text-slate-100">Color Theme</div>
                  <div className="text-sm text-slate-400 font-medium">Choose your workspace lighting.</div>
                </div>
-               <div className="flex bg-[#0f1117] p-1 rounded-xl border border-[#2d3748]">
+               <div className="flex bg-[#000000] p-1 rounded-xl border border-[#1a1a1a]">
                   {(['light', 'dark', 'system'] as const).map(t => (
                     <button 
                       key={t}
                       onClick={() => setTheme(t)}
-                      className={`px-4 py-1.5 rounded-lg text-sm font-bold capitalize transition-all ${theme === t ? 'bg-[#2d3748] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-bold capitalize transition-all ${theme === t ? 'bg-[#141414] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                       {t}
                     </button>
@@ -193,16 +194,16 @@ export function SettingsPage() {
                  <div className="font-bold text-slate-100">Typography Scaling</div>
                  <div className="text-sm text-slate-400 font-medium">Increase font size for better readability globally.</div>
                </div>
-               <div className="flex bg-[#0f1117] p-1 rounded-xl border border-[#2d3748]">
+               <div className="flex bg-[#000000] p-1 rounded-xl border border-[#1a1a1a]">
                   <button 
                     onClick={() => handleFontChange('normal')}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'normal' ? 'bg-[#2d3748] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'normal' ? 'bg-[#141414] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
                   >
                     Normal
                   </button>
                   <button 
                     onClick={() => handleFontChange('large')}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'large' ? 'bg-[#2d3748] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${fontSize === 'large' ? 'bg-[#141414] shadow-sm text-teal-400' : 'text-slate-500 hover:text-slate-300'}`}
                   >
                     Large
                   </button>
@@ -212,10 +213,13 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* 3. Data Management */}
+        {/* 3. Email & Meeting Reader Integration */}
+        <EmailIntegrationSettings />
+
+        {/* 4. Data Management */}
         <section className="mb-8">
           <h2 className="text-sm font-bold text-teal-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Database className="w-4 h-4" /> Data & Storage</h2>
-          <div className="bg-[#1e2433] border border-[#2d3748] rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col gap-6">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col gap-6">
             
             <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center p-4 bg-teal-900/20 border border-teal-800/50 rounded-xl">
                <div>
@@ -258,7 +262,7 @@ export function SettingsPage() {
                  <div className="font-bold text-slate-200 text-sm">Storage Usage Estimate</div>
                  <div className="text-xs font-bold text-teal-400">{maps.length} Maps Synced</div>
                </div>
-               <div className="w-full bg-[#2d3748] rounded-full h-3 overflow-hidden">
+               <div className="w-full bg-[#141414] rounded-full h-3 overflow-hidden">
                  <div className="bg-teal-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((maps.length / 500) * 100, 100)}%` }} />
                </div>
                <div className="text-xs text-slate-500 font-semibold mt-2 text-right">Free Tier Limit: ~500 Maps</div>
@@ -270,7 +274,7 @@ export function SettingsPage() {
         {/* 4. Danger Zone */}
         <section className="mb-0">
           <h2 className="text-sm font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Danger Zone</h2>
-          <div className="bg-[#1e2433] border border-red-900/60 rounded-2xl p-5 sm:p-6 shadow-sm">
+          <div className="bg-[#0a0a0a] border border-red-900/60 rounded-2xl p-5 sm:p-6 shadow-sm">
              <div className="flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
                <div>
                  <div className="font-bold mb-0.5 text-red-400">Delete Account</div>
@@ -278,7 +282,7 @@ export function SettingsPage() {
                </div>
                <button 
                  onClick={() => setShowDeleteConfirm(true)}
-                 className="shrink-0 flex items-center justify-center gap-2 bg-[#1e2433] border-2 border-red-900/60 hover:bg-red-900/20 text-red-400 px-5 py-2.5 rounded-lg font-bold transition-all active:scale-95 text-sm"
+                 className="shrink-0 flex items-center justify-center gap-2 bg-[#0a0a0a] border-2 border-red-900/60 hover:bg-red-900/20 text-red-400 px-5 py-2.5 rounded-lg font-bold transition-all active:scale-95 text-sm"
                >
                  <Trash2 className="w-4 h-4" /> Delete Everything
                </button>
@@ -298,7 +302,7 @@ export function SettingsPage() {
                     <button 
                       onClick={() => setShowDeleteConfirm(false)}
                       disabled={isDeleting}
-                      className="bg-[#2d3748] text-slate-300 border border-[#3d4a60] hover:bg-[#364155] px-5 py-2 rounded-lg font-bold transition text-sm flex-1 sm:max-w-max"
+                      className="bg-[#141414] text-slate-300 border border-[#222222] hover:bg-[#1e1e1e] px-5 py-2 rounded-lg font-bold transition text-sm flex-1 sm:max-w-max"
                     >
                       Cancel
                     </button>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ExternalLink, Link2, Briefcase, Users, CheckCircle2, Circle, Edit2 } from 'lucide-react';
+import { X, ExternalLink, Link2, Briefcase, Users, CheckCircle2, Circle, Edit2, Video } from 'lucide-react';
 import { useTimelineStore } from '../../store/timelineStore';
 import type { TimelineEventFull } from '../../types';
 import { MarkdownViewer } from '../common/MarkdownViewer';
@@ -49,19 +49,19 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
   if (event.type === 'work') {
     if (event.status === 'done') { statusLabel = 'Done'; statusClass = 'bg-green-900/60 text-green-300 border-green-700'; }
     else if (event.status === 'blocked') { statusLabel = 'Blocked'; statusClass = 'bg-red-900/60 text-red-300 border-red-700'; }
-    else { statusLabel = 'In Progress'; statusClass = 'bg-slate-700/60 text-slate-300 border-slate-600'; }
+    else { statusLabel = 'In Progress'; statusClass = 'bg-[#141414]/60 text-slate-300 border-slate-600'; }
   }
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#0f1117]/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-[#000000]/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-3xl bg-[#1e2433] rounded-2xl shadow-2xl border border-[#2d3748] flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-[#0a0a0a] rounded-2xl shadow-2xl border border-[#1a1a1a] flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-[#2d3748] bg-[#0f1117]/30">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-[#1a1a1a] bg-[#000000]/30">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               {/* Type Badge */}
@@ -82,14 +82,14 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
                 </span>
               )}
               {event.type === 'meeting' && event.isOptional && (
-                <span className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold uppercase tracking-wider">
+                <span className="px-2.5 py-1 rounded-md bg-[#0a0a0a] border border-slate-700 text-slate-300 text-xs font-bold uppercase tracking-wider">
                   Optional
                 </span>
               )}
 
               {/* Project Tag */}
               {event.projectTag && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold text-slate-400 border border-slate-700/50 bg-slate-800/50">
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold text-slate-400 border border-slate-700/50 bg-[#0a0a0a]/50">
                   #{event.projectTag}
                 </span>
               )}
@@ -116,7 +116,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
             )}
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#2d3748] rounded-lg transition-colors flex-shrink-0"
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#141414] rounded-lg transition-colors flex-shrink-0"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -162,7 +162,7 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
               {event.implementationNotes && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Implementation Notes</h3>
-                  <div className="p-3.5 rounded-lg bg-slate-900/50 border border-[#2d3748]">
+                  <div className="p-3.5 rounded-lg bg-[#000000]/50 border border-[#1a1a1a]">
                     <MarkdownViewer content={event.implementationNotes} />
                   </div>
                 </div>
@@ -194,6 +194,29 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
           {/* ── MEETING EVENT FIELDS ── */}
           {event.type === 'meeting' && (
             <>
+              {event.links.some((l) => l.url.includes('meet.google') || l.url.includes('zoom.us') || l.url.includes('teams.microsoft')) && (
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-950/60 to-emerald-950/60 border border-teal-600/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-teal-500/20 text-teal-400">
+                      <Video className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wide">Video Conference Ready</h4>
+                      <p className="text-xs text-slate-400">Click to directly enter the meeting room.</p>
+                    </div>
+                  </div>
+                  <a
+                    href={event.links.find((l) => l.url.includes('meet.google') || l.url.includes('zoom.us') || l.url.includes('teams.microsoft'))?.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-semibold text-xs rounded-lg shadow-md transition-all shrink-0"
+                  >
+                    <Video className="w-4 h-4" />
+                    <span>Join Meeting Directly</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
               {event.discussionSummary && (
                 <div className={SECTION_CLS}>
                   <h3 className={LABEL_CLS}>Discussion Summary</h3>
@@ -256,10 +279,10 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
         </div>
         
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[#2d3748] bg-[#0f1117]/50 flex justify-end">
+        <div className="px-6 py-4 border-t border-[#1a1a1a] bg-[#000000]/50 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 text-sm font-semibold text-white bg-slate-700 hover:bg-slate-600 rounded-lg transition shadow-sm"
+            className="px-5 py-2 text-sm font-semibold text-white bg-[#141414] hover:bg-[#1e1e1e] rounded-lg transition shadow-sm"
           >
             Close
           </button>

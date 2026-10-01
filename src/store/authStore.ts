@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import type { ApiResult, UserProfile } from '../types';
+import { useEmailStore } from './emailStore';
 
 interface AuthState {
   user: User | null;
@@ -143,6 +144,13 @@ const initAuth = async () => {
         useAuthStore.setState({ profile: null });
       }
     }
+
+    // Capture Google provider_token for Gmail and Calendar access
+    if (session?.provider_token) {
+      useEmailStore.getState().setGmailAccessToken(session.provider_token);
+      useEmailStore.getState().setUseTestInbox(false);
+      void useEmailStore.getState().syncEmails();
+    }
   } catch (e) {
     console.error('Initial session check failed:', e);
   } finally {
@@ -163,6 +171,13 @@ supabase.auth.onAuthStateChange((_event, session) => {
       } else {
         useAuthStore.setState({ profile: null });
       }
+    }
+
+    // Capture Google provider_token on OAuth sign-in
+    if (session?.provider_token) {
+      useEmailStore.getState().setGmailAccessToken(session.provider_token);
+      useEmailStore.getState().setUseTestInbox(false);
+      void useEmailStore.getState().syncEmails();
     }
   } catch (e) {
     console.error('Auth state change handling failed:', e);

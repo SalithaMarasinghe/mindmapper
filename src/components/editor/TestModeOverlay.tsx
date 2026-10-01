@@ -34,7 +34,7 @@ export function TestModeOverlay({
           value={scratch}
           onChange={(e) => setScratch(e.target.value)}
           placeholder="Write your attempt here..."
-          className="w-full min-h-[120px] resize-y bg-white border border-gray-200 rounded-lg p-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium placeholder:text-gray-400 shadow-inner"
+          className="w-full min-h-[120px] resize-y bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg p-4 text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all font-medium placeholder:text-slate-500 shadow-inner"
         />
         <div className="flex justify-end mt-4">
           <button 
@@ -51,12 +51,12 @@ export function TestModeOverlay({
   return (
     <div className="flex flex-col gap-4 animate-in fade-in transition-all border-l-4 border-l-teal-500 pl-4 py-2">
       {scratch.trim() && (
-        <div className="bg-gray-100 rounded-lg p-4 relative opacity-80 border border-gray-200">
-          <div className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2">Your attempt:</div>
-          <div className="text-sm font-medium text-gray-600 whitespace-pre-wrap">{scratch}</div>
+        <div className="bg-[#0a0a0a] rounded-lg p-4 relative opacity-80 border border-[#1a1a1a]">
+          <div className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">Your attempt:</div>
+          <div className="text-sm font-medium text-slate-400 whitespace-pre-wrap">{scratch}</div>
           <button 
              onClick={onReset}
-             className="absolute top-3 right-3 text-[10px] uppercase font-bold text-gray-400 hover:text-gray-800 hover:bg-gray-200 px-2 py-1 rounded transition"
+             className="absolute top-3 right-3 text-[10px] uppercase font-bold text-slate-500 hover:text-slate-200 hover:bg-[#141414] px-2 py-1 rounded transition"
           >
             Hide again
           </button>
@@ -66,7 +66,7 @@ export function TestModeOverlay({
         <div className="flex justify-end -mb-6 relative z-10">
           <button 
              onClick={onReset}
-             className="text-[10px] uppercase font-bold text-gray-400 hover:text-gray-800 hover:bg-gray-200 px-2 py-1 rounded transition bg-white border border-gray-200"
+             className="text-[10px] uppercase font-bold text-slate-500 hover:text-slate-200 hover:bg-[#141414] px-2 py-1 rounded transition bg-[#0a0a0a] border border-[#1a1a1a]"
           >
             Hide again
           </button>

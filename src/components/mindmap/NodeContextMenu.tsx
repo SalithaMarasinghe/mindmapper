@@ -38,9 +38,9 @@ export function NodeContextMenu({ x, y, node, onClose, onAddChild, onAddSibling,
     <div 
       ref={ref}
       style={{ top: y, left: x }}
-      className="fixed z-[100] w-56 bg-[#1e2433] rounded-xl shadow-xl shadow-black/50 border border-[#2d3748] py-1.5 animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-[100] w-56 bg-[#0a0a0a] rounded-xl shadow-xl shadow-black/50 border border-[#1a1a1a] py-1.5 animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="px-3 py-2 border-b border-[#2d3748] mb-1">
+      <div className="px-3 py-2 border-b border-[#1a1a1a] mb-1">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{node.type} Node Settings</span>
       </div>
 
@@ -59,7 +59,7 @@ export function NodeContextMenu({ x, y, node, onClose, onAddChild, onAddSibling,
       </button>
 
       {!isRoot && (
-        <div className="px-3 py-2.5 my-1 bg-[#0f1117]/60 border-y border-[#2d3748]">
+        <div className="px-3 py-2.5 my-1 bg-[#000000]/60 border-y border-[#1a1a1a]">
           <div className="flex items-center gap-2 mb-2">
             <Palette className="h-4 w-4 text-slate-500" />
             <span className="text-xs text-slate-500 font-semibold">Change color</span>
