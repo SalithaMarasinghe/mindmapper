@@ -1324,22 +1324,28 @@ Deno.serve(async (req: Request) => {
     const tavilyKey = Deno.env.get('TAVILY_API_KEY');
     let searchResult: SearchExecutionResult | null = null;
 
+    // Strip polite prefixes for better intent classification
+    const cleanMsg = message
+      .replace(/^(can you please |can you |could you please |could you |please |i want to |i need to |let's )/i, '')
+      .trim();
+
     const isTimerOrKanbanAction =
-      /^(pause|resume|start|finish|stop|complete|take a break|break|lunch|wrapping up|daily wrap up|carry over|carryover|roll over)\b/i.test(message.trim()) ||
-      /^(i(?:'m|\s+am)?\s+(?:taking|going on|on)\s+(?:a\s+)?(?:\d+\s+min(?:ute)?s?\s+)?(?:break|lunch|walk))\b/i.test(message.trim()) ||
-      /^(i(?:'m|\s+am)?\s+back(?:\s+from)?(?:\s+(?:break|lunch))?)\b/i.test(message.trim()) ||
-      /^(i finished|i built|i completed|i tested|finished task|done with)\b/i.test(message.trim());
+      /^(pause|resume|start|finish|stop|complete|take a break|break|lunch|wrapping up|daily wrap up|carry over|carryover|roll over)\b/i.test(cleanMsg) ||
+      /^(i(?:'m|\s+am)?\s+(?:taking|going on|on)\s+(?:a\s+)?(?:\d+\s+min(?:ute)?s?\s+)?(?:break|lunch|walk))\b/i.test(cleanMsg) ||
+      /^(i(?:'m|\s+am)?\s+back(?:\s+from)?(?:\s+(?:break|lunch))?)\b/i.test(cleanMsg) ||
+      /^(i finished|i built|i completed|i tested|finished task|done with)\b/i.test(cleanMsg);
 
     const isMeetingLog =
-      /^(meeting with|sync with|standup|call with|discussed with|1-on-1|google meet|zoom)\b/i.test(message.trim()) ||
+      /^(meeting|sync|standup|call|discussed|1-on-1|google meet|zoom)\b/i.test(cleanMsg) ||
       message.includes('10:32 AM:') || message.includes('Tech Lead:');
 
     const isTaskPlanningOrQuery =
-      /^(plan task|create task|add task|schedule task|what are my tasks|show my tasks|what task is running|today's tasks|wrap up|daily wrap up|carry over)\b/i.test(message.trim()) ||
-      /^(new project|create project)\b/i.test(message.trim());
+      /^(plan|create|add|schedule|log)\s+(?:a\s+)?(?:task|to-?do|ticket)\b/i.test(cleanMsg) ||
+      /^(what are my tasks|show my tasks|what task is running|today's tasks|wrap up|daily wrap up|carry over)\b/i.test(cleanMsg) ||
+      /^(new|create)\s+(?:a\s+)?project\b/i.test(cleanMsg);
 
     const isEmailCheck =
-      /\b(check my email|check email|check emails|any meetings|any meeting invites|meeting invite|did i get an email|sync meetings|sync email|read my email|unread email|check inbox)\b/i.test(message.trim());
+      /\b(check my email|check email|check emails|any meetings|any meeting invites|meeting invite|did i get an email|sync meetings|sync email|read my email|unread email|check inbox)\b/i.test(cleanMsg);
 
     const isOperational = isTimerOrKanbanAction || isMeetingLog || isTaskPlanningOrQuery || isEmailCheck;
 
