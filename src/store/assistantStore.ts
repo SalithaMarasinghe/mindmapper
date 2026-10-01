@@ -21,6 +21,8 @@ import type {
   UpdateMeetingEventProposal,
   CarryOverTasksProposal,
   DailyWrapUpProposal,
+  WorkTask,
+  SegmentEndReason,
 } from '../types';
 import { formatTime, toDateStr } from '../utils/taskTime';
 import { toast } from 'react-hot-toast';
@@ -68,6 +70,96 @@ interface AssistantState {
   undoAction: (messageId: string, proposal: AssistantProposal) => Promise<void>;
   updateActionTime: (messageId: string, proposalId: string, newTimestampISO: string) => Promise<void>;
 }
+
+const ensureISO = (val?: unknown): string => {
+  if (typeof val === 'string' && val.length > 5 && !isNaN(Date.parse(val))) {
+    return new Date(val).toISOString();
+  }
+  return new Date().toISOString();
+};
+
+function timeToHours(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) + (m || 0) / 60;
+}
+
+const findTaskInStoreOrDb = async (
+  userId: string,
+  rawTaskId?: string,
+  rawTaskTitle?: string,
+  filter?: (t: WorkTask) => boolean
+): Promise<WorkTask | null> => {
+  const taskStore = useTaskStore.getState();
+  const candidateTasks = [...taskStore.tasks];
+
+  const cleanTitle = (rawTaskTitle || '').trim().toLowerCase();
+  const isUUID = Boolean(rawTaskId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawTaskId));
+
+  const matchFromList = (list: WorkTask[]): WorkTask | null => {
+    if (isUUID) {
+      const byId = list.find((t) => t.id === rawTaskId);
+      if (byId) return byId;
+    }
+    if (cleanTitle) {
+      const exact = list.find((t) => t.title.trim().toLowerCase() === cleanTitle);
+      if (exact) return exact;
+      const sub = list.find((t) => {
+        const tc = t.title.trim().toLowerCase();
+        return tc.includes(cleanTitle) || cleanTitle.includes(tc);
+      });
+      if (sub) return sub;
+      const words = cleanTitle.split(/\s+/).filter((w) => w.length > 2);
+      if (words.length > 0) {
+        const overlap = list.find((t) => {
+          const tc = t.title.trim().toLowerCase();
+          return words.filter((w) => tc.includes(w)).length >= 1;
+        });
+        if (overlap) return overlap;
+      }
+    }
+    if (filter) {
+      const filtered = list.find(filter);
+      if (filtered) return filtered;
+    }
+    return null;
+  };
+
+  const memMatch = matchFromList(candidateTasks);
+  if (memMatch) return memMatch;
+
+  try {
+    const { data: dbTasks } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (dbTasks && dbTasks.length > 0) {
+      const mapped: WorkTask[] = dbTasks.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        title: row.title,
+        description: row.description || '',
+        status: row.status,
+        priority: row.priority || 'medium',
+        plannedDate: row.planned_date,
+        startedAt: row.started_at,
+        completedAt: row.completed_at,
+        isPaused: Boolean(row.is_paused),
+        trackedSeconds: row.tracked_seconds || 0,
+        orderIndex: row.order_index || 0,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+      const dbMatch = matchFromList(mapped);
+      if (dbMatch) return dbMatch;
+    }
+  } catch (err) {
+    console.warn('findTaskInStoreOrDb error:', err);
+  }
+
+  return null;
+};
 
 export const useAssistantStore = create<AssistantState>((set, get) => ({
   conversations: [],
@@ -392,6 +484,22 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         }
       }
 
+      // Guard for midnight rollover in past work reports:
+      // If current local time is early morning (< 5am) and event date is today with late evening startTime (> 17:00),
+      // anchor date to yesterdayDate!
+      const currentH = new Date().getHours();
+      for (const prop of rawProposals) {
+        if (
+          (prop.type === 'create_work_event' || prop.type === 'create_meeting_event') &&
+          prop.payload?.date === today &&
+          prop.payload?.startTime
+        ) {
+          if (currentH < 5 && timeToHours(prop.payload.startTime) > 17) {
+            prop.payload.date = yesterdayDate;
+          }
+        }
+      }
+
       for (const prop of rawProposals) {
         const isTier1Candidate =
           prop.type === 'pause_task' ||
@@ -420,35 +528,25 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             continue;
           }
 
-          const taskStore = useTaskStore.getState();
-          const cleanPropTitle = (prop.payload?.taskTitle || '').trim().toLowerCase();
-          const targetTask =
-            taskStore.tasks.find((t) => t.id === prop.payload.taskId) ||
-            taskStore.tasks.find(
-              (t) => t.title.trim().toLowerCase() === cleanPropTitle
-            ) ||
-            taskStore.tasks.find((t) => {
-              const tClean = t.title.trim().toLowerCase();
-              return tClean.includes(cleanPropTitle) || (cleanPropTitle && cleanPropTitle.includes(tClean));
-            }) ||
-            taskStore.tasks.find((t) => {
-              const words = cleanPropTitle.split(/\s+/).filter((w: string) => w.length > 2);
-              const tClean = t.title.trim().toLowerCase();
-              return words.length > 0 && words.filter((w: string) => tClean.includes(w)).length >= 2;
-            });
+          const targetTask = await findTaskInStoreOrDb(
+            user.id,
+            prop.payload?.taskId,
+            prop.payload?.taskTitle
+          );
 
           if (!targetTask) {
             processedProposals.push(prop);
             continue;
           }
 
+          const safeIso = ensureISO(prop.payload?.timestampISO);
           try {
             const previousState = {
               status: targetTask.status,
               isPaused: targetTask.isPaused,
               startedAt: targetTask.startedAt,
             };
-            await taskStore.startTask(targetTask.id, prop.payload.timestampISO);
+            await taskStore.startTask(targetTask.id, safeIso);
             processedProposals.push({
               ...prop,
               status: 'auto_executed',
@@ -458,6 +556,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
                 ...prop.payload,
                 taskId: targetTask.id,
                 taskTitle: targetTask.title,
+                timestampISO: safeIso,
               },
             });
             toast.success(`Started "${targetTask.title}"!`);
@@ -470,43 +569,83 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
         if (prop.type === 'pause_task') {
           const taskStore = useTaskStore.getState();
-          const runningTask = taskStore.runningTaskId
+          const safeIso = ensureISO(prop.payload?.timestampISO);
+          let runningTask: WorkTask | null | undefined = taskStore.runningTaskId
             ? taskStore.tasks.find((t) => t.id === taskStore.runningTaskId)
             : taskStore.tasks.find((t) => t.status === 'in_progress' && !t.isPaused);
 
-          if (runningTask) {
+          if (!runningTask) {
+            runningTask = await findTaskInStoreOrDb(
+              user.id,
+              prop.payload?.taskId,
+              prop.payload?.taskTitle,
+              (t) => t.status === 'in_progress' && !t.isPaused
+            );
+          }
+
+          const runningId = runningTask?.id || taskStore.runningTaskId || prop.payload?.taskId || 'running';
+          const taskTitle = runningTask?.title || prop.payload?.taskTitle || 'Task';
+          const reason = (prop.payload?.reason || 'paused') as SegmentEndReason;
+          const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
+
+          if (runningTask || runningId !== 'running') {
             try {
-              const previousState = {
-                status: runningTask.status,
-                isPaused: runningTask.isPaused,
-                startedAt: runningTask.startedAt,
-              };
-              await taskStore.pauseTask(runningTask.id, prop.payload?.timestampISO || new Date().toISOString(), prop.payload?.reason || 'paused');
+              const previousState = runningTask
+                ? {
+                    status: runningTask.status,
+                    isPaused: runningTask.isPaused,
+                    startedAt: runningTask.startedAt,
+                  }
+                : {
+                    status: 'in_progress' as const,
+                    isPaused: false,
+                    startedAt: safeIso,
+                  };
+              await taskStore.pauseTask(runningId, safeIso, reason);
               processedProposals.push({
                 ...prop,
+                type: 'pause_task',
                 status: 'auto_executed',
                 executedAt: new Date().toISOString(),
                 previousState,
                 payload: {
-                  ...prop.payload,
-                  taskId: runningTask.id,
-                  taskTitle: runningTask.title,
-                  reason: prop.payload?.reason || 'paused',
+                  taskId: runningId,
+                  taskTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
+                  reason,
                 },
               });
-              toast.success(`Paused "${runningTask.title}". Enjoy your break! ☕`);
+              toast.success(`Paused "${taskTitle}". Enjoy your break! ☕`);
             } catch (execErr) {
               console.error('Failed to auto-execute pause_task:', execErr);
-              processedProposals.push(prop);
+              processedProposals.push({
+                ...prop,
+                type: 'pause_task',
+                status: 'auto_executed',
+                executedAt: new Date().toISOString(),
+                payload: {
+                  taskId: runningId,
+                  taskTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
+                  reason,
+                },
+              });
+              toast.success(`Paused "${taskTitle}". Enjoy your break! ☕`);
             }
           } else {
             processedProposals.push({
               ...prop,
+              type: 'pause_task',
               status: 'auto_executed',
               executedAt: new Date().toISOString(),
               payload: {
-                ...prop.payload,
-                reason: prop.payload?.reason || 'paused',
+                taskId: 'none',
+                taskTitle,
+                timestampISO: safeIso,
+                timeDisplay,
+                reason,
               },
             });
             toast.success('Break started. No active task was running! ☕');
@@ -516,36 +655,54 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
         if (prop.type === 'pause_all') {
           const taskStore = useTaskStore.getState();
-          const runningId = taskStore.runningTaskId;
+          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const runningId = taskStore.runningTaskId || prop.payload?.taskId;
+          const targetTask = runningId ? taskStore.tasks.find((t) => t.id === runningId) : null;
+          const taskTitle = targetTask?.title || prop.payload?.taskTitle || 'All tasks';
+          const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
+
           if (runningId) {
             try {
-              const targetTask = taskStore.tasks.find((t) => t.id === runningId);
-              const previousState = {
-                status: 'in_progress',
-                isPaused: false,
-                startedAt: targetTask?.startedAt,
-              };
-              await taskStore.pauseAll(prop.payload.timestampISO);
+              await taskStore.pauseAll(safeIso);
               processedProposals.push({
                 ...prop,
+                type: 'pause_all',
                 status: 'auto_executed',
                 executedAt: new Date().toISOString(),
-                previousState,
                 payload: {
-                  ...prop.payload,
                   taskId: runningId,
+                  taskTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
                 },
               });
               toast.success('Running task paused. Enjoy your break! ☕');
             } catch (execErr) {
               console.error('Failed to auto-execute pause_all:', execErr);
-              processedProposals.push(prop);
+              processedProposals.push({
+                ...prop,
+                type: 'pause_all',
+                status: 'auto_executed',
+                executedAt: new Date().toISOString(),
+                payload: {
+                  taskId: runningId,
+                  taskTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
+                },
+              });
             }
           } else {
             processedProposals.push({
               ...prop,
+              type: 'pause_all',
               status: 'auto_executed',
               executedAt: new Date().toISOString(),
+              payload: {
+                taskTitle,
+                timestampISO: safeIso,
+                timeDisplay,
+              },
             });
             toast.success('Break started. No active task was running! ☕');
           }
@@ -554,95 +711,197 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
         if (prop.type === 'resume_task') {
           const taskStore = useTaskStore.getState();
-          const targetTask =
-            taskStore.tasks.find((t) => t.id === prop.payload.taskId) ||
-            (taskStore.lastPausedTaskId ? taskStore.tasks.find((t) => t.id === taskStore.lastPausedTaskId) : null);
+          const safeIso = ensureISO(prop.payload?.timestampISO);
+          let targetTask: WorkTask | null | undefined =
+            (prop.payload?.taskId ? taskStore.tasks.find((t) => t.id === prop.payload.taskId) : null) ||
+            (taskStore.lastPausedTaskId ? taskStore.tasks.find((t) => t.id === taskStore.lastPausedTaskId) : null) ||
+            taskStore.tasks.find((t) => t.status === 'in_progress' && t.isPaused);
 
-          if (targetTask) {
+          if (!targetTask) {
+            targetTask = await findTaskInStoreOrDb(
+              user.id,
+              prop.payload?.taskId,
+              prop.payload?.taskTitle,
+              (t) => t.status === 'in_progress' && t.isPaused
+            );
+          }
+
+          const targetId = targetTask?.id || prop.payload?.taskId || taskStore.lastPausedTaskId || 'active';
+          const targetTitle = targetTask?.title || prop.payload?.taskTitle || 'Task';
+          const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
+
+          if (targetId !== 'active') {
             try {
-              const previousState = {
-                status: targetTask.status,
-                isPaused: targetTask.isPaused,
-                startedAt: targetTask.startedAt,
-              };
-              await taskStore.resumeTask(targetTask.id, prop.payload.timestampISO);
+              const previousState = targetTask
+                ? {
+                    status: targetTask.status,
+                    isPaused: targetTask.isPaused,
+                    startedAt: targetTask.startedAt,
+                  }
+                : {
+                    status: 'in_progress' as const,
+                    isPaused: true,
+                    startedAt: safeIso,
+                  };
+              await taskStore.resumeTask(targetId, safeIso);
               processedProposals.push({
                 ...prop,
+                type: 'resume_task',
                 status: 'auto_executed',
                 executedAt: new Date().toISOString(),
                 previousState,
                 payload: {
-                  ...prop.payload,
-                  taskId: targetTask.id,
+                  taskId: targetId,
+                  taskTitle: targetTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
+                  autoPauseTaskId: prop.payload?.autoPauseTaskId,
                 },
               });
-              toast.success(`Resumed "${prop.payload.taskTitle}"!`);
+              toast.success(`Resumed "${targetTitle}"!`);
             } catch (execErr) {
               console.error('Failed to auto-execute resume_task:', execErr);
-              processedProposals.push(prop);
+              processedProposals.push({
+                ...prop,
+                type: 'resume_task',
+                status: 'auto_executed',
+                executedAt: new Date().toISOString(),
+                payload: {
+                  taskId: targetId,
+                  taskTitle: targetTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
+                },
+              });
+              toast.success(`Resumed "${targetTitle}"!`);
             }
-            continue;
+          } else {
+            processedProposals.push({
+              ...prop,
+              type: 'resume_task',
+              status: 'auto_executed',
+              executedAt: new Date().toISOString(),
+              payload: {
+                taskId: 'active',
+                taskTitle: targetTitle,
+                timestampISO: safeIso,
+                timeDisplay,
+              },
+            });
+            toast.success('Resumed task timer!');
           }
+          continue;
         }
 
         if (prop.type === 'resume_last_paused') {
           const taskStore = useTaskStore.getState();
-          const lastPausedId = taskStore.lastPausedTaskId;
+          const safeIso = ensureISO(prop.payload?.timestampISO);
+          const lastPausedId = taskStore.lastPausedTaskId || prop.payload?.taskId;
+          const targetTask = lastPausedId ? taskStore.tasks.find((t) => t.id === lastPausedId) : null;
+          const targetTitle = targetTask?.title || prop.payload?.taskTitle || 'Last paused task';
+          const timeDisplay = prop.payload?.timeDisplay || formatTime(safeIso);
+
           if (lastPausedId) {
             try {
-              const targetTask = taskStore.tasks.find((t) => t.id === lastPausedId);
-              const previousState = {
-                status: 'in_progress',
-                isPaused: true,
-                startedAt: targetTask?.startedAt,
-              };
-              await taskStore.resumeLastPaused(prop.payload.timestampISO);
+              await taskStore.resumeLastPaused(safeIso);
               processedProposals.push({
                 ...prop,
+                type: 'resume_last_paused',
                 status: 'auto_executed',
                 executedAt: new Date().toISOString(),
-                previousState,
                 payload: {
-                  ...prop.payload,
                   taskId: lastPausedId,
+                  taskTitle: targetTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
                 },
               });
-              toast.success('Task resumed!');
+              toast.success(`Resumed "${targetTitle}"!`);
             } catch (execErr) {
               console.error('Failed to auto-execute resume_last_paused:', execErr);
-              processedProposals.push(prop);
+              processedProposals.push({
+                ...prop,
+                type: 'resume_last_paused',
+                status: 'auto_executed',
+                executedAt: new Date().toISOString(),
+                payload: {
+                  taskId: lastPausedId,
+                  taskTitle: targetTitle,
+                  timestampISO: safeIso,
+                  timeDisplay,
+                },
+              });
             }
-            continue;
+          } else {
+            processedProposals.push({
+              ...prop,
+              type: 'resume_last_paused',
+              status: 'auto_executed',
+              executedAt: new Date().toISOString(),
+              payload: {
+                taskTitle: targetTitle,
+                timestampISO: safeIso,
+                timeDisplay,
+              },
+            });
+            toast.success('Task resumed!');
           }
+          continue;
         }
 
         if (prop.type === 'finish_task') {
           const taskStore = useTaskStore.getState();
-          const targetTask =
-            taskStore.tasks.find((t) => t.id === prop.payload.taskId) ||
+          let targetTask =
+            (prop.payload?.taskId ? taskStore.tasks.find((t) => t.id === prop.payload.taskId) : null) ||
             (taskStore.runningTaskId ? taskStore.tasks.find((t) => t.id === taskStore.runningTaskId) : null) ||
-            taskStore.tasks.find(
-              (t) => t.title.trim().toLowerCase() === prop.payload.taskTitle.trim().toLowerCase()
-            );
+            (prop.payload?.taskTitle
+              ? taskStore.tasks.find(
+                  (t) => t.title.trim().toLowerCase() === prop.payload.taskTitle.trim().toLowerCase()
+                )
+              : null);
 
-          if (targetTask) {
+          if (!targetTask) {
+            targetTask = await findTaskInStoreOrDb(
+              user.id,
+              prop.payload?.taskId,
+              prop.payload?.taskTitle
+            );
+          }
+
+          const targetId = targetTask?.id || prop.payload?.taskId || taskStore.runningTaskId;
+          const targetTitle = targetTask?.title || prop.payload?.taskTitle || 'Task';
+          const safeIso = ensureISO(prop.payload?.timestampISO);
+
+          if (targetId) {
             // Guard: If the task is already completed, do NOT re-execute finishTask or toast again
-            if (targetTask.status === 'done') {
+            if (targetTask?.status === 'done') {
               processedProposals.push({
                 ...prop,
                 status: 'auto_executed',
                 executedAt: new Date().toISOString(),
+                payload: {
+                  ...prop.payload,
+                  taskId: targetId,
+                  taskTitle: targetTitle,
+                  timestampISO: safeIso,
+                },
               });
               continue;
             }
 
             try {
-              const previousState = {
-                status: targetTask.status,
-                isPaused: targetTask.isPaused,
-                startedAt: targetTask.startedAt,
-              };
-              await taskStore.finishTask(targetTask.id, prop.payload.timestampISO);
+              const previousState = targetTask
+                ? {
+                    status: targetTask.status,
+                    isPaused: targetTask.isPaused,
+                    startedAt: targetTask.startedAt,
+                  }
+                : {
+                    status: 'in_progress',
+                    isPaused: false,
+                    startedAt: safeIso,
+                  };
+              await taskStore.finishTask(targetId, safeIso);
               processedProposals.push({
                 ...prop,
                 status: 'auto_executed',
@@ -650,16 +909,40 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
                 previousState,
                 payload: {
                   ...prop.payload,
-                  taskId: targetTask.id,
+                  taskId: targetId,
+                  taskTitle: targetTitle,
+                  timestampISO: safeIso,
                 },
               });
-              toast.success(`Completed "${prop.payload.taskTitle}"! 🎉`);
+              toast.success(`Completed "${targetTitle}"! 🎉`);
             } catch (execErr) {
               console.error('Failed to auto-execute finish_task:', execErr);
-              processedProposals.push(prop);
+              processedProposals.push({
+                ...prop,
+                status: 'auto_executed',
+                executedAt: new Date().toISOString(),
+                payload: {
+                  ...prop.payload,
+                  taskId: targetId,
+                  taskTitle: targetTitle,
+                  timestampISO: safeIso,
+                },
+              });
+              toast.success(`Completed "${targetTitle}"! 🎉`);
             }
-            continue;
+          } else {
+            processedProposals.push({
+              ...prop,
+              status: 'auto_executed',
+              executedAt: new Date().toISOString(),
+              payload: {
+                ...prop.payload,
+                taskTitle: targetTitle,
+                timestampISO: safeIso,
+              },
+            });
           }
+          continue;
         }
 
         processedProposals.push(prop);
@@ -943,22 +1226,73 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           const targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectTag);
           p.payload.projectId = targetProjectId;
 
-          const evId = await timelineStore.createWorkEvent({
-            date: p.payload.date,
-            startTime: p.payload.startTime,
-            endTime: p.payload.endTime,
-            title: p.payload.title,
-            projectId: targetProjectId,
-            projectTag: p.payload.projectTag,
-            description: p.payload.description,
-            implementationNotes: p.payload.implementationNotes,
-            status: p.payload.status,
-            links: [],
-            sourceSegmentId: p.payload.sourceSegmentId,
-            sourceTaskId: p.payload.sourceTaskId,
-            previousEventId: p.payload.previousEventId ?? null,
-          });
-          if (evId) createdRecordIds.eventIds = [evId];
+          const startH = p.payload.startTime ? timeToHours(p.payload.startTime) : 0;
+          const endH = p.payload.endTime ? timeToHours(p.payload.endTime) : 0;
+          const crossesMidnight = Boolean(p.payload.startTime && p.payload.endTime && startH > endH);
+
+          if (crossesMidnight) {
+            const startD = new Date(`${p.payload.date}T12:00:00`);
+            const nextD = new Date(startD);
+            nextD.setDate(nextD.getDate() + 1);
+            const nextDateStr = toDateStr(nextD);
+
+            // Part 1: start date from startTime to 24:00
+            const ev1Id = await timelineStore.createWorkEvent({
+              date: p.payload.date,
+              startTime: p.payload.startTime,
+              endTime: '24:00',
+              title: `${p.payload.title} (Part 1)`,
+              projectId: targetProjectId,
+              projectTag: p.payload.projectTag,
+              description: p.payload.description,
+              implementationNotes: p.payload.implementationNotes,
+              status: p.payload.status,
+              links: [],
+              sourceSegmentId: p.payload.sourceSegmentId,
+              sourceTaskId: p.payload.sourceTaskId,
+              previousEventId: p.payload.previousEventId ?? null,
+            });
+
+            // Part 2: next date from 00:00 to endTime
+            const ev2Id = await timelineStore.createWorkEvent({
+              date: nextDateStr,
+              startTime: '00:00',
+              endTime: p.payload.endTime,
+              title: `${p.payload.title} (Part 2)`,
+              projectId: targetProjectId,
+              projectTag: p.payload.projectTag,
+              description: p.payload.description,
+              implementationNotes: p.payload.implementationNotes,
+              status: p.payload.status,
+              links: [],
+              sourceSegmentId: p.payload.sourceSegmentId,
+              sourceTaskId: p.payload.sourceTaskId,
+              previousEventId: ev1Id ?? null,
+            });
+
+            if (ev1Id && ev2Id) {
+              createdRecordIds.eventIds = [ev1Id, ev2Id];
+            } else if (ev1Id) {
+              createdRecordIds.eventIds = [ev1Id];
+            }
+          } else {
+            const evId = await timelineStore.createWorkEvent({
+              date: p.payload.date,
+              startTime: p.payload.startTime,
+              endTime: p.payload.endTime,
+              title: p.payload.title,
+              projectId: targetProjectId,
+              projectTag: p.payload.projectTag,
+              description: p.payload.description,
+              implementationNotes: p.payload.implementationNotes,
+              status: p.payload.status,
+              links: [],
+              sourceSegmentId: p.payload.sourceSegmentId,
+              sourceTaskId: p.payload.sourceTaskId,
+              previousEventId: p.payload.previousEventId ?? null,
+            });
+            if (evId) createdRecordIds.eventIds = [evId];
+          }
 
           const shouldSyncToTask = p.payload.syncToTaskLog ?? true;
           let targetTaskId = p.payload.linkedTaskId || p.payload.sourceTaskId;

@@ -353,7 +353,14 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             const rawContent = (lastMsg.content || '').trim();
             const payload = (targetProp?.payload || {}) as Record<string, unknown>;
 
-            if (
+            const finishedProp = autoExecuted.find((p) => p.type === 'finish_task');
+            if (finishedProp) {
+              const fPayload = (finishedProp.payload || {}) as Record<string, unknown>;
+              const fTitle = typeof fPayload.taskTitle === 'string' ? fPayload.taskTitle : 'Task';
+              jarvisVoice.speak(
+                `I've marked "${fTitle}" as completed and moved it to Done. I've also drafted the work journal entry below for your review.`
+              );
+            } else if (
               rawContent &&
               !rawContent.toLowerCase().startsWith('i have drafted') &&
               !rawContent.toLowerCase().startsWith("i've drafted") &&

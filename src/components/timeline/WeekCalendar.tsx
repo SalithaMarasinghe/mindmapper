@@ -173,7 +173,8 @@ function EventBlock({ event, startHour, isChained, onClick, onContextMenu }: Eve
   const colors   = getEventColors(event.type);
   const evStart  = event.startTime ? timeToHours(event.startTime) : startHour;
   const evEnd    = event.endTime   ? timeToHours(event.endTime)   : evStart + 1;
-  const duration = Math.max(evEnd - evStart, 0.25);
+  const effectiveEnd = evEnd < evStart ? 24.0 : evEnd;
+  const duration = Math.max(effectiveEnd - evStart, 0.25);
   const topPx    = (evStart - startHour) * HOUR_PX;
   const heightPx = duration * HOUR_PX;
 
@@ -372,10 +373,20 @@ export function WeekCalendar({
             </div>
 
             {/* Day columns */}
-            {weekDates.map((dateStr) => {
+            {weekDates.map((dateStr, colIdx) => {
               const dayEvents = eventsByDate[dateStr] ?? [];
               const isToday   = dateStr === todayStr;
               const isDragCol = drag?.dateStr === dateStr;
+
+              // Check if previous day had an event that crossed midnight into this day
+              const prevDateStr = colIdx > 0 ? weekDates[colIdx - 1] : null;
+              const prevEvents = prevDateStr ? eventsByDate[prevDateStr] ?? [] : [];
+              const continuationEvents = prevEvents.filter((ev) => {
+                if (!ev.startTime || !ev.endTime) return false;
+                const s = timeToHours(ev.startTime);
+                const e = timeToHours(ev.endTime);
+                return s > e && !dayEvents.some((curr) => (curr.chainId && curr.chainId === ev.chainId) || curr.previousEventId === ev.id);
+              });
 
               return (
                 <div
@@ -431,6 +442,24 @@ export function WeekCalendar({
                       </span>
                     </div>
                   )}
+
+                  {/* Midnight continuation blocks from previous day */}
+                  {continuationEvents.map((event) => (
+                    <EventBlock
+                      key={`${event.id}-cont`}
+                      event={{
+                        ...event,
+                        startTime: '00:00',
+                        title: `${event.title} (Cont.)`,
+                      }}
+                      startHour={startHour}
+                      isChained={true}
+                      onClick={() => onEventClick(event)}
+                      onContextMenu={(e) =>
+                        setContextMenu({ x: e.clientX, y: e.clientY, event })
+                      }
+                    />
+                  ))}
 
                   {/* Event blocks */}
                   {dayEvents.map((event) => (

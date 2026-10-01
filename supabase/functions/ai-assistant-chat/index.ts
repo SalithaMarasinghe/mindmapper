@@ -753,16 +753,27 @@ ${emailMeetingsList}
    - Upcoming Week Schedule (Use this table to deterministically map relative deadlines e.g. "by Friday", "by next Monday"):
 ${upcomingDaysTable}
 
-   - CRITICAL RELATIVE WORK DURATION ARITHMETIC (PAST WORK REPORTS):
+   - CRITICAL RELATIVE WORK DURATION ARITHMETIC (PAST WORK REPORTS & MIDNIGHT CROSSING):
      When the user reports completed work or learning over a past duration (e.g. "for the past 2 hours I have been doing X", "I spent the last 90 minutes on Y", "just finished 3 hours of Z"):
-     1. The work concluded right NOW. Therefore:
+     1. The work concluded right NOW:
         - endTime = "${currentLocal24h}" (the Current Local Time in 24-hour "HH:mm" format).
      2. Calculate startTime backwards from endTime:
-        - startTime = endTime minus reported duration.
-        - Example: If Current Local Time is "${currentLocal24h}" (e.g. 23:45) and user says "for the past 2 hours":
-          * endTime = "${currentLocal24h}"
-          * startTime = [2 hours prior in 24h format, e.g. 21:45]
-     3. NEVER default to morning or daytime hours (like 09:00 or 11:00) when the user is speaking in the evening or at night (${currentLocal12h})! Always use the actual 24-hour clock anchor "${currentLocal24h}".
+        - If Current Local Time is early morning (between 00:00 and 05:00) and subtracting the duration goes before 00:00 (midnight):
+          * The session started on YESTERDAY ("${yesterdayDate}") and ended on TODAY ("${context.today}")!
+          * Example: Current Local Time is "${currentLocal24h}" (e.g. 00:55 on ${context.today}) and user says "for the past 2 hours":
+            - startTime = "22:55" (10:55 PM) on date: "${yesterdayDate}"!
+            - endTime = "00:55" (12:55 AM) on date: "${context.today}"!
+            - Set date: "${yesterdayDate}" (the date the work started), startTime: "22:55", endTime: "00:55"!
+            - DO NOT set date to "${context.today}" with startTime: "22:55"! Setting date: "${context.today}" with 22:55 would schedule the event at 10:55 PM TONIGHT (22 hours in the future)!
+        - If subtracting the duration does not cross midnight (stays after 00:00):
+          * date = "${context.today}", endTime = "${currentLocal24h}", startTime = [endTime minus duration].
+     3. NEVER default to morning or daytime hours (like 09:00 or 11:00) when the user is speaking in the evening or early morning! Always anchor to the exact 24-hour clock "${currentLocal24h}".
+
+   - TASK COMPLETION DIRECTIVE ("I COMPLETED / FINISHED"):
+     When the user reports finishing a task (e.g. "I have completed all tests", "finished the auth tests", "done with rag evaluation"):
+     1. Emit a 'finish_task' proposal for the task (it will be AUTO-EXECUTED instantly with ZERO approval friction, moving the task to Done).
+     2. If the user also describes what they did or asks to log it, SIMULTANEOUSLY emit a 'create_work_event' proposal (Tier 2, pending user approval for the journal summary).
+     3. In replyText, confirm that you have completed the task and moved it to Done, and present the drafted Work Journal entry below for their review.
 
    - Relative Dates:
      * "today", "this morning", "this afternoon" -> "${context.today}"
@@ -966,7 +977,7 @@ You MUST respond with a single JSON object matching this structure:
      "payload": {
        "taskId": "uuid",
        "taskTitle": "Task Title",
-       "timestampISO": "ISO-string",
+       "timestampISO": "${currentTimeISO}",
        "timeDisplay": "Local time e.g. 9:00 AM",
        "autoPauseTaskId": "uuid or null",
        "autoPauseTaskTitle": "string or null"
@@ -982,7 +993,7 @@ You MUST respond with a single JSON object matching this structure:
      "payload": {
        "taskId": "uuid",
        "taskTitle": "Task Title",
-       "timestampISO": "ISO-string",
+       "timestampISO": "${currentTimeISO}",
        "timeDisplay": "Local time",
        "reason": "paused"
      }
@@ -997,7 +1008,7 @@ You MUST respond with a single JSON object matching this structure:
      "payload": {
        "taskId": "uuid",
        "taskTitle": "Task Title",
-       "timestampISO": "ISO-string",
+       "timestampISO": "${currentTimeISO}",
        "timeDisplay": "Local time",
        "autoPauseTaskId": "uuid or null"
      }
@@ -1012,7 +1023,7 @@ You MUST respond with a single JSON object matching this structure:
      "payload": {
        "taskId": "uuid",
        "taskTitle": "Task Title",
-       "timestampISO": "ISO-string",
+       "timestampISO": "${currentTimeISO}",
        "timeDisplay": "Local time",
        "trackedDurationDisplay": "Duration string"
      }
@@ -1027,7 +1038,7 @@ You MUST respond with a single JSON object matching this structure:
      "payload": {
        "taskId": "${context.runningTask?.id ?? ''}",
        "taskTitle": "${context.runningTask?.title ?? ''}",
-       "timestampISO": "ISO-string",
+       "timestampISO": "${currentTimeISO}",
        "timeDisplay": "Local time"
      }
    }
@@ -1041,7 +1052,7 @@ You MUST respond with a single JSON object matching this structure:
      "payload": {
        "taskId": "${context.lastPausedTask?.id ?? ''}",
        "taskTitle": "${context.lastPausedTask?.title ?? ''}",
-       "timestampISO": "ISO-string",
+       "timestampISO": "${currentTimeISO}",
        "timeDisplay": "Local time"
      }
    }
