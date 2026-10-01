@@ -79,7 +79,7 @@ interface JarvisState {
   toggleWebSearch: () => void;
   setWebSearch: (enabled: boolean) => void;
   submitCommand: (manualText?: string) => Promise<void>;
-  approveProposal: () => Promise<void>;
+  approveProposal: (updatedProposal?: AssistantProposal) => Promise<void>;
   rejectProposal: () => void;
 }
 
@@ -382,15 +382,16 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     },
 
     // ── Approve Proposal ──────────────────────────────────────────────────
-    approveProposal: async () => {
+    approveProposal: async (updatedProposal?: AssistantProposal) => {
       const { activeProposal, activeMessageId } = get();
-      if (!activeProposal || !activeMessageId) return;
+      const proposalToExecute = updatedProposal || activeProposal;
+      if (!proposalToExecute || !activeMessageId) return;
 
       set({ isSubmitting: true, orbState: 'thinking', statusMessage: 'Writing changes...' });
 
       try {
         const assistantStore = useAssistantStore.getState();
-        await assistantStore.executeProposal(activeMessageId, activeProposal);
+        await assistantStore.executeProposal(activeMessageId, proposalToExecute);
 
         set({ isSubmitting: false, orbState: 'success', statusMessage: 'Changes committed successfully!', activeProposal: null, activeMessageId: null });
 

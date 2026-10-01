@@ -637,6 +637,11 @@ ${emailMeetingsList}
           * In replyText: Mention: "I found multiple meetings on your schedule around that time ([Meeting 1], [Meeting 2]). I've defaulted to **[Meeting 1]**, but you can pick the exact meeting directly using the selector on the card below before approving."
         - CASE 3: NO MATCHING SCHEDULED MEETING FOUND:
           * Propose 'create_meeting_event' to schedule and log a brand new meeting entry in the Work Journal.
+          * When the user reports a meeting that just concluded (e.g. 'just got out of our sync', 'just finished meeting with Dave'):
+            - The meeting ended right NOW:
+              * endTime: "${currentLocal24h}"
+              * startTime: 30 to 45 minutes prior in 24h format (e.g., if current time is '00:10', startTime is '23:40').
+            - Salitha can adjust the date, start time, and end time directly on the proposal card before approving.
    * SMART ACTION ITEM EXTRACTION & ATTRIBUTION:
      - Carefully scan the transcript or meeting summary for all action items and assigned deliverables.
      - Disambiguate Assignees:
@@ -1784,3 +1789,5 @@ Deno.serve(async (req: Request) => {
     });
   }
 });
+
+

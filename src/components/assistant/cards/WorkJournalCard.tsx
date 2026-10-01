@@ -433,18 +433,33 @@ export function WorkJournalCard({
                 )}
               </div>
 
-              {/* Date & Time pill */}
-              <div className="flex flex-col items-end shrink-0 text-xs font-mono text-text-muted">
-                <span className="flex items-center gap-1 text-text-secondary font-medium">
-                  <Calendar className="w-3.5 h-3.5 text-text-muted" />
-                  {date}
-                </span>
-                {(startTime || endTime) && (
-                  <span className="flex items-center gap-1 text-[11px] text-text-muted">
-                    <Clock className="w-3 h-3 text-text-muted" />
-                    {startTime || '??'} – {endTime || '??'}
-                  </span>
-                )}
+              {/* Date & Time pill - Direct inline adjustable inputs */}
+              <div className="flex flex-col items-end shrink-0 text-xs font-mono">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="bg-surface border border-border rounded px-1.5 py-0.5 text-xs text-text-secondary font-mono focus:border-border-strong focus:outline-none"
+                  title="Adjust Date"
+                />
+                <div className="flex items-center gap-1 mt-1 text-[11px] text-text-muted">
+                  <Clock className="w-3 h-3 text-text-muted shrink-0" />
+                  <input
+                    type="time"
+                    value={startTime || ''}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="bg-surface border border-border rounded px-1 py-0.5 text-[11px] text-text font-mono w-[65px] focus:border-border-strong focus:outline-none text-center"
+                    title="Adjust Start Time"
+                  />
+                  <span>–</span>
+                  <input
+                    type="time"
+                    value={endTime || ''}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="bg-surface border border-border rounded px-1 py-0.5 text-[11px] text-text font-mono w-[65px] focus:border-border-strong focus:outline-none text-center"
+                    title="Adjust End Time"
+                  />
+                </div>
               </div>
             </div>
 

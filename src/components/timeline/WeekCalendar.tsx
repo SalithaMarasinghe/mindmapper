@@ -225,14 +225,23 @@ function EventBlock({ event, startHour, isChained, onClick, onContextMenu }: Eve
 export function WeekCalendar({
   weekStart,
   eventsByDate,
-  startHour = 6,
-  endHour = 22,
+  startHour = 0,
+  endHour = 24,
   onNewEvent,
   onEventClick,
   onViewChain,
 }: WeekCalendarProps) {
   const { deleteEvent } = useTimelineStore();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const currentH = new Date().getHours();
+      const targetHour = Math.max(0, Math.min(currentH - 1, 18));
+      scrollContainerRef.current.scrollTop = targetHour * HOUR_PX;
+    }
+  }, []);
 
   const totalHours    = endHour - startHour;
   const totalHeightPx = totalHours * HOUR_PX;
@@ -342,7 +351,7 @@ export function WeekCalendar({
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1 h-full" style={{ maxHeight: '100%' }}>
+        <div ref={scrollContainerRef} className="overflow-y-auto flex-1 h-full" style={{ maxHeight: '100%' }}>
           <div className="flex relative" style={{ height: totalHeightPx }}>
 
             {/* Time gutter */}

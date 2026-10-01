@@ -1010,12 +1010,14 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
           if (shouldAddTasks && itemsToProcess.length > 0) {
             const createdIds: string[] = [];
+            let targetDate = taskStore.selectedDate;
             for (const item of itemsToProcess) {
               const cleanTitle = item.text
                 .replace(/^\[.*?\]\s*/, '')
                 .replace(/\s*\([^)]*due[^)]*\)/i, '')
                 .trim();
               const plannedDate = item.deadlineDate || p.payload.date;
+              if (plannedDate) targetDate = plannedDate;
               const created = await taskStore.createTask({
                 title: cleanTitle,
                 description: `*Action item from meeting: "${p.payload.title}" (${p.payload.date})*`,
@@ -1027,8 +1029,12 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
             if (createdIds.length > 0) {
               createdRecordIds.taskIds = createdIds;
+              if (targetDate) {
+                taskStore.setSelectedDate(targetDate);
+                await taskStore.fetchTasks(targetDate);
+              }
               toast.success(
-                `Logged meeting & added ${createdIds.length} task${createdIds.length === 1 ? '' : 's'} to Kanban To Do! 📋`
+                `Logged meeting & added ${createdIds.length} task${createdIds.length === 1 ? '' : 's'} to Kanban To Do (${targetDate})! 📋`
               );
             } else {
               toast.success(`Logged meeting "${p.payload.title}" in Work Journal!`);
