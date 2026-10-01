@@ -26,17 +26,53 @@ export class JarvisVoiceService {
   private initVoices() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
+    const scoreVoice = (v: SpeechSynthesisVoice): number => {
+      let score = 0;
+      const name = v.name.toLowerCase();
+      const lang = v.lang.toLowerCase();
+
+      // Only English voices
+      if (!lang.startsWith('en')) return -100;
+
+      // Microsoft / Google Online Natural voices are state-of-the-art
+      if (name.includes('natural') || name.includes('neural') || name.includes('online')) {
+        score += 60;
+      }
+
+      // British English gives that iconic Jarvis tone
+      if (lang.includes('en-gb') || lang.includes('en_gb')) {
+        score += 30;
+      }
+
+      // Calm / polished male voices
+      if (/ryan|george|daniel|oliver|guy|christopher|eric|arthur|brian|william/i.test(name)) {
+        score += 25;
+      }
+
+      // Male voice indicator
+      if (/male/i.test(name) && !/female/i.test(name)) {
+        score += 15;
+      }
+
+      // Prefer Google high-quality voices if natural not found
+      if (name.includes('google')) {
+        score += 10;
+      }
+
+      // Avoid legacy robotic Windows desktop voices (e.g. David, Mark, Hazel)
+      if (name.includes('desktop')) {
+        score -= 25;
+      }
+
+      return score;
+    };
+
     const findVoice = () => {
       const voices = window.speechSynthesis.getVoices();
       if (voices.length === 0) return;
 
-      const preferred =
-        voices.find((v) => v.lang.includes('en-GB') && /male|george|daniel|oliver/i.test(v.name)) ||
-        voices.find((v) => v.lang.includes('en-GB')) ||
-        voices.find((v) => /natural|enhanced/i.test(v.name) && v.lang.startsWith('en')) ||
-        voices.find((v) => v.lang.startsWith('en'));
-
-      this.selectedVoice = preferred || voices[0] || null;
+      const scored = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+      this.selectedVoice = scored[0] || voices[0] || null;
     };
 
     findVoice();
@@ -201,8 +237,8 @@ export class JarvisVoiceService {
 
     const utterance = new SpeechSynthesisUtterance(cleanedText);
     if (this.selectedVoice) utterance.voice = this.selectedVoice;
-    utterance.rate = 1.04;
-    utterance.pitch = 0.98;
+    utterance.rate = 1.0;
+    utterance.pitch = 0.95;
 
     utterance.onstart = () => {
       this.isSpeaking = true;

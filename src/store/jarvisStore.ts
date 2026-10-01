@@ -347,25 +347,61 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             activeProposal: targetProp,
             activeMessageId: lastMsg.id,
             orbState: 'idle',
-            statusMessage: 'Ready for your approval, sir.',
+            statusMessage: 'Ready for your review',
           });
           if (!get().isMuted) {
             const rawContent = (lastMsg.content || '').trim();
-            // If the LLM answered a technical or conceptual question alongside the proposal
-            if (rawContent && !rawContent.toLowerCase().startsWith('i have drafted') && rawContent.length > 30) {
-              const cleanText = rawContent.replace(/[#*`_~]/g, '').slice(0, 280).trim();
-              jarvisVoice.speak(`${cleanText}... I have also drafted the proposal below for your approval, sir.`);
+            const payload = (targetProp?.payload || {}) as Record<string, unknown>;
+
+            if (
+              rawContent &&
+              !rawContent.toLowerCase().startsWith('i have drafted') &&
+              !rawContent.toLowerCase().startsWith("i've drafted") &&
+              rawContent.length > 30
+            ) {
+              const cleanText = rawContent.replace(/[#*`_~]/g, '').slice(0, 260).trim();
+              jarvisVoice.speak(`${cleanText}... I've prepared the details below for your review.`);
             } else {
-              const typeDesc = targetProp?.type === 'create_tasks' ? 'tasks' : targetProp?.type === 'create_work_event' ? 'work journal entry' : 'entry';
-              jarvisVoice.speak(`I have drafted the ${typeDesc} for your approval, sir.`);
+              let voiceMsg = "I've drafted the details for your review.";
+              if (targetProp?.type === 'create_work_event') {
+                const title = typeof payload.title === 'string' ? payload.title : '';
+                voiceMsg = title
+                  ? `I've drafted the work journal entry for "${title}". Take a quick look.`
+                  : "I've drafted the work journal entry for your review.";
+              } else if (targetProp?.type === 'create_tasks') {
+                const tasks = (payload.tasks as Array<{ title?: string }>) || [];
+                voiceMsg =
+                  tasks.length > 1
+                    ? `I've prepared ${tasks.length} new tasks for your To Do board. Please take a look.`
+                    : "I've prepared the task for your To Do board. Please take a look.";
+              } else if (targetProp?.type === 'create_meeting_event') {
+                const title = typeof payload.title === 'string' ? payload.title : 'meeting';
+                voiceMsg = `I've drafted the summary and action items for the ${title}. Ready when you are.`;
+              } else if (targetProp?.type === 'update_project') {
+                const name = typeof payload.projectName === 'string' ? payload.projectName : 'project';
+                voiceMsg = `I've prepared the status update for ${name}. Please review.`;
+              }
+              jarvisVoice.speak(voiceMsg);
             }
           }
         } else if (autoExecuted.length > 0) {
-          set({ isSubmitting: false, orbState: 'success', statusMessage: 'Action completed!' });
-          if (!get().isMuted) jarvisVoice.speak('The action has been executed, sir.');
-          setTimeout(() => {
-            if (get().isOpen) get().closeHUD();
-          }, 1800);
+          const firstExec = autoExecuted[0];
+          const payload = (firstExec.payload || {}) as Record<string, unknown>;
+          let execVoice = 'Action completed successfully.';
+          if (firstExec.type === 'start_task') {
+            const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
+            execVoice = `Started "${title}". Timer is running.`;
+          } else if (firstExec.type === 'pause_task' || firstExec.type === 'pause_all') {
+            execVoice = 'Task paused. Enjoy your break.';
+          } else if (firstExec.type === 'resume_task' || firstExec.type === 'resume_last_paused') {
+            const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
+            execVoice = `Resumed "${title}". Timer running.`;
+          } else if (firstExec.type === 'finish_task') {
+            const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
+            execVoice = `Marked "${title}" as completed.`;
+          }
+          set({ isSubmitting: false, orbState: 'success', statusMessage: execVoice });
+          if (!get().isMuted) jarvisVoice.speak(execVoice);
         } else {
           set({ isSubmitting: false, orbState: 'speaking', statusMessage: 'Answer ready' });
           if (!get().isMuted && lastMsg.content) {
@@ -393,16 +429,96 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         const assistantStore = useAssistantStore.getState();
         await assistantStore.executeProposal(activeMessageId, proposalToExecute);
 
-        set({ isSubmitting: false, orbState: 'success', statusMessage: 'Changes committed successfully!', activeProposal: null, activeMessageId: null });
+        // Natural, sentient voice response & feedback
+        let voiceText = 'All done. The changes have been saved.';
+        let toastText = 'Action successfully logged! 🚀';
+        const payload = (proposalToExecute.payload || {}) as Record<string, unknown>;
 
-        if (!get().isMuted) {
-          jarvisVoice.speak('The changes are successfully written, sir.');
+        switch (proposalToExecute.type) {
+          case 'create_work_event': {
+            const title = typeof payload.title === 'string' ? payload.title : '';
+            voiceText = title
+              ? `I've logged your work on ${title} into the Work Journal.`
+              : 'Your work journal entry has been logged.';
+            toastText = title
+              ? `Logged "${title}" in Work Journal!`
+              : 'Logged entry in Work Journal!';
+            break;
+          }
+          case 'create_tasks': {
+            const tasks = (payload.tasks as Array<{ title?: string }>) || [];
+            if (tasks.length === 1 && tasks[0].title) {
+              voiceText = `I have added "${tasks[0].title}" to your To Do list.`;
+              toastText = `Created "${tasks[0].title}" in To Do!`;
+            } else if (tasks.length > 1) {
+              voiceText = `I have added ${tasks.length} new tasks to your To Do board.`;
+              toastText = `Created ${tasks.length} tasks in To Do!`;
+            } else {
+              voiceText = 'The tasks have been added to your Kanban To Do list.';
+              toastText = 'Tasks added to To Do!';
+            }
+            break;
+          }
+          case 'create_meeting_event': {
+            const title = typeof payload.title === 'string' ? payload.title : 'meeting';
+            const hasTasks = Array.isArray(payload.actionItems) && payload.actionItems.length > 0;
+            voiceText = hasTasks
+              ? `I've logged the ${title} meeting and added your action items to Kanban.`
+              : `Logged the ${title} meeting into your journal.`;
+            toastText = `Logged meeting "${title}"!`;
+            break;
+          }
+          case 'update_project': {
+            const name = typeof payload.projectName === 'string' ? payload.projectName : 'project';
+            const status = typeof payload.status === 'string' ? payload.status : 'completed';
+            voiceText = `I've updated ${name} and marked it as ${status}.`;
+            toastText = `Project "${name}" marked as ${status}! 🏆`;
+            break;
+          }
+          case 'create_project': {
+            const name = typeof payload.name === 'string' ? payload.name : 'project';
+            voiceText = `Project ${name} has been added to your initiatives.`;
+            toastText = `Created project "${name}"! 🚀`;
+            break;
+          }
+          case 'finish_task': {
+            const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
+            voiceText = `Marked ${title} as completed and moved it to Done.`;
+            toastText = `Completed "${title}"!`;
+            break;
+          }
+          case 'start_task': {
+            const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
+            voiceText = `Started working on ${title}. Timer is running.`;
+            toastText = `Started "${title}"!`;
+            break;
+          }
+          case 'pause_task':
+          case 'pause_all': {
+            voiceText = 'Tasks paused. Enjoy your break.';
+            toastText = 'Tasks paused for a break. ☕';
+            break;
+          }
+          default:
+            voiceText = proposalToExecute.summary
+              ? `${proposalToExecute.summary} completed.`
+              : 'Action successfully completed.';
+            toastText = proposalToExecute.summary || 'Action completed!';
         }
 
-        toast.success('Changes successfully written! 🚀');
-        setTimeout(() => {
-          if (get().isOpen) get().closeHUD();
-        }, 1800);
+        set({
+          isSubmitting: false,
+          orbState: 'success',
+          statusMessage: voiceText,
+          activeProposal: null,
+          activeMessageId: null,
+        });
+
+        if (!get().isMuted) {
+          jarvisVoice.speak(voiceText);
+        }
+
+        toast.success(toastText);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Approval failed';
         console.error('[Jarvis] Approval error:', err);

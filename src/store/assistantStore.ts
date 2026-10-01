@@ -1369,6 +1369,17 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
           await useTimelineStore.getState().deleteEvent(evId);
           toast.success(`Undone: Removed event from Work Journal`);
         }
+      } else if (proposal.type === 'create_tasks') {
+        const createdTaskIds = proposal.createdRecordIds?.taskIds;
+        if (createdTaskIds && createdTaskIds.length > 0) {
+          for (const tId of createdTaskIds) {
+            await supabase.from('tasks').delete().eq('id', tId);
+          }
+          await taskStore.fetchTasks();
+          toast.success(`Undone: Removed ${createdTaskIds.length} created task${createdTaskIds.length === 1 ? '' : 's'} from To Do`);
+        } else {
+          toast.success('Undone: Created tasks reverted');
+        }
       } else if (proposal.type === 'update_meeting_event') {
         const createdTaskIds = proposal.createdRecordIds?.taskIds;
         if (createdTaskIds && createdTaskIds.length > 0) {
