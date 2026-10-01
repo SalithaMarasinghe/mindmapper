@@ -382,7 +382,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         const assistantStore = useAssistantStore.getState();
         await assistantStore.executeProposal(activeMessageId, activeProposal);
 
-        set({ isSubmitting: false, orbState: 'success', statusMessage: 'Changes committed successfully!' });
+        set({ isSubmitting: false, orbState: 'success', statusMessage: 'Changes committed successfully!', activeProposal: null, activeMessageId: null });
 
         if (!get().isMuted) {
           jarvisVoice.speak('The changes are successfully written, sir.');
@@ -414,3 +414,4 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     },
   };
 });
+

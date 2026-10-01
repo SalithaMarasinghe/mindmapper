@@ -883,7 +883,7 @@ ${pastUnfinishedList}
 ### OUTPUT FORMAT:
 You MUST respond with a single JSON object matching this structure:
 {
-  "replyText": "Markdown formatted conversational response to the user.",
+  "replyText": "Markdown formatted conversational response to the user. CRITICAL: If you generate proposals, DO NOT repeat the task details, journal text, or payload contents here! Keep this text extremely brief (e.g. 'I have drafted the entry for your approval.') because the user will see the data in the interactive card.",
   "engineeredPrompt": "Markdown formatted context-engineered prompt string if Category C, otherwise null or omitted.",
   "proposals": [ ...array of proposals if any action is needed, otherwise empty array... ],
   "suggestedFollowups": ["Short quick-action phrase 1", "Short phrase 2"]
