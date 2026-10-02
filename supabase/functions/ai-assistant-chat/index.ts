@@ -1099,7 +1099,7 @@ async function executeAgentTool(
       if (matchedExisting) {
         const uMsg = userMessage || '';
         const isUserPausingOrWrappingUp =
-          /\b(done for the day|halfway|pause|take a break|tea break|heading out|wrapping up for today|wrapping up for the day|continue tomorrow|do.*tomorrow|tomorrow)\b/i.test(uMsg);
+          /\b(done for the day|halfway done|take a break|tea break|heading out|wrapping up for (?:today|the day)|call it a day|stop(?:ping)? (?:for today|here)|continue (?:this|the rest|it) tomorrow)\b/i.test(uMsg);
 
         if (isUserPausingOrWrappingUp) {
           try {
@@ -1253,7 +1253,7 @@ async function executeAgentTool(
         args.isPaused === true ||
         String(args.isPaused).toLowerCase() === 'true' ||
         args.isPaused === 'true' ||
-        /\b(done for the day|halfway|pause|take a break|tea break|heading out|wrapping up for today|wrapping up for the day|continue tomorrow|do.*tomorrow|tomorrow)\b/i.test(uMsg);
+        /\b(done for the day|halfway done|take a break|tea break|heading out|wrapping up for (?:today|the day)|call it a day|stop(?:ping)? (?:for today|here)|continue (?:this|the rest|it) tomorrow)\b/i.test(uMsg);
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
 
@@ -3205,9 +3205,14 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      const hasMeetingEvent = agentExecutedProposals.some(
+        (p) => p.type === 'create_meeting_event' || (p.type === 'create_work_event' && (p.payload?.type === 'meeting' || (p.payload?.attendees && p.payload.attendees.length > 1)))
+      ) || userReportedMeeting;
+
       // Safety net: If user said done for the day / halfway / pause / continue tomorrow, ensure task is paused!
       const isUserPausingOrWrappingUp =
-        /\b(done for the day|halfway|pause|take a break|tea break|heading out|wrapping up for today|wrapping up for the day|continue tomorrow|do.*tomorrow|tomorrow)\b/i.test(message);
+        !hasMeetingEvent &&
+        /\b(done for the day|halfway done|take a break|tea break|heading out|wrapping up for (?:today|the day)|call it a day|stop(?:ping)? (?:for today|here)|continue (?:this|the rest|it) tomorrow)\b/i.test(message);
 
       const hasPauseProposal = agentExecutedProposals.some(
         (p) => p.type === 'pause_task' || p.type === 'pause_all'
