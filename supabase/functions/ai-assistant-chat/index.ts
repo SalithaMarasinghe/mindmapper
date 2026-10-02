@@ -1739,19 +1739,42 @@ ${projectsList}
      * description: structured strictly according to the **4-badge Meeting Google XYZ formula**.
 
 ### GOOGLE XYZ FORMULA STANDARD (4-BADGE STRUCTURE):
-Preserve all specific metrics, numbers, component names, models, algorithms, and latency targets.
+Descriptions must be comprehensive, technical, multi-bullet, and formatted with clean Markdown headers (NEVER output placeholder tokens like "[Doing Z]" or "[Measured by Y]"). Preserve all specific metrics, numbers, component names, models, algorithms, and latency targets.
 
 Work Journal Format:
-🎯 Objective & Context: [Engineering challenge, component, or milestone]
-🛠️ Technical Execution [Doing Z]: [Specific algorithms, modules, token sizes, chunking strategies, test suites]
-🏆 Key Accomplishments [Accomplished X]: [Primary strategic deliverable. If halfway: explicitly include "Planned next milestone: ..."]
-📊 Measured Impact & Metrics [Measured by Y]: [Concrete metrics: latency percentiles, recall rates, test pass rates]
+## 🎯 Objective & Context
+- [Executive overview of the engineering challenge, component, or milestone]
+
+## 🛠️ Technical Execution
+- [Specific technical bullet 1: module names, chunking algorithms, token overlap, data contracts]
+- [Specific technical bullet 2: profiling methods, index configurations, connection pooling]
+- [Specific technical bullet 3: integration checks, test suites executed]
+
+## 🏆 Key Accomplishments
+- [Primary deliverable completed or architectural milestone achieved]
+- [If halfway / done for today: explicitly include "Planned next milestone: [What Salitha will tackle tomorrow]"]
+
+## 📊 Measured Impact & Metrics
+- [Concrete metrics: latency benchmarks (p50/p95/p99), recall rates, throughput (QPS), test suite pass rates (e.g. 100% pass rate across test suites), memory/index footprint]
 
 Meeting Journal Format:
-🎯 Objective & Context: [Strategic purpose and sync partner]
-🛠️ Technical Discussion & Trade-Offs [Doing Z]: [Specific options and trade-offs weighed: engines, latency, memory footprint]
-🏆 Strategic Consensus & Decisions [Accomplished X]: Accomplished consensus on [decision]. Approved Direction: [...]. Out of Scope: [...]
-📊 Action Items & Deliverables [Measured by Y]: [Explicit deliverables assigned to Salitha and next alignment checkpoint]
+## 🎯 Objective & Context
+- [Strategic purpose of architectural sync, topic domain, attendees: Salitha Marasinghe & Tech Lead]
+
+## 🛠️ Technical Discussion & Trade-Offs
+- [Engine/Component Evaluation: specific trade-offs weighed: latency, memory overhead, scalability, open-source flexibility]
+- [Retrieval / Indexing Strategy: sparse vs dense representations, cold-start handling, boundary preservation]
+- [Performance & Footprint: parameter tuning, query latency targets under load]
+
+## 🏆 Strategic Consensus & Decisions
+- [Core architectural decision finalized: e.g. unanimous agreement on adopting selected engine]
+- [Approved Technical Direction: standardized configurations, metrics, and schemas]
+- [Out of Scope / Deferred: non-critical secondary features deferred to Phase 2]
+
+## 📊 Action Items & Deliverables
+- [Salitha Marasinghe: explicit deliverable 1 with priority and verification criteria]
+- [Salitha Marasinghe: explicit deliverable 2 with priority and verification criteria]
+- [Next Alignment Checkpoint: scheduled checkpoint or benchmark review]
 
 ### TASK DEDUPLICATION & INTEGRITY:
 - NEVER create duplicate tasks. Check SALITHA'S CURRENT TASK BOARD first.
