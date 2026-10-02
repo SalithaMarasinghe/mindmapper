@@ -1,9 +1,11 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { setIntendedRedirect } from '../../utils/authRedirect';
 
 export function ProtectedRoute() {
   const { user, isLoading } = useAuthStore();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -14,7 +16,15 @@ export function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    const target = location.pathname + location.search;
+    setIntendedRedirect(target);
+    return (
+      <Navigate 
+        to={`/login?redirect=${encodeURIComponent(target)}`} 
+        state={{ from: location }} 
+        replace 
+      />
+    );
   }
 
   return <Outlet />;

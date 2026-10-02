@@ -1,5 +1,6 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthForm } from '../components/auth/AuthForm';
+import { getPreferredAuthDestination } from '../utils/authRedirect';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export function RegisterPage() {
           <h2 className="mt-4 text-2xl font-semibold text-slate-200">Create a new account</h2>
         </div>
 
-        <AuthForm mode="register" onSuccess={() => navigate('/dashboard')} />
+        <AuthForm mode="register" onSuccess={() => navigate(getPreferredAuthDestination('/dashboard'), { replace: true })} />
 
         <div className="mt-6 flex justify-center text-sm">
           <span className="text-slate-400">

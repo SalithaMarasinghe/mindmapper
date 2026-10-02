@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
+import { getPreferredAuthDestination, setIntendedRedirect } from '../../utils/authRedirect';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -24,7 +25,9 @@ export function AuthForm({ mode, onSuccess }: AuthFormProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const redirectTo = `${window.location.origin}/dashboard`;
+      const target = getPreferredAuthDestination('/dashboard');
+      setIntendedRedirect(target);
+      const redirectTo = `${window.location.origin}${target}`;
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

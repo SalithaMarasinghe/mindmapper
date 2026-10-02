@@ -1,3 +1,7 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import { getPreferredAuthDestination, isStandaloneApp } from '../utils/authRedirect';
 import { LandingNav } from '../components/landing/LandingNav';
 import { Hero } from '../components/landing/Hero';
 import { GapSection } from '../components/landing/GapSection';
@@ -8,6 +12,18 @@ import { FinalCta } from '../components/landing/FinalCta';
 import { LandingFooter } from '../components/landing/LandingFooter';
 
 export function LandingPage() {
+  const { user, isLoading } = useAuthStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (user) {
+      navigate(getPreferredAuthDestination('/dashboard'), { replace: true });
+    } else if (isStandaloneApp()) {
+      navigate('/login?redirect=%2Fmobile', { replace: true });
+    }
+  }, [user, isLoading, navigate]);
+
   return (
     <div className="min-h-screen bg-[#000000] text-slate-100 font-sans">
       <LandingNav />

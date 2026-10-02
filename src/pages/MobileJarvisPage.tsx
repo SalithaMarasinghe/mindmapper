@@ -143,6 +143,7 @@ export function MobileJarvisPage() {
         <div className="flex items-center gap-2">
           <Link
             to="/dashboard"
+            onClick={() => sessionStorage.setItem('prefer_desktop', 'true')}
             className="flex items-center gap-1.5 font-bold text-accent text-base tracking-tight shrink-0"
             title="Switch to Desktop View"
           >
@@ -185,6 +186,7 @@ export function MobileJarvisPage() {
           {/* Desktop Dashboard Switch Link */}
           <Link
             to="/dashboard"
+            onClick={() => sessionStorage.setItem('prefer_desktop', 'true')}
             className="p-1.5 rounded-[8px] text-text-muted hover:text-text hover:bg-surface transition-colors"
             title="Desktop Dashboard"
           >

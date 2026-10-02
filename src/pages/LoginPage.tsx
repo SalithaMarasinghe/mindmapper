@@ -1,17 +1,28 @@
 import { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { AuthForm } from '../components/auth/AuthForm';
+import { getPreferredAuthDestination } from '../utils/authRedirect';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
+
+  const resolveTarget = () => {
+    const fromState = (location.state as any)?.from;
+    const fromPath = typeof fromState === 'string' ? fromState : fromState?.pathname;
+    if (fromPath && fromPath !== '/login' && fromPath !== '/register') {
+      return fromPath;
+    }
+    return getPreferredAuthDestination('/dashboard');
+  };
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate(resolveTarget(), { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, location]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#000000] py-12 px-4 sm:px-6 lg:px-8">
@@ -21,7 +32,7 @@ export function LoginPage() {
           <h2 className="mt-4 text-2xl font-semibold text-slate-200">Sign in to your account</h2>
         </div>
 
-        <AuthForm mode="login" onSuccess={() => navigate('/dashboard')} />
+        <AuthForm mode="login" onSuccess={() => navigate(resolveTarget(), { replace: true })} />
 
         <div className="mt-6 flex justify-center text-sm">
           <span className="text-slate-400">

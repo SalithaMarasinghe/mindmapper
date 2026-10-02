@@ -83,6 +83,7 @@ export function TopBar({
           {/* Jarvis Mobile Companion Link */}
           <Link
             to="/mobile"
+            onClick={() => sessionStorage.removeItem('prefer_desktop')}
             className="flex items-center gap-1.5 text-text-muted hover:text-accent px-2 py-1.5 rounded-[8px] hover:bg-surface transition-colors"
             title="Jarvis Mobile Companion View"
           >

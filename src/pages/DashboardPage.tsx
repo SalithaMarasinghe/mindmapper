@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TopBar } from '../components/layout/TopBar';
 import { MapGrid } from '../components/dashboard/MapGrid';
 import { CreateMapModal } from '../components/dashboard/CreateMapModal';
@@ -10,6 +11,7 @@ import { TaskLog } from '../components/tasklog/TaskLog';
 import { JarvisScreen } from '../components/jarvis/JarvisScreen';
 import { CareerLedgerModal } from '../components/ledger/CareerLedgerModal';
 import { ProjectsModal } from '../components/ledger/ProjectsModal';
+import { isStandaloneApp, isMobileViewport, getAndClearIntendedRedirect } from '../utils/authRedirect';
 
 type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'mind-maps';
 
@@ -21,6 +23,8 @@ const TABS = [
 ];
 
 export function DashboardPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<DashboardTab>('jarvis-cockpit');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +32,33 @@ export function DashboardPage() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const { maps, fetchMaps } = useMapsStore();
   const { isReadOnly } = useSettingsStore();
+
+  useEffect(() => {
+    // If explicitly navigating with ?desktop=true, remember preference
+    if (searchParams.get('desktop') === 'true') {
+      sessionStorage.setItem('prefer_desktop', 'true');
+      return;
+    }
+
+    // 1. If explicit redirect was set before login (e.g. user was going to /mobile)
+    const storedTarget = getAndClearIntendedRedirect();
+    if (storedTarget && storedTarget !== '/dashboard' && storedTarget.startsWith('/')) {
+      navigate(storedTarget, { replace: true });
+      return;
+    }
+
+    // 2. If running inside installed standalone PWA on iPhone/iPad -> ALWAYS go to /mobile
+    if (isStandaloneApp() && sessionStorage.getItem('prefer_desktop') !== 'true') {
+      navigate('/mobile', { replace: true });
+      return;
+    }
+
+    // 3. If on mobile screen and user hasn't explicitly chosen desktop
+    if (isMobileViewport() && sessionStorage.getItem('prefer_desktop') !== 'true') {
+      navigate('/mobile', { replace: true });
+      return;
+    }
+  }, [navigate, searchParams]);
 
   useEffect(() => {
     fetchMaps();
