@@ -844,11 +844,26 @@ const agentTools = [
       parameters: {
         type: 'object',
         properties: {
-          taskId: { type: 'string', description: 'Task UUID or title' },
+          taskId: { type: ['string', 'null'], description: 'Task UUID, task title, or "running" for currently active task' },
+          title: { type: ['string', 'null'], description: 'Updated title of task' },
+          priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', 'urgent', null], description: 'Task priority' },
           status: { type: ['string', 'null'], enum: ['todo', 'in_progress', 'done', null] },
           isPaused: { type: ['boolean', 'null'], description: 'true to pause, false to resume' },
           trackedSeconds: { type: ['number', 'null'] },
           description: { type: ['string', 'null'] },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_task',
+      description: 'Deletes a task from the user Kanban board by task UUID or title when explicitly requested by user.',
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: { type: 'string', description: 'Task UUID or task title to delete' },
         },
         required: ['taskId'],
       },
@@ -957,6 +972,10 @@ const agentTools = [
   },
 ];
 
+const operationalTools = agentTools.filter((t) =>
+  ['update_task', 'create_task', 'delete_task'].includes(t.function.name)
+);
+
 async function executeAgentTool(
   toolName: string,
   args: Record<string, unknown>,
@@ -1063,9 +1082,16 @@ async function executeAgentTool(
     case 'create_task': {
       const title = String(args.title || '').trim();
       const status = typeof args.status === 'string' ? args.status : 'todo';
-      const priority = typeof args.priority === 'string' ? args.priority : 'medium';
+      let priority = typeof args.priority === 'string' && args.priority ? args.priority : '';
+      if (!priority && userMessage) {
+        if (/\b(urgent|critical)\b/i.test(userMessage)) priority = 'urgent';
+        else if (/\b(high|important)\b/i.test(userMessage)) priority = 'high';
+        else if (/\blow\b/i.test(userMessage)) priority = 'low';
+      }
+      if (priority.toLowerCase() === 'urgent') priority = 'high';
+      if (!priority) priority = 'medium';
       const trackedSeconds = Number(args.trackedSeconds) || 0;
-      const description = args.description ? String(args.description) : null;
+      const description = args.description ? String(args.description) : '';
       const plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
 
       // 0. Meeting guard: If the user is explaining/logging a meeting, action items must NOT be auto-created now!
@@ -1222,19 +1248,50 @@ async function executeAgentTool(
         String(args.isPaused).toLowerCase() === 'true' ||
         args.isPaused === 'true';
 
+      if (!taskId || taskId === 'running' || taskId === 'current' || taskId === 'active') {
+        if (isExplicitPause && context?.runningTask?.id) {
+          taskId = context.runningTask.id;
+        } else if ((args.isPaused === false || args.status === 'in_progress') && (context?.lastPausedTask?.id || context?.runningTask?.id)) {
+          taskId = context?.lastPausedTask?.id || context?.runningTask?.id;
+        } else if (context?.runningTask?.id) {
+          taskId = context.runningTask.id;
+        }
+      }
+
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
+      let matchedTask: any = null;
 
       // Robust ID resolution: If not a valid UUID, search by title or current active task
       if (!isUUID) {
-        let matchedTask: any = null;
         if (taskId && taskId !== 'running' && taskId !== 'current' && taskId !== 'active') {
+          const cleanSearch = taskId.replace(/\b(the|task|my)\b/gi, '').trim();
           const { data: found } = await supabase
             .from('tasks')
             .select('*')
             .eq('user_id', user.id)
-            .ilike('title', `%${taskId}%`)
+            .ilike('title', `%${cleanSearch || taskId}%`)
             .limit(1);
           if (found && found.length > 0) matchedTask = found[0];
+
+          if (!matchedTask) {
+            const words = (cleanSearch || taskId).split(/\s+/).filter((w: string) => w.length >= 3);
+            for (const word of words) {
+              const { data: wordMatch } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('user_id', user.id)
+                .ilike('title', `%${word}%`)
+                .limit(1);
+              if (wordMatch && wordMatch.length > 0) {
+                matchedTask = wordMatch[0];
+                break;
+              }
+            }
+          }
+        }
+
+        if (!matchedTask && isExplicitPause && context?.runningTask) {
+          matchedTask = context.runningTask;
         }
 
         if (!matchedTask && (isExplicitPause || args.status === 'done')) {
@@ -1248,34 +1305,53 @@ async function executeAgentTool(
           if (inProg && inProg.length > 0) matchedTask = inProg[0];
         }
 
-        if (!matchedTask && isExplicitPause && context?.runningTask) {
-          matchedTask = context.runningTask;
-        }
-
-        if (!matchedTask && args.isPaused === false) {
-          const { data: paused } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('status', 'in_progress')
-            .eq('is_paused', true)
-            .order('updated_at', { ascending: false })
-            .limit(1);
-          if (paused && paused.length > 0) matchedTask = paused[0];
+        if (!matchedTask && (args.isPaused === false || args.status === 'in_progress')) {
+          if (context?.lastPausedTask?.id) {
+            const { data: lastP } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('id', context.lastPausedTask.id)
+              .eq('user_id', user.id)
+              .maybeSingle();
+            if (lastP) matchedTask = lastP;
+          }
+          if (!matchedTask) {
+            const { data: paused } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('status', 'in_progress')
+              .eq('is_paused', true)
+              .order('updated_at', { ascending: false })
+              .limit(1);
+            if (paused && paused.length > 0) matchedTask = paused[0];
+          }
         }
 
         if (matchedTask) {
           taskId = matchedTask.id;
         }
+      } else {
+        const { data: found } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', taskId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (found) matchedTask = found;
       }
 
       const updates: Record<string, unknown> = {
         updated_at: currentTimeISO,
       };
+      if (typeof args.title === 'string' && args.title) updates.title = args.title;
+      if (typeof args.priority === 'string' && args.priority) {
+        updates.priority = args.priority.toLowerCase() === 'urgent' ? 'high' : args.priority.toLowerCase();
+      }
       if (typeof args.status === 'string') updates.status = args.status;
       if (typeof args.isPaused === 'boolean') updates.is_paused = args.isPaused;
       if (args.trackedSeconds !== undefined) updates.tracked_seconds = Number(args.trackedSeconds);
-      if (args.description !== undefined) updates.description = String(args.description);
+      if (args.description !== undefined) updates.description = String(args.description || '');
 
       // Handle Completed / Done
       if (args.status === 'done' && !isExplicitPause) {
@@ -1361,34 +1437,41 @@ async function executeAgentTool(
 
       // Handle Resume or Move to In Progress
       if ((args.status === 'in_progress' || args.isPaused === false) && !isExplicitPause) {
+        const finalValidTaskId = (matchedTask?.id || (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId) ? taskId : null));
         const { data: rpcData } = await supabase.rpc('rpc_start_or_resume_task', {
-          p_task_id: taskId || null,
+          p_task_id: finalValidTaskId,
           p_timestamp: currentTimeISO,
           p_is_resume: true,
         });
 
-        if (taskId) {
+        if (finalValidTaskId) {
           await supabase.from('tasks').update({
             status: 'in_progress',
             is_paused: false,
             updated_at: currentTimeISO,
-          }).eq('id', taskId).eq('user_id', user.id);
+          }).eq('id', finalValidTaskId).eq('user_id', user.id);
         }
 
         let taskTitle = 'Task';
         if (rpcData && rpcData.title) {
           taskTitle = rpcData.title;
-        } else if (taskId) {
-          const { data: tRow } = await supabase.from('tasks').select('title').eq('id', taskId).maybeSingle();
+        } else if (finalValidTaskId) {
+          const { data: tRow } = await supabase.from('tasks').select('title').eq('id', finalValidTaskId).maybeSingle();
           if (tRow?.title) taskTitle = tRow.title;
+        } else if (matchedTask?.title) {
+          taskTitle = matchedTask.title;
         }
+
+        const isStarting = !matchedTask || matchedTask.status === 'todo';
+        const proposalType = isStarting ? 'start_task' : 'resume_task';
+        const summaryText = isStarting ? `Started "${taskTitle}"` : `Resumed "${taskTitle}"`;
 
         return {
           result: { success: true, taskId, taskTitle, status: 'in_progress', isPaused: false },
           proposal: {
             id: crypto.randomUUID(),
-            type: 'resume_task',
-            summary: `Resumed "${taskTitle}"`,
+            type: proposalType,
+            summary: summaryText,
             status: 'auto_executed',
             payload: {
               taskId,
@@ -1399,7 +1482,7 @@ async function executeAgentTool(
         };
       }
 
-      // Generic updates
+      // Generic updates (title, priority, description, etc.)
       if (taskId) {
         const uMsg = userMessage || '';
         const isHalfway = /\b(halfway|partially|done for (?:the )?day|tomorrow)\b/i.test(uMsg);
@@ -1434,6 +1517,55 @@ async function executeAgentTool(
       }
 
       return { result: { success: false, error: 'Task not found' } };
+    }
+
+    case 'delete_task': {
+      let taskId = String(args.taskId || '').trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
+      let taskTitle = taskId;
+      if (!isUUID) {
+        const cleanSearch = taskId.replace(/\b(the|task|my)\b/gi, '').trim();
+        const { data: found } = await supabase
+          .from('tasks')
+          .select('id, title')
+          .eq('user_id', user.id)
+          .ilike('title', `%${cleanSearch || taskId}%`)
+          .limit(1);
+        if (found && found.length > 0) {
+          taskId = found[0].id;
+          taskTitle = found[0].title;
+        } else {
+          const words = (cleanSearch || taskId).split(/\s+/).filter((w: string) => w.length >= 3);
+          for (const word of words) {
+            const { data: wordMatch } = await supabase
+              .from('tasks')
+              .select('id, title')
+              .eq('user_id', user.id)
+              .ilike('title', `%${word}%`)
+              .limit(1);
+            if (wordMatch && wordMatch.length > 0) {
+              taskId = wordMatch[0].id;
+              taskTitle = wordMatch[0].title;
+              break;
+            }
+          }
+        }
+      } else {
+        const { data: found } = await supabase.from('tasks').select('title').eq('id', taskId).maybeSingle();
+        if (found?.title) taskTitle = found.title;
+      }
+
+      await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', user.id);
+      return {
+        result: { success: true, taskId, taskTitle, message: `Task "${taskTitle}" deleted.` },
+        proposal: {
+          id: crypto.randomUUID(),
+          type: 'delete_task',
+          summary: `Deleted task "${taskTitle}"`,
+          status: 'auto_executed',
+          payload: { taskId, taskTitle },
+        },
+      };
     }
 
     case 'create_journal_entry': {
@@ -1484,7 +1616,35 @@ async function executeAgentTool(
       if (eventType === 'work') {
         const formattedDescription = formatToGoogleXYZWorkDescription(title, rawDesc, rawStatus);
 
-        const targetTaskId = typeof args.linkedTaskId === 'string' ? args.linkedTaskId : (context?.runningTask ? context.runningTask.id : null);
+        let targetTaskId: string | null = null;
+        if (typeof args.linkedTaskId === 'string' && args.linkedTaskId.trim()) {
+          const rawId = args.linkedTaskId.trim();
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId);
+          if (isUUID) {
+            targetTaskId = rawId;
+          } else {
+            const { data: matchedT } = await supabase
+              .from('tasks')
+              .select('id')
+              .eq('user_id', user.id)
+              .ilike('title', `%${rawId}%`)
+              .maybeSingle();
+            if (matchedT?.id) targetTaskId = matchedT.id;
+          }
+        }
+        if (!targetTaskId && context?.runningTask?.id) {
+          targetTaskId = context.runningTask.id;
+        }
+        if (!targetTaskId && title) {
+          const { data: matchedByTitle } = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('user_id', user.id)
+            .ilike('title', `%${title}%`)
+            .maybeSingle();
+          if (matchedByTitle?.id) targetTaskId = matchedByTitle.id;
+        }
+
         if (targetTaskId) {
           if (rawStatus === 'in_progress') {
             // Automatically pause the linked task
@@ -1644,7 +1804,8 @@ async function executeAgentTool(
 function buildAgentSystemPrompt(
   currentTimeISO: string,
   timezone: string,
-  context: ContextSnapshot
+  context: ContextSnapshot,
+  isQuickOperational = false
 ): string {
   const baseD = new Date(currentTimeISO);
   const local = getLocalTimeAndDate(baseD, timezone, context.today);
@@ -1666,6 +1827,30 @@ function buildAgentSystemPrompt(
           )
           .join('\n')
       : 'None on the board yet.';
+
+  if (isQuickOperational) {
+    return `You are Jarvis, personal engineering AI assistant for Salitha Marasinghe.
+You operate Salitha's Kanban Task Log and timer using real database tools.
+
+### LIVE TEMPORAL CONTEXT:
+- Real-World Current Local Time: "${local.time24h}" (${dayOfWeek}, ${local.dateISO})
+- Current ISO Timestamp: "${currentTimeISO}"
+
+### SALITHA'S CURRENT TASK BOARD:
+${runningTaskInfo}
+
+Tasks currently on the board:
+${tasksList}
+
+### ACTIONS:
+- Pausing running task: call 'update_task' with isPaused: true.
+- Resuming / Starting task: call 'update_task' with taskId, status: 'in_progress', isPaused: false.
+- Creating task: call 'create_task' with title, status: 'todo', priority.
+- Deleting task: call 'delete_task' with taskId.
+- Updating task: call 'update_task' with taskId and updated fields.
+
+Deliver a crisp, warm, 1-sentence confirmation.`;
+  }
 
   const projectsList =
     context.existingProjects && context.existingProjects.length > 0
@@ -1735,6 +1920,10 @@ ${projectsList}
      * decisions: "* **[Agreed Direction]**: ...\n* **[Out of Scope / Deferred]**: ..."
      * actionItems: array of action items (e.g. [{ text: "...", assignee: "Salitha Marasinghe", priority: "high" }])
      * description: structured strictly according to the **4-badge Meeting Google XYZ formula**.
+
+7. DELETING OR UPDATING TASKS:
+   - When asked to delete a task: call 'delete_task' with taskId.
+   - When asked to change priority, description, or title: call 'update_task' with taskId, and updated fields (e.g. priority: 'urgent', description).
 
 ### GOOGLE XYZ FORMULA STANDARD (4-BADGE STRUCTURE):
 In the 'description' argument of create_journal_entry, ALWAYS generate the full 4 badges directly.
@@ -1833,7 +2022,7 @@ function buildOperationalSystemPrompt(
     : `No task is currently running or paused.`;
 
   const tasksList =
-    context.todaysTasks.length > 0
+    context.todaysTasks && context.todaysTasks.length > 0
       ? context.todaysTasks
           .map(
             (t) =>
@@ -1853,7 +2042,7 @@ function buildOperationalSystemPrompt(
       : 'No projects created yet.';
 
   const eventsList =
-    context.todaysEvents.length > 0
+    context.todaysEvents && context.todaysEvents.length > 0
       ? context.todaysEvents
           .map(
             (e) =>
@@ -1863,7 +2052,7 @@ function buildOperationalSystemPrompt(
       : 'No timeline events logged today.';
 
   const pastUnfinishedList =
-    context.pastUnfinishedTasks.length > 0
+    context.pastUnfinishedTasks && context.pastUnfinishedTasks.length > 0
       ? context.pastUnfinishedTasks
           .map((t) => `- (ID: ${t.id}) "${t.title}" (planned: ${t.plannedDate}, ${t.priority})`)
           .join('\n')
@@ -2672,7 +2861,7 @@ Deno.serve(async (req: Request) => {
         content: m.content,
       }));
 
-    // 7. Call LLM (DeepSeek prioritized, OpenRouter second, Groq as fallback)
+    // 7. Call LLM (Groq Ultra-Fast LPU Engine Primary, OpenRouter Free Secondary)
     const deepseekKey = Deno.env.get('DEEPSEEK_API_KEY');
     const openrouterKey = Deno.env.get('OPENROUTER_API_KEY');
     const codecraftKey = Deno.env.get('CODECRAFT_API_KEY');
@@ -2686,32 +2875,67 @@ Deno.serve(async (req: Request) => {
       headers?: Record<string, string>;
     }
 
+    const isMeetingReport = /\b(meeting|sync|standup|call with|1-on-1|discussed with|just finished.*sync)\b/i.test(message);
+    const isWorkSessionOrJournal = /\b(done for the day|finished|completed|halfway|wrap up|wrapping up|heading out for the day|profiling|implemented|evaluated|journal|career)\b/i.test(message);
+    const isExplicitExplainOrQA = /\b(explain|what is|how does|why does|difference between|compare|tell me about)\b/i.test(message);
+
+    const isQuickOperational = !isMeetingReport && !isWorkSessionOrJournal && !isExplicitExplainOrQA &&
+      /\b(pause|break|resume|start|stop timer|delete task|remove task|done for the break|take a break|back from break|add task|create task|schedule task|update task|change priority)\b/i.test(message);
+
     const providers: ProviderConfig[] = [];
 
-    // Ultra-Fast LPU Engine: Groq Primary (120b)
+    // Ultra-Fast LPU Engine: Specialized Model Ordering
     if (groqKey) {
-      providers.push({
-        label: 'Groq',
-        url: 'https://api.groq.com/openai/v1/chat/completions',
-        key: groqKey,
-        model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
-      });
-      // Groq High-Speed Secondary (qwen/qwen3.8-27b - 1.8s parallel execution, separate quota)
-      providers.push({
-        label: 'Groq-Qwen',
-        url: 'https://api.groq.com/openai/v1/chat/completions',
-        key: groqKey,
-        model: 'qwen/qwen3.8-27b',
-      });
+      if (isQuickOperational) {
+        // High-Speed Engine: Groq 20B / Qwen first (sub-second execution for operational commands)
+        providers.push({
+          label: 'Groq-20B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqKey,
+          model: 'openai/gpt-oss-20b',
+        });
+        providers.push({
+          label: 'Groq-Qwen',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqKey,
+          model: 'qwen/qwen3.8-27b',
+        });
+        providers.push({
+          label: 'Groq-120B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqKey,
+          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
+        });
+      } else {
+        // Deep Reasoning Engine: Groq 120B first (maximum nuance for Google XYZ journals & meetings)
+        providers.push({
+          label: 'Groq-120B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqKey,
+          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
+        });
+        providers.push({
+          label: 'Groq-Qwen',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqKey,
+          model: 'qwen/qwen3.8-27b',
+        });
+        providers.push({
+          label: 'Groq-20B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqKey,
+          model: 'openai/gpt-oss-20b',
+        });
+      }
     }
 
-    // OpenRouter Gateway (multi-model fallback)
+    // OpenRouter Gateway (multi-model fallback using 100% Free tier models)
     if (openrouterKey) {
       providers.push({
         label: 'OpenRouter',
         url: 'https://openrouter.ai/api/v1/chat/completions',
         key: openrouterKey,
-        model: Deno.env.get('OPENROUTER_MODEL') || 'meta-llama/llama-3.3-70b-instruct',
+        model: 'qwen/qwen3.8-27b:free',
         headers: {
           'HTTP-Referer': 'https://mindmapper.app',
           'X-Title': 'MindMapper AI Assistant',
@@ -2719,8 +2943,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Direct DeepSeek Engine (deep reasoning & prompt caching)
-    if (deepseekKey) {
+    // Direct DeepSeek Engine (Option A: only if explicitly enabled with non-zero balance)
+    if (deepseekKey && Deno.env.get('ENABLE_DEEPSEEK') === 'true') {
       providers.push({
         label: 'DeepSeek',
         url: 'https://api.deepseek.com/chat/completions',
@@ -2842,6 +3066,7 @@ Deno.serve(async (req: Request) => {
     const agentExecutedProposals: any[] = [];
     let lastError: Error | null = null;
     const attemptedProviders: string[] = [];
+    const providerErrors: Record<string, string> = {};
 
     if (!isPromptRequest) {
       for (const provider of providers) {
@@ -2849,9 +3074,10 @@ Deno.serve(async (req: Request) => {
           attemptedProviders.push(provider.label);
           console.log(`[ai-assistant-chat] Attempting Sentient ReAct Agent with ${provider.label} (${provider.model})...`);
 
+          const historyForCall = isQuickOperational ? formattedHistory.slice(-2) : formattedHistory;
           const agentMessages: any[] = [
-            { role: 'system', content: buildAgentSystemPrompt(currentTimeISO, timezone, context) + searchAddendum },
-            ...formattedHistory,
+            { role: 'system', content: buildAgentSystemPrompt(currentTimeISO, timezone, context, isQuickOperational) + searchAddendum },
+            ...historyForCall,
             { role: 'user', content: message },
           ];
 
@@ -2867,7 +3093,7 @@ Deno.serve(async (req: Request) => {
             );
 
             let turnMessages = agentMessages;
-            let turnMaxTokens = 2500;
+            let turnMaxTokens = 1200;
 
             if (hasJournalProposal) {
               turnMaxTokens = 400;
@@ -2891,7 +3117,7 @@ Deno.serve(async (req: Request) => {
             // Only provide tools if a journal proposal hasn't been created yet.
             // Once the proposal card is ready, the next turn is strictly conversational confirmation!
             if (!hasJournalProposal) {
-              llmBody.tools = agentTools;
+              llmBody.tools = isQuickOperational ? operationalTools : agentTools;
               llmBody.tool_choice = 'auto';
             }
 
@@ -2906,18 +3132,24 @@ Deno.serve(async (req: Request) => {
               signal: AbortSignal.timeout(15000),
             });
 
-            if (llmRes.status === 429) {
-              const errText = await llmRes.text();
-              console.warn(`[ai-assistant-chat] ${provider.label} rate limit (429) in turn ${turn}: ${errText}`);
-              const isDailyLimit = /tokens per day|TPD/i.test(errText);
-              let waitMs = 2500;
-              const match = errText.match(/try again in\s*([\d\.]+)\s*s/i);
+            let retryCount = 0;
+            let lastErrText = '';
+            while (llmRes.status === 429 && retryCount < 2) {
+              retryCount++;
+              lastErrText = await llmRes.text();
+              console.warn(`[ai-assistant-chat] ${provider.label} rate limit (429) in turn ${turn} (attempt ${retryCount}): ${lastErrText}`);
+              const isDailyLimit = /tokens per day|TPD/i.test(lastErrText);
+              if (isDailyLimit) {
+                break;
+              }
+              let waitMs = 3000;
+              const match = lastErrText.match(/try again in\s*([\d\.]+)\s*s/i);
               if (match) {
-                waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 200;
+                waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 500;
               }
 
-              if (!isDailyLimit && waitMs <= 6000) {
-                console.log(`[ai-assistant-chat] 429 backoff: waiting ${waitMs}ms before retry...`);
+              if (waitMs <= 7000) {
+                console.log(`[ai-assistant-chat] 429 backoff: waiting ${waitMs}ms before retry ${retryCount}...`);
                 await new Promise((resolve) => setTimeout(resolve, waitMs));
 
                 llmRes = await fetch(provider.url, {
@@ -2930,13 +3162,14 @@ Deno.serve(async (req: Request) => {
                   body: JSON.stringify(llmBody),
                   signal: AbortSignal.timeout(15000),
                 });
+                lastErrText = '';
               } else {
-                throw new Error(`${provider.label} daily or long rate limit: ${errText}`);
+                break;
               }
             }
 
             if (!llmRes.ok) {
-              const errText = await llmRes.text();
+              const errText = lastErrText || (await llmRes.text());
               console.warn(`[ai-assistant-chat] ${provider.label} turn ${turn} error (${llmRes.status}): ${errText}`);
               throw new Error(`${provider.label} tool error: ${errText}`);
             }
@@ -2995,6 +3228,36 @@ Deno.serve(async (req: Request) => {
                   role: 'user',
                   content: 'The proposal card has been successfully prepared for Salitha. Now deliver your friendly conversational confirmation explaining the details and confirming that the proposal card is ready for approval.',
                 });
+                continue;
+              }
+
+              // Fast-path: For operational task/timer actions, return the confirmation immediately on Turn 1!
+              const onlyTimerOrTaskActions =
+                agentExecutedProposals.length > 0 &&
+                agentExecutedProposals.every((p) =>
+                  ['pause_task', 'resume_task', 'start_task', 'delete_task', 'update_task', 'create_tasks'].includes(p.type)
+                );
+
+              if (onlyTimerOrTaskActions) {
+                const primaryProp = agentExecutedProposals[0];
+                const taskTitle =
+                  primaryProp.payload?.taskTitle ||
+                  primaryProp.payload?.title ||
+                  (primaryProp.payload?.tasks?.[0]?.title) ||
+                  'task';
+
+                if (primaryProp.type === 'pause_task') {
+                  agentFinalReply = msg.content?.trim() || `Got it! I have paused "${taskTitle}". Enjoy your break, and let me know when you're ready to resume.`;
+                } else if (primaryProp.type === 'resume_task' || primaryProp.type === 'start_task') {
+                  agentFinalReply = msg.content?.trim() || `Timer running! Started work on "${taskTitle}". Let me know when you reach a checkpoint.`;
+                } else if (primaryProp.type === 'delete_task') {
+                  agentFinalReply = msg.content?.trim() || `Deleted "${taskTitle}" from your board.`;
+                } else if (primaryProp.type === 'update_task') {
+                  agentFinalReply = msg.content?.trim() || `Updated "${taskTitle}" on your board.`;
+                } else if (primaryProp.type === 'create_tasks') {
+                  agentFinalReply = msg.content?.trim() || `Created task "${taskTitle}" on your To Do board.`;
+                }
+                break;
               }
 
               // Continue to next turn
@@ -3022,11 +3285,15 @@ Deno.serve(async (req: Request) => {
             }
 
             agentFinalReply = replyContent;
-            if (!agentFinalReply && hasJournalProposalCheck) {
-              if (agentExecutedProposals.some((p) => p.type === 'create_meeting_event')) {
-                agentFinalReply = "Here is the Meeting Journal entry I drafted with your action items using the Google XYZ formula for your review. When you approve it, your action items will automatically be added to your To Do board:";
-              } else {
-                agentFinalReply = "Here is the Work Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:";
+            if (!agentFinalReply) {
+              if (hasJournalProposalCheck) {
+                if (agentExecutedProposals.some((p) => p.type === 'create_meeting_event')) {
+                  agentFinalReply = "Here is the Meeting Journal entry I drafted with your action items using the Google XYZ formula for your review. When you approve it, your action items will automatically be added to your To Do board:";
+                } else {
+                  agentFinalReply = "Here is the Work Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:";
+                }
+              } else if (agentExecutedProposals.length > 0) {
+                agentFinalReply = "I have processed your request and prepared the proposals below for your review.";
               }
             }
             break;
@@ -3039,6 +3306,7 @@ Deno.serve(async (req: Request) => {
           }
         } catch (reactErr: any) {
           console.warn(`[ai-assistant-chat] ReAct attempt failed on ${provider.label}:`, reactErr.message);
+          providerErrors['ReAct_' + provider.label] = reactErr.message;
           lastError = reactErr;
         }
       }
@@ -3077,7 +3345,7 @@ Deno.serve(async (req: Request) => {
         const taskTitle = (p?.payload?.taskTitle || p?.payload?.title || '').toLowerCase().trim();
         const actionType = p?.type;
 
-        if (['start_task', 'update_task', 'pause_task', 'resume_task', 'finish_task', 'create_tasks'].includes(actionType)) {
+        if (['start_task', 'update_task', 'pause_task', 'resume_task', 'finish_task', 'create_tasks', 'delete_task'].includes(actionType)) {
           const key = taskId ? `id_${taskId}` : `title_${taskTitle}`;
           if (seenTaskKeys.has(key)) {
             continue;
@@ -3111,7 +3379,7 @@ Deno.serve(async (req: Request) => {
               model: provider.model,
               messages: messagesPayload,
               temperature: 0.2,
-              max_tokens: 3500,
+              max_tokens: 1200,
               response_format: { type: 'json_object' },
             }),
           });
@@ -3132,11 +3400,12 @@ Deno.serve(async (req: Request) => {
                   model: provider.model,
                   messages: messagesPayload,
                   temperature: 0.2,
-                  max_tokens: 3500,
+                  max_tokens: 1200,
                 }),
               });
             } else {
               console.warn('[ai-assistant-chat] ' + provider.label + ' returned 400: ' + checkErr);
+              providerErrors['Fallback_' + provider.label] = '400: ' + checkErr;
               lastError = new Error(provider.label + ' error 400: ' + checkErr);
               continue;
             }
@@ -3145,6 +3414,7 @@ Deno.serve(async (req: Request) => {
           if (!llmRes.ok) {
             const errText = await llmRes.text();
             console.warn('[ai-assistant-chat] ' + provider.label + ' returned ' + llmRes.status + ': ' + errText + '. Trying next provider in fallback chain...');
+            providerErrors['Fallback_' + provider.label] = `${llmRes.status}: ${errText}`;
             lastError = new Error(provider.label + ' error ' + llmRes.status + ': ' + errText);
             continue;
           }
@@ -3158,14 +3428,15 @@ Deno.serve(async (req: Request) => {
           lastError = null;
           console.log('[ai-assistant-chat] Successfully received response from ' + provider.label);
           break;
-        } catch (callErr) {
+        } catch (callErr: any) {
           console.warn('[ai-assistant-chat] Exception calling ' + provider.label + ':', callErr);
+          providerErrors['Fallback_' + provider.label] = callErr?.message || String(callErr);
           lastError = callErr instanceof Error ? callErr : new Error(String(callErr));
         }
       }
 
       if (lastError && rawContent === '{}') {
-        throw new Error(`All providers failed (${attemptedProviders.join(', ')}): ${lastError.message}`);
+        throw new Error(`All providers failed: ${JSON.stringify(providerErrors)}`);
       }
 
       try {
@@ -3218,7 +3489,7 @@ Deno.serve(async (req: Request) => {
       if (parsedResult.engineeredPrompt) {
         parsedResult.replyText = "I've structured your context-engineered prompt below and copied it to your clipboard. Let me know what you'd like to adjust.";
       } else {
-        parsedResult.replyText = rawContent;
+        parsedResult.replyText = "I have processed your request and updated your workspace.";
       }
     }
 
