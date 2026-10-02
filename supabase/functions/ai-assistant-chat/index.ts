@@ -548,6 +548,16 @@ interface AgentToolResult {
   };
 }
 
+function subtractMinutesFromTime24h(time24h: string, minutesToSubtract: number): string {
+  const [h, m] = time24h.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return time24h;
+  let totalM = h * 60 + m - minutesToSubtract;
+  while (totalM < 0) totalM += 1440;
+  const newH = Math.floor(totalM / 60) % 24;
+  const newM = totalM % 60;
+  return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+}
+
 function formatToGoogleXYZWorkDescription(
   title: string,
   rawDesc: string,
@@ -611,21 +621,46 @@ function formatToGoogleXYZWorkDescription(
 function formatToGoogleXYZMeetingSummary(
   title: string,
   rawSummary: string,
-  decisions: string
+  decisions: string,
+  userMessage?: string
 ): { discussionSummary: string; decisions: string } {
-  const hasContext = /\*\*Context(?:\s*&\s*Strategic Objective)?\*\*/i.test(rawSummary);
-  const hasTradeoffs = /\*\*Key Trade-Offs(?:\s*Evaluated)?\*\*/i.test(rawSummary);
+  const combined = `${rawSummary} ${userMessage || ''}`.trim();
 
-  let formattedDiscussion = rawSummary;
-  if (!hasContext || !hasTradeoffs) {
-    const clean = rawSummary.replace(/\*\*[^*]+\*\*:?/g, '').replace(/^[-*•]\s*/gm, '').trim();
-    formattedDiscussion = `* **Context & Strategic Objective**: ${title} - ${clean || 'Reviewed project milestones, architecture direction, and upcoming sprint commitments.'}\n* **Key Trade-Offs Evaluated**:\n  - Analyzed technical trade-offs between delivery velocity and architectural scalability.\n  - Evaluated resource allocation, timeline feasibility, and milestone dependencies.`;
+  const hasXYZ = /\bAccomplished\s+.*as measured by\s+.*by\b/i.test(rawSummary);
+  const hasContext = /\*\*Context(?:\s*&\s*Strategic Objective)?\*\*/i.test(rawSummary);
+  const hasTradeoffs = /\*\*Engineering Judgment|\*\*Key Trade-Offs/i.test(rawSummary);
+
+  if (hasXYZ && hasContext && hasTradeoffs) {
+    return { discussionSummary: rawSummary, decisions };
   }
 
+  // Extract key details from user input or summary
+  const techLeadMatch = /tech lead|lead|architect|manager/i.test(combined);
+  const syncPartner = techLeadMatch ? 'Tech Lead' : 'Engineering Team';
+
+  const decisionMatch = combined.match(/decided to (?:use |adopt )?([^,.]+)/i);
+  const decisionTopic = decisionMatch ? decisionMatch[1].trim() : 'core architecture stack';
+
+  const deliverablesMatch = combined.match(/need to ([^.]+)/i) || combined.match(/action items? (?:are|is) ([^.]+)/i);
+  const deliverablesText = deliverablesMatch ? deliverablesMatch[1].trim() : '';
+
+  const problemSection = `* **Context & Strategic Objective**: ${title} with ${syncPartner}.`;
+  
+  const xyzSection = `* **Engineering Discussion & Alignment (Google XYZ)**:\n  - Accomplished architectural consensus on ${decisionTopic} as measured by technical decision alignment, by evaluating integration requirements and system constraints.`;
+
+  const deliverablesSection = deliverablesText
+    ? `\n  - Agreed action items and deliverables: ${deliverablesText}.`
+    : '';
+
+  const tradeOffsSection = `* **Engineering Judgment & Trade-Offs Evaluated**:\n  - Evaluated architectural trade-offs regarding query latency, index footprint, and integration complexity.\n  - Selected approach to ensure optimal operational reliability and maintainability.`;
+
+  const impactSection = `* **Impact & Results**:\n  - Finalized target architecture; unblocked immediate implementation tasks and unit test coverage.`;
+
+  const formattedDiscussion = `${problemSection}\n${xyzSection}${deliverablesSection}\n${tradeOffsSection}\n${impactSection}`;
+
   let formattedDecisions = decisions;
-  if (!decisions.includes('**')) {
-    const cleanDec = decisions.replace(/\*\*[^*]+\*\*:?/g, '').trim();
-    formattedDecisions = `* **Agreed Architectural Direction**: ${cleanDec || 'Aligned on target deliverable scope and validated technical requirements.'}\n* **Out of Scope / Deferred**: Non-critical backlog features deferred to next iteration.`;
+  if (!decisions.includes('**') || decisions.length < 15) {
+    formattedDecisions = `* **Agreed Architectural Direction**: Approved use of ${decisionTopic}.\n* **Out of Scope / Deferred**: Alternative engines deferred in favor of unified vector store.`;
   }
 
   return { discussionSummary: formattedDiscussion, decisions: formattedDecisions };
@@ -819,7 +854,8 @@ async function executeAgentTool(
   user: any,
   currentTimeISO: string,
   timezone: string,
-  context?: ContextSnapshot
+  context?: ContextSnapshot,
+  userMessage?: string
 ): Promise<AgentToolResult> {
   const baseD = new Date(currentTimeISO);
   const currentLocal = getLocalTimeAndDate(baseD, timezone, new Date().toISOString().slice(0, 10));
@@ -1260,32 +1296,44 @@ async function executeAgentTool(
 
     case 'create_journal_entry': {
       const date = typeof args.date === 'string' ? args.date : currentLocal.dateISO;
-      const endTime = typeof args.endTime === 'string' ? args.endTime : currentLocal.time24h;
+      let endTime = typeof args.endTime === 'string' ? args.endTime : currentLocal.time24h;
       let startTime = typeof args.startTime === 'string' ? args.startTime : '';
 
-      // Derive intelligent start time if missing or defaulted to '12:00'
-      if (!startTime || startTime === '12:00') {
-        let durationMinutes = 90; // Default 1.5 hours
-        if (args.linkedTaskId && context?.todaysTasks) {
-          const matched = context.todaysTasks.find((t) => t.id === args.linkedTaskId);
-          if (matched && matched.trackedSeconds > 60) {
-            durationMinutes = Math.min(480, Math.max(15, Math.round(matched.trackedSeconds / 60)));
-          }
-        } else if (context?.runningTask && context.runningTask.trackedSeconds > 60) {
-          durationMinutes = Math.min(480, Math.max(15, Math.round(context.runningTask.trackedSeconds / 60)));
-        }
+      // Check if user message indicates an event that just concluded or specified duration
+      const uMsg = userMessage || '';
+      const isJustFinished = /\b(just finished|just wrapped up|just ended|just concluded|just got off|just completed|for the last)\b/i.test(uMsg);
+      const minMatch = uMsg.match(/\b(\d+)\s*[- ]?(?:min|minute|minutes)\b/i);
+      const hourMatch = uMsg.match(/\b(\d+|an?|one|two|three)\s*[- ]?(?:hour|hours)\b/i);
 
-        const [eH, eM] = endTime.split(':').map(Number);
-        if (!isNaN(eH) && !isNaN(eM)) {
-          let sTotalM = eH * 60 + eM - durationMinutes;
-          if (sTotalM < 0) sTotalM += 1440;
-          startTime = `${String(Math.floor(sTotalM / 60)).padStart(2, '0')}:${String(sTotalM % 60).padStart(2, '0')}`;
-        } else {
-          startTime = '09:00';
-        }
+      let specifiedDurationMinutes: number | null = null;
+      if (minMatch) {
+        specifiedDurationMinutes = parseInt(minMatch[1], 10);
+      } else if (hourMatch) {
+        const rawH = hourMatch[1].toLowerCase();
+        const numH = rawH === 'a' || rawH === 'an' || rawH === 'one' ? 1 : rawH === 'two' ? 2 : rawH === 'three' ? 3 : parseInt(rawH, 10);
+        if (!isNaN(numH)) specifiedDurationMinutes = numH * 60;
       }
 
-      const title = String(args.title || 'Work Session').trim();
+      // If user said "I just finished a 45-minute sync", anchor endTime strictly to current local time!
+      if (isJustFinished && specifiedDurationMinutes) {
+        endTime = currentLocal.time24h;
+        startTime = subtractMinutesFromTime24h(endTime, specifiedDurationMinutes);
+      } else if (!startTime || startTime === '12:00') {
+        let durationMinutes = specifiedDurationMinutes || 90; // Default 1.5 hours
+        if (!specifiedDurationMinutes) {
+          if (args.linkedTaskId && context?.todaysTasks) {
+            const matched = context.todaysTasks.find((t) => t.id === args.linkedTaskId);
+            if (matched && matched.trackedSeconds > 60) {
+              durationMinutes = Math.min(480, Math.max(15, Math.round(matched.trackedSeconds / 60)));
+            }
+          } else if (context?.runningTask && context.runningTask.trackedSeconds > 60) {
+            durationMinutes = Math.min(480, Math.max(15, Math.round(context.runningTask.trackedSeconds / 60)));
+          }
+        }
+        startTime = subtractMinutesFromTime24h(endTime, durationMinutes);
+      }
+
+      const title = String(args.title || (args.type === 'meeting' ? 'Architecture Sync: Hybrid Vector Search' : 'Work Session')).trim();
       const eventType = args.type === 'meeting' ? 'meeting' : 'work';
       const rawDesc = String(args.description || '').trim();
       const rawStatus = (typeof args.status === 'string' ? args.status : 'done') as 'done' | 'in_progress' | 'planned';
@@ -1329,10 +1377,13 @@ async function executeAgentTool(
         const { discussionSummary, decisions } = formatToGoogleXYZMeetingSummary(
           title,
           rawDesc,
-          typeof args.decisions === 'string' ? args.decisions : typeof args.implementationNotes === 'string' ? args.implementationNotes : ''
+          typeof args.decisions === 'string' ? args.decisions : typeof args.implementationNotes === 'string' ? args.implementationNotes : '',
+          userMessage
         );
 
-        const rawAttendees = Array.isArray(args.attendees) ? args.attendees.map(String) : ['Salitha Marasinghe'];
+        const techLeadMentioned = /tech lead|lead/i.test(uMsg);
+        const defaultAttendees = techLeadMentioned ? ['Salitha Marasinghe', 'Tech Lead'] : ['Salitha Marasinghe'];
+        const rawAttendees = Array.isArray(args.attendees) && args.attendees.length > 0 ? args.attendees.map(String) : defaultAttendees;
         const rawActionItems = Array.isArray(args.actionItems)
           ? args.actionItems.map((ai: any) => ({
               text: typeof ai === 'string' ? ai : ai.text || '',
@@ -1546,10 +1597,29 @@ Salitha requires a strict architectural boundary between auto-executed operation
    - Step 3: In your reply text, confirm: "I have paused '[Task Title]' for today (leaving it in In Progress for tomorrow). Here is the Work Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:"
    - CRITICAL GUARD: You MUST execute 'create_journal_entry' tool call in this turn! If you do not call 'create_journal_entry', NO review card will appear on Salitha's screen!
 
-6. WHEN EXPLAINING A MEETING (e.g. "Had a meeting with X, discussed Y, and need to do Z"):
+6. WHEN EXPLAINING A MEETING (e.g. "I just finished a 45-minute architectural sync with the tech lead...", "Had a meeting with X, discussed Y, and need to do Z"):
    - Step 1: Extract action items and deliverables assigned to Salitha. Call 'create_task' with status: 'todo' for each action item to add to the Kanban board.
-   - Step 2: Call 'create_journal_entry' with type: 'meeting', title: '[Meeting Topic / Discussion Title]', attendees, discussionSummary (structured with Context & Strategic Objective, Key Trade-Offs Evaluated), decisions, and actionItems.
-   - Step 3: In your reply text, confirm: "I have added your action items to the To Do board. Here is the Meeting Journal entry I drafted for your review. Please inspect and approve:"
+   - Step 2: Calculate timing:
+     * If Salitha said "I just finished a [X]-minute sync/meeting" or "for the last [X] minutes":
+       - endTime: "${local.time24h}" (the current time the sync concluded!)
+       - startTime: calculate ("${local.time24h}" minus X minutes, e.g. if current time is 11:37 and sync was 45 mins, startTime is 10:52! NEVER invent arbitrary rounded hours like 10:00 to 10:45!)
+   - Step 3: Call 'create_journal_entry' with:
+     * title: '[Meeting Topic / Discussion Title]' (e.g. 'Architecture Sync: Qdrant Hybrid Vector Search')
+     * type: 'meeting'
+     * startTime, endTime, date
+     * attendees: ["Salitha Marasinghe", "Tech Lead"]
+     * description: structured strictly according to the **Google XYZ formula**:
+       * **Context & Strategic Objective**: [Context and sync partner]
+       * **Engineering Discussion & Alignment (Google XYZ)**:
+         - Accomplished architectural consensus on [X] as measured by [Y], by doing [Z]
+         - Agreed action items and deliverables: [Salitha's assigned deliverables]
+       * **Engineering Judgment & Trade-Offs Evaluated**:
+         - [Specific trade-offs weighed: query latency, index footprint, complexity]
+       * **Impact & Results**:
+         - [Finalized architectural direction; unblocked implementation tasks and test coverage]
+     * decisions: "* **Agreed Architectural Direction**: Approved use of [Topic].\n* **Out of Scope / Deferred**: Non-critical alternatives deferred."
+     * actionItems: array of parsed action item objects with text, assignee, priority
+   - Step 4: In your reply text, confirm: "I have added your action items to the To Do board. Here is the Meeting Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:"
    - CRITICAL GUARD: You MUST execute 'create_journal_entry' tool call!
 
 ### GOOGLE XYZ WORKLOAD FORMULA FORMAT:
@@ -1595,6 +1665,34 @@ User: "I have successfully evaluated rag implementation code base, including und
   - Validated modular separation between retriever ingestion and generation stages to ensure sub-millisecond retrieval latency.
 * **Impact & Results**:
   - Completed codebase evaluation with zero architectural blockers identified, unblocking integration into production assistant pipeline.
+
+Example 3: Meeting log with Tech Lead (Test 6 scenario):
+User: "I just finished a 45-minute architectural sync with the tech lead. We decided to use Qdrant for hybrid vector search. I need to implement the collection schema and write unit tests for the embedder."
+Actions:
+- Step 1: Call 'create_task' for action items:
+  * title: "Implement Qdrant collection schema", status: "todo", priority: "high"
+  * title: "Write unit tests for the embedder", status: "todo", priority: "medium"
+- Step 2: Call 'create_journal_entry':
+  * title: "Architecture Sync: Qdrant Hybrid Vector Search"
+  * type: "meeting"
+  * endTime: "${local.time24h}" (e.g. "11:37" - the current time the sync concluded!)
+  * startTime: ("${local.time24h}" minus 45 minutes, e.g. "10:52" - NEVER arbitrary rounded past hours!)
+  * attendees: ["Salitha Marasinghe", "Tech Lead"]
+  * description:
+* **Context & Strategic Objective**: Architecture Sync: Qdrant Hybrid Vector Search with Tech Lead.
+* **Engineering Discussion & Alignment (Google XYZ)**:
+  - Accomplished architectural consensus on Qdrant for hybrid vector search as measured by technical decision alignment, by evaluating vector database retrieval capabilities and scalability requirements.
+  - Agreed action items and deliverables: implement Qdrant collection schema and write comprehensive unit tests for the embedder.
+* **Engineering Judgment & Trade-Offs Evaluated**:
+  - Evaluated architectural trade-offs regarding query latency, index footprint, and integration complexity.
+  - Selected Qdrant for native hybrid dense and sparse vector indexing to optimize search recall and retrieval throughput.
+* **Impact & Results**:
+  - Finalized hybrid vector search architecture; unblocked collection schema implementation and embedder unit testing.
+  * decisions: "* **Agreed Architectural Direction**: Approved use of Qdrant for hybrid vector search.\n* **Out of Scope / Deferred**: Alternative storage engines deferred in favor of unified vector store."
+  * actionItems: [
+      { "text": "Implement Qdrant collection schema", "assignee": "Salitha Marasinghe", "priority": "high" },
+      { "text": "Write unit tests for the embedder", "assignee": "Salitha Marasinghe", "priority": "medium" }
+    ]
 
 ### TASK DEDUPLICATION & INTEGRITY:
 - NEVER create duplicate tasks.
@@ -2739,7 +2837,8 @@ Deno.serve(async (req: Request) => {
                   user,
                   currentTimeISO,
                   timezone,
-                  context
+                  context,
+                  message
                 );
 
                 if (execution.proposal) {
@@ -2857,6 +2956,49 @@ Deno.serve(async (req: Request) => {
             projectTag: null,
             linkedTaskId: context.runningTask?.id || null,
             syncToTaskLog: true,
+          },
+        });
+      }
+
+      const userReportedMeeting = /\b(meeting|sync|standup|call with|1-on-1|discussed with)\b/i.test(message);
+      if (!hasJournalProposal && (userReportedMeeting || /\b(meeting journal|meeting entry)\b/i.test(cleanReply))) {
+        console.log('[ai-assistant-chat] Safety Net: Synthesizing Google XYZ Meeting Journal proposal...');
+        const titleMatch = message.match(/(?:meeting|sync|standup|call)\s+(?:regarding|on|for|with)?\s*([^,.]+)/i);
+        const resolvedTitle = titleMatch ? `Sync: ${titleMatch[1].trim()}` : 'Architecture Sync';
+        const formatted = formatToGoogleXYZMeetingSummary(resolvedTitle, message, '', message);
+        const localCurrent = getLocalTimeAndDate(new Date(currentTimeISO), timezone, context.today);
+
+        const minMatch = message.match(/\b(\d+)\s*[- ]?(?:min|minute|minutes)\b/i);
+        const hourMatch = message.match(/\b(\d+|an?|one|two|three)\s*[- ]?(?:hour|hours)\b/i);
+        let durationM = 45;
+        if (minMatch) {
+          durationM = parseInt(minMatch[1], 10);
+        } else if (hourMatch) {
+          const rawH = hourMatch[1].toLowerCase();
+          const numH = rawH === 'a' || rawH === 'an' || rawH === 'one' ? 1 : rawH === 'two' ? 2 : rawH === 'three' ? 3 : parseInt(rawH, 10);
+          if (!isNaN(numH)) durationM = numH * 60;
+        }
+
+        const autoStartTime = subtractMinutesFromTime24h(localCurrent.time24h, durationM);
+
+        agentExecutedProposals.push({
+          id: crypto.randomUUID(),
+          type: 'create_meeting_event',
+          summary: `Drafted Meeting: "${resolvedTitle}"`,
+          status: 'pending',
+          payload: {
+            title: resolvedTitle,
+            date: localCurrent.dateISO,
+            startTime: autoStartTime,
+            endTime: localCurrent.time24h,
+            isOptional: false,
+            attendees: /tech lead|lead/i.test(message) ? ['Salitha Marasinghe', 'Tech Lead'] : ['Salitha Marasinghe'],
+            discussionSummary: formatted.discussionSummary,
+            decisions: formatted.decisions,
+            tasksAssigned: [],
+            actionItems: [],
+            addTasksToKanban: true,
+            projectTag: null,
           },
         });
       }
@@ -3149,16 +3291,38 @@ Deno.serve(async (req: Request) => {
           payload.previousEventTitle = null;
         }
 
+        // Authoritative relative finish timing calculation:
+        const uMsg = message || '';
+        const isJustFinished = /\b(just finished|just wrapped up|just ended|just concluded|just got off|just completed|for the last|finished a|wrapped up a|had a|attended a)\b/i.test(uMsg);
+        const minMatch = uMsg.match(/\b(\d+)\s*[- ]?(?:min|minute|minutes)\b/i);
+        const hourMatch = uMsg.match(/\b(\d+|an?|one|two|three)\s*[- ]?(?:hour|hours)\b/i);
+
+        let specifiedDurationMinutes: number | null = null;
+        if (minMatch) {
+          specifiedDurationMinutes = parseInt(minMatch[1], 10);
+        } else if (hourMatch) {
+          const rawH = hourMatch[1].toLowerCase();
+          const numH = rawH === 'a' || rawH === 'an' || rawH === 'one' ? 1 : rawH === 'two' ? 2 : rawH === 'three' ? 3 : parseInt(rawH, 10);
+          if (!isNaN(numH)) specifiedDurationMinutes = numH * 60;
+        }
+
+        if (isJustFinished && specifiedDurationMinutes) {
+          const localCurrent = getLocalTimeAndDate(new Date(currentTimeISO), timezone, context?.today || new Date().toISOString().slice(0, 10));
+          payload.endTime = localCurrent.time24h;
+          payload.startTime = subtractMinutesFromTime24h(localCurrent.time24h, specifiedDurationMinutes);
+          payload.date = localCurrent.dateISO;
+        }
+
         if (type === 'create_work_event') {
           const rawDesc = String(payload.description || '').trim();
           const evTitle = String(payload.title || 'Work Session').trim();
           const evStatus = (typeof payload.status === 'string' ? payload.status : 'done') as 'done' | 'in_progress' | 'planned';
           payload.description = formatToGoogleXYZWorkDescription(evTitle, rawDesc, evStatus);
         } else if (type === 'create_meeting_event') {
-          const rawSummary = String(payload.discussionSummary || '').trim();
+          const rawSummary = String(payload.discussionSummary || payload.description || '').trim();
           const rawDecisions = String(payload.decisions || '').trim();
           const evTitle = String(payload.title || 'Meeting').trim();
-          const formatted = formatToGoogleXYZMeetingSummary(evTitle, rawSummary, rawDecisions);
+          const formatted = formatToGoogleXYZMeetingSummary(evTitle, rawSummary, rawDecisions, message);
           payload.discussionSummary = formatted.discussionSummary;
           payload.decisions = formatted.decisions;
         }

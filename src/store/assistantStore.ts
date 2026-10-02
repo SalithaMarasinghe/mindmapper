@@ -492,29 +492,51 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
       for (const prop of rawProposals) {
         if (
-          prop.type === 'create_work_event' &&
-          (prop.payload?.status === 'done' || !prop.payload?.status) &&
+          (prop.type === 'create_work_event' || prop.type === 'create_meeting_event') &&
           prop.payload?.startTime &&
           prop.payload?.endTime
         ) {
-          const sMin = Math.round(timeToHours(prop.payload.startTime) * 60);
-          const eMin = Math.round(timeToHours(prop.payload.endTime) * 60);
-          const eventDate = prop.payload.date || todayLocalStr;
+          const isJustFinished = /\b(just finished|just wrapped up|just ended|just concluded|just got off|just completed|for the last|finished a|wrapped up a|had a|attended a)\b/i.test(trimmed);
+          const minMatch = trimmed.match(/\b(\d+)\s*[- ]?(?:min|minute|minutes)\b/i);
+          const hourMatch = trimmed.match(/\b(\d+|an?|one|two|three)\s*[- ]?(?:hour|hours)\b/i);
 
-          const isFutureDate = eventDate > todayLocalStr;
-          const isFutureTimeToday = eventDate === todayLocalStr && eMin > currentLocalTotalM + 5;
+          let specifiedDurationM: number | null = null;
+          if (minMatch) {
+            specifiedDurationM = parseInt(minMatch[1], 10);
+          } else if (hourMatch) {
+            const rawH = hourMatch[1].toLowerCase();
+            const numH = rawH === 'a' || rawH === 'an' || rawH === 'one' ? 1 : rawH === 'two' ? 2 : rawH === 'three' ? 3 : parseInt(rawH, 10);
+            if (!isNaN(numH)) specifiedDurationM = numH * 60;
+          }
 
-          if (isFutureDate || isFutureTimeToday) {
-            let durationM = eMin - sMin;
-            if (durationM <= 0 || durationM > 720) durationM = 120; // default 2 hours
-
+          if (isJustFinished && specifiedDurationM) {
             const endTimestamp = now.getTime();
-            const startTimestamp = endTimestamp - durationM * 60 * 1000;
+            const startTimestamp = endTimestamp - specifiedDurationM * 60 * 1000;
             const startDateObj = new Date(startTimestamp);
 
             prop.payload.endTime = `${String(currentLocalH).padStart(2, '0')}:${String(currentLocalM).padStart(2, '0')}`;
             prop.payload.startTime = `${String(startDateObj.getHours()).padStart(2, '0')}:${String(startDateObj.getMinutes()).padStart(2, '0')}`;
             prop.payload.date = toDateStr(startDateObj);
+          } else if (prop.type === 'create_work_event' && (prop.payload?.status === 'done' || !prop.payload?.status)) {
+            const sMin = Math.round(timeToHours(prop.payload.startTime) * 60);
+            const eMin = Math.round(timeToHours(prop.payload.endTime) * 60);
+            const eventDate = prop.payload.date || todayLocalStr;
+
+            const isFutureDate = eventDate > todayLocalStr;
+            const isFutureTimeToday = eventDate === todayLocalStr && eMin > currentLocalTotalM + 5;
+
+            if (isFutureDate || isFutureTimeToday) {
+              let durationM = eMin - sMin;
+              if (durationM <= 0 || durationM > 720) durationM = 120; // default 2 hours
+
+              const endTimestamp = now.getTime();
+              const startTimestamp = endTimestamp - durationM * 60 * 1000;
+              const startDateObj = new Date(startTimestamp);
+
+              prop.payload.endTime = `${String(currentLocalH).padStart(2, '0')}:${String(currentLocalM).padStart(2, '0')}`;
+              prop.payload.startTime = `${String(startDateObj.getHours()).padStart(2, '0')}:${String(startDateObj.getMinutes()).padStart(2, '0')}`;
+              prop.payload.date = toDateStr(startDateObj);
+            }
           }
         }
       }
