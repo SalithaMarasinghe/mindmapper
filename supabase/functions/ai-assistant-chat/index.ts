@@ -1097,37 +1097,6 @@ async function executeAgentTool(
       });
 
       if (matchedExisting) {
-        const uMsg = userMessage || '';
-        const isUserPausingOrWrappingUp =
-          /\b(done for the day|halfway done|take a break|tea break|heading out|wrapping up for (?:today|the day)|call it a day|stop(?:ping)? (?:for today|here)|continue (?:this|the rest|it) tomorrow)\b/i.test(uMsg);
-
-        if (isUserPausingOrWrappingUp) {
-          try {
-            await supabase.rpc('rpc_pause_task', {
-              p_task_id: matchedExisting.id,
-              p_timestamp: currentTimeISO,
-              p_reason: 'paused',
-            });
-          } catch (_e) {}
-
-          await supabase.from('tasks').update({
-            status: 'in_progress',
-            is_paused: true,
-            updated_at: currentTimeISO,
-          }).eq('id', matchedExisting.id);
-
-          return {
-            result: { success: true, taskId: matchedExisting.id, taskTitle: matchedExisting.title, isPaused: true, status: 'in_progress', deduplicated: true },
-            proposal: {
-              id: crypto.randomUUID(),
-              type: 'pause_task',
-              summary: `Paused "${matchedExisting.title}"`,
-              status: 'auto_executed',
-              payload: { taskId: matchedExisting.id, taskTitle: matchedExisting.title, timestampISO: currentTimeISO },
-            },
-          };
-        }
-
         const updates: Record<string, unknown> = { updated_at: currentTimeISO };
         if (status) updates.status = status;
         if (trackedSeconds > 0) updates.tracked_seconds = trackedSeconds;
@@ -1248,12 +1217,10 @@ async function executeAgentTool(
 
     case 'update_task': {
       let taskId = String(args.taskId || '').trim();
-      const uMsg = userMessage || '';
-      const isUserPausingOrWrappingUp =
+      const isExplicitPause =
         args.isPaused === true ||
         String(args.isPaused).toLowerCase() === 'true' ||
-        args.isPaused === 'true' ||
-        /\b(done for the day|halfway done|take a break|tea break|heading out|wrapping up for (?:today|the day)|call it a day|stop(?:ping)? (?:for today|here)|continue (?:this|the rest|it) tomorrow)\b/i.test(uMsg);
+        args.isPaused === 'true';
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
 
@@ -1270,7 +1237,7 @@ async function executeAgentTool(
           if (found && found.length > 0) matchedTask = found[0];
         }
 
-        if (!matchedTask && (isUserPausingOrWrappingUp || args.status === 'done')) {
+        if (!matchedTask && (isExplicitPause || args.status === 'done')) {
           const { data: inProg } = await supabase
             .from('tasks')
             .select('*')
@@ -1281,7 +1248,7 @@ async function executeAgentTool(
           if (inProg && inProg.length > 0) matchedTask = inProg[0];
         }
 
-        if (!matchedTask && isUserPausingOrWrappingUp && context?.runningTask) {
+        if (!matchedTask && isExplicitPause && context?.runningTask) {
           matchedTask = context.runningTask;
         }
 
@@ -1310,8 +1277,8 @@ async function executeAgentTool(
       if (args.trackedSeconds !== undefined) updates.tracked_seconds = Number(args.trackedSeconds);
       if (args.description !== undefined) updates.description = String(args.description);
 
-      // Handle Completed / Done (MUST NOT trigger if user said done for the day / halfway / tomorrow!)
-      if (args.status === 'done' && !isUserPausingOrWrappingUp) {
+      // Handle Completed / Done
+      if (args.status === 'done' && !isExplicitPause) {
         const { data: rpcData } = await supabase.rpc('rpc_complete_task', {
           p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
@@ -1353,7 +1320,7 @@ async function executeAgentTool(
       }
 
       // Handle Pause
-      if (isUserPausingOrWrappingUp) {
+      if (isExplicitPause) {
         const { data: rpcData } = await supabase.rpc('rpc_pause_task', {
           p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
@@ -1393,7 +1360,7 @@ async function executeAgentTool(
       }
 
       // Handle Resume or Move to In Progress
-      if ((args.status === 'in_progress' || args.isPaused === false) && !isUserPausingOrWrappingUp) {
+      if ((args.status === 'in_progress' || args.isPaused === false) && !isExplicitPause) {
         const { data: rpcData } = await supabase.rpc('rpc_start_or_resume_task', {
           p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
@@ -3098,174 +3065,6 @@ Deno.serve(async (req: Request) => {
             cleanReply = parsed.replyText;
           }
         } catch {}
-      }
-
-      // Safety net: If user reported completed/paused work or reply mentions drafted journal,
-      // and NO journal proposal was generated, synthesize one using Google XYZ!
-      const hasJournalProposal = agentExecutedProposals.some(
-        (p) => p.type === 'create_work_event' || p.type === 'create_meeting_event'
-      );
-      const userReportedWork = /\b(done for the day|finished|completed|worked on|halfway|profiling|implemented|evaluated)\b/i.test(message);
-      const mentionsDraftedJournal = /\b(work journal|journal entry|drafted.*entry|below for your review)\b/i.test(cleanReply);
-
-      if (!hasJournalProposal && (userReportedWork || mentionsDraftedJournal)) {
-        console.log('[ai-assistant-chat] Safety Net: Synthesizing Google XYZ Work Journal proposal...');
-        const titleMatch = message.match(/(?:regarding|on|for)\s+(?:the\s+)?([^,.]+)/i);
-        const resolvedTitle = titleMatch
-          ? titleMatch[1].trim()
-          : (context.runningTask?.title || 'Engineering Work Session');
-
-        const isDoneForDay = /\b(done for the day|halfway|tomorrow)\b/i.test(message);
-        const evStatus = isDoneForDay ? 'in_progress' : 'done';
-        const formattedDesc = formatToGoogleXYZWorkDescription(resolvedTitle, message, evStatus);
-
-        const localCurrent = getLocalTimeAndDate(new Date(currentTimeISO), timezone, context.today);
-        const [eH, eM] = localCurrent.time24h.split(':').map(Number);
-        let sTotalM = (eH * 60 + eM) - 90;
-        if (sTotalM < 0) sTotalM += 1440;
-        const autoStartTime = `${String(Math.floor(sTotalM / 60)).padStart(2, '0')}:${String(sTotalM % 60).padStart(2, '0')}`;
-
-        agentExecutedProposals.push({
-          id: crypto.randomUUID(),
-          type: 'create_work_event',
-          summary: `Drafted Work Journal: "${resolvedTitle}"`,
-          status: 'pending',
-          payload: {
-            title: resolvedTitle,
-            date: localCurrent.dateISO,
-            startTime: autoStartTime,
-            endTime: localCurrent.time24h,
-            description: formattedDesc,
-            implementationNotes: '',
-            status: evStatus,
-            projectTag: null,
-            linkedTaskId: context.runningTask?.id || null,
-            syncToTaskLog: true,
-          },
-        });
-      }
-
-      const userReportedMeeting = /\b(meeting|sync|standup|call with|1-on-1|discussed with)\b/i.test(message);
-      if (!hasJournalProposal && (userReportedMeeting || /\b(meeting journal|meeting entry)\b/i.test(cleanReply))) {
-        console.log('[ai-assistant-chat] Safety Net: Synthesizing Google XYZ Meeting Journal proposal...');
-        const titleMatch = message.match(/(?:meeting|sync|standup|call)\s+(?:regarding|on|for|with)?\s*([^,.]+)/i);
-        const resolvedTitle = titleMatch ? `Sync: ${titleMatch[1].trim()}` : 'Architecture Sync';
-        const formatted = formatToGoogleXYZMeetingSummary(resolvedTitle, message, '', message);
-        const localCurrent = getLocalTimeAndDate(new Date(currentTimeISO), timezone, context.today);
-
-        const minMatch = message.match(/\b(\d+)\s*[- ]?(?:min|minute|minutes)\b/i);
-        const hourMatch = message.match(/\b(\d+|an?|one|two|three)\s*[- ]?(?:hour|hours)\b/i);
-        let durationM = 45;
-        if (minMatch) {
-          durationM = parseInt(minMatch[1], 10);
-        } else if (hourMatch) {
-          const rawH = hourMatch[1].toLowerCase();
-          const numH = rawH === 'a' || rawH === 'an' || rawH === 'one' ? 1 : rawH === 'two' ? 2 : rawH === 'three' ? 3 : parseInt(rawH, 10);
-          if (!isNaN(numH)) durationM = numH * 60;
-        }
-
-        const autoStartTime = subtractMinutesFromTime24h(localCurrent.time24h, durationM);
-
-        const deliverablesMatch = message.match(/need to ([^.]+)/i) || message.match(/action items? (?:are|is) ([^.]+)/i);
-        const actionItemsList: any[] = [];
-        if (deliverablesMatch) {
-          const rawItems = deliverablesMatch[1].split(/\band\b|,/);
-          for (const raw of rawItems) {
-            const cleaned = raw.replace(/^to\s+/i, '').trim();
-            if (cleaned.length > 2) {
-              actionItemsList.push({
-                text: cleaned.charAt(0).toUpperCase() + cleaned.slice(1),
-                assignee: 'Salitha Marasinghe',
-                priority: 'medium',
-                done: false,
-              });
-            }
-          }
-        }
-
-        agentExecutedProposals.push({
-          id: crypto.randomUUID(),
-          type: 'create_meeting_event',
-          summary: `Drafted Meeting: "${resolvedTitle}"`,
-          status: 'pending',
-          payload: {
-            title: resolvedTitle,
-            date: localCurrent.dateISO,
-            startTime: autoStartTime,
-            endTime: localCurrent.time24h,
-            isOptional: false,
-            attendees: /tech lead|lead/i.test(message) ? ['Salitha Marasinghe', 'Tech Lead'] : ['Salitha Marasinghe'],
-            discussionSummary: formatted.discussionSummary,
-            decisions: formatted.decisions,
-            tasksAssigned: actionItemsList.map((ai) => ({ text: ai.text, done: false })),
-            actionItems: actionItemsList,
-            addTasksToKanban: true,
-            projectTag: null,
-          },
-        });
-      }
-
-      const hasMeetingEvent = agentExecutedProposals.some(
-        (p) => p.type === 'create_meeting_event' || (p.type === 'create_work_event' && (p.payload?.type === 'meeting' || (p.payload?.attendees && p.payload.attendees.length > 1)))
-      ) || userReportedMeeting;
-
-      // Safety net: If user said done for the day / halfway / pause / continue tomorrow, ensure task is paused!
-      const isUserPausingOrWrappingUp =
-        !hasMeetingEvent &&
-        /\b(done for the day|halfway done|take a break|tea break|heading out|wrapping up for (?:today|the day)|call it a day|stop(?:ping)? (?:for today|here)|continue (?:this|the rest|it) tomorrow)\b/i.test(message);
-
-      const hasPauseProposal = agentExecutedProposals.some(
-        (p) => p.type === 'pause_task' || p.type === 'pause_all'
-      );
-
-      if (isUserPausingOrWrappingUp && !hasPauseProposal) {
-        console.log('[ai-assistant-chat] Safety Net: User requested pause/done for day, pausing active task...');
-        let taskToPauseId = context.runningTask?.id;
-        let taskToPauseTitle = context.runningTask?.title || 'Current Task';
-
-        if (!taskToPauseId && context.todaysTasks) {
-          const inProg = context.todaysTasks.find((t) => t.status === 'in_progress');
-          if (inProg) {
-            taskToPauseId = inProg.id;
-            taskToPauseTitle = inProg.title;
-          }
-        }
-
-        if (taskToPauseId) {
-          try {
-            await supabase.rpc('rpc_pause_task', {
-              p_task_id: taskToPauseId,
-              p_timestamp: currentTimeISO,
-              p_reason: 'paused',
-            });
-          } catch (_e) {}
-
-          await supabase.from('tasks').update({
-            status: 'in_progress',
-            is_paused: true,
-            updated_at: currentTimeISO,
-          }).eq('id', taskToPauseId).eq('user_id', user.id);
-
-          // Replace any stray update_task proposal for this task
-          const filtered = agentExecutedProposals.filter((p) => {
-            const pId = p.payload?.taskId;
-            return !(p.type === 'update_task' && pId === taskToPauseId);
-          });
-          agentExecutedProposals.length = 0;
-          agentExecutedProposals.push(...filtered);
-
-          agentExecutedProposals.unshift({
-            id: crypto.randomUUID(),
-            type: 'pause_task',
-            summary: `Paused "${taskToPauseTitle}"`,
-            status: 'auto_executed',
-            payload: {
-              taskId: taskToPauseId,
-              taskTitle: taskToPauseTitle,
-              timestampISO: currentTimeISO,
-            },
-          });
-        }
       }
 
       // Deduplicate task proposals so only 1 card is displayed per task
