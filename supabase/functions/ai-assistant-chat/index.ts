@@ -503,13 +503,47 @@ function getPastAnchor(
 
 // ─── SENTIENT AGENT TOOL REGISTRY & RUNTIME (ReAct Architecture) ───────────────
 
+function normalizeTaskTitleTokens(title: string): string[] {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 1)
+    .map((w) => {
+      if (w === 'rack' || w === 'rax') return 'rag';
+      if (w === 'course' || w === 'coursebase' || w === 'code' || w === 'base') return 'codebase';
+      if (w === 'evaluating' || w === 'eval' || w === 'evaluation') return 'evaluate';
+      if (w === 'implementing' || w === 'implementation') return 'implement';
+      if (w.endsWith('ing') && w.length > 4) return w.slice(0, -3);
+      if (w.endsWith('ed') && w.length > 4) return w.slice(0, -2);
+      if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) return w.slice(0, -1);
+      return w;
+    });
+}
+
+function calculateTitleSimilarity(titleA: string, titleB: string): number {
+  const tokensA = normalizeTaskTitleTokens(titleA);
+  const tokensB = normalizeTaskTitleTokens(titleB);
+  if (tokensA.length === 0 || tokensB.length === 0) return 0;
+
+  const setB = new Set(tokensB);
+  let matches = 0;
+  for (const t of tokensA) {
+    if (setB.has(t) || tokensB.some((b) => b.includes(t) || t.includes(b))) {
+      matches++;
+    }
+  }
+
+  return (2 * matches) / (tokensA.length + tokensB.length);
+}
+
 interface AgentToolResult {
   result: Record<string, unknown> | Array<unknown>;
   proposal?: {
     id: string;
     type: string;
     summary: string;
-    status: 'auto_executed';
+    status: 'auto_executed' | 'pending';
     payload: Record<string, unknown>;
   };
 }
@@ -548,11 +582,11 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'search_tasks',
-      description: 'Searches existing Kanban tasks by title or keyword. ALWAYS call this before creating a task or updating a task.',
+      description: 'Searches existing Kanban tasks by title, keyword, or concept using fuzzy matching. ALWAYS call this before attempting to update a task.',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Keyword to search, e.g. "RAG", "auth", "latency"' },
+          query: { type: 'string', description: 'Keyword to search, e.g. "RAG", "auth", "latency", "evaluate"' },
           status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
         },
         required: ['query'],
@@ -563,7 +597,7 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'create_task',
-      description: 'Creates a new task directly in the Kanban board. NEVER call if a matching task already exists (use update_task instead). NEVER call more than once for the same item.',
+      description: 'Creates a new task in the Kanban board. NEVER call if a matching task already exists on the board. When starting work, if no task exists, ask Salitha for permission first before calling create_task.',
       parameters: {
         type: 'object',
         properties: {
@@ -738,17 +772,47 @@ async function executeAgentTool(
         .from('tasks')
         .select('*')
         .eq('user_id', user.id);
-      if (q) {
-        queryBuilder = queryBuilder.ilike('title', `%${q}%`);
-      }
+
       if (typeof args.status === 'string') {
         queryBuilder = queryBuilder.eq('status', args.status);
+      } else {
+        queryBuilder = queryBuilder.order('updated_at', { ascending: false }).limit(40);
       }
-      const { data, error } = await queryBuilder.limit(10);
+
+      const { data: allTasks, error } = await queryBuilder;
       if (error) throw error;
-      return {
-        result: data || [],
-      };
+
+      if (!q || !allTasks || allTasks.length === 0) {
+        return { result: allTasks?.slice(0, 10) || [] };
+      }
+
+      // Rank tasks using phonetic & token similarity
+      const scored = allTasks.map((t: any) => {
+        const sim = calculateTitleSimilarity(q, t.title);
+        const sub = t.title.toLowerCase().includes(q.toLowerCase()) ? 0.7 : 0;
+        return {
+          ...t,
+          matchScore: Math.max(sim, sub),
+        };
+      });
+
+      const matched = scored
+        .filter((t: any) => t.matchScore >= 0.35)
+        .sort((a: any, b: any) => b.matchScore - a.matchScore);
+
+      if (matched.length > 0) {
+        return { result: matched.slice(0, 10) };
+      }
+
+      // Fallback SQL query if no in-memory matches
+      const { data: fallbackData } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .ilike('title', `%${q}%`)
+        .limit(10);
+
+      return { result: fallbackData || [] };
     }
 
     case 'create_task': {
@@ -759,44 +823,74 @@ async function executeAgentTool(
       const description = args.description ? String(args.description) : null;
       const plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
 
-      // 1. Deduplication guard: Check if a task with this title already exists for this user
-      const { data: existingTasks } = await supabase
+      // 1. Deduplication guard: Check if a task with similar title already exists
+      const { data: recentTasks } = await supabase
         .from('tasks')
         .select('*')
         .eq('user_id', user.id)
-        .ilike('title', title)
-        .limit(1);
+        .order('updated_at', { ascending: false })
+        .limit(40);
 
-      if (existingTasks && existingTasks.length > 0) {
-        const existing = existingTasks[0];
+      const matchedExisting = recentTasks?.find((t: any) => {
+        const sim = calculateTitleSimilarity(title, t.title);
+        return sim >= 0.55 || t.title.toLowerCase().trim() === title.toLowerCase().trim();
+      });
+
+      if (matchedExisting) {
         const updates: Record<string, unknown> = { updated_at: currentTimeISO };
         if (status) updates.status = status;
         if (trackedSeconds > 0) updates.tracked_seconds = trackedSeconds;
         if (description) updates.description = description;
 
-        await supabase.from('tasks').update(updates).eq('id', existing.id);
+        await supabase.from('tasks').update(updates).eq('id', matchedExisting.id);
+
+        if (status === 'in_progress') {
+          try {
+            await supabase.rpc('rpc_start_or_resume_task', {
+              p_task_id: matchedExisting.id,
+              p_timestamp: currentTimeISO,
+              p_is_resume: false,
+            });
+          } catch (_e) {}
+
+          return {
+            result: {
+              success: true,
+              task: { ...matchedExisting, ...updates },
+              deduplicated: true,
+              message: `Existing task "${matchedExisting.title}" moved to In Progress. Timer is running. DO NOT call update_task again.`,
+            },
+            proposal: {
+              id: crypto.randomUUID(),
+              type: 'start_task',
+              summary: `Started "${matchedExisting.title}"`,
+              status: 'auto_executed',
+              payload: { taskId: matchedExisting.id, taskTitle: matchedExisting.title, timestampISO: currentTimeISO },
+            },
+          };
+        }
 
         if (status === 'done') {
           return {
-            result: { success: true, task: { ...existing, ...updates }, deduplicated: true },
+            result: { success: true, task: { ...matchedExisting, ...updates }, deduplicated: true },
             proposal: {
               id: crypto.randomUUID(),
               type: 'finish_task',
-              summary: `Completed "${title}"`,
+              summary: `Completed "${matchedExisting.title}"`,
               status: 'auto_executed',
-              payload: { taskId: existing.id, taskTitle: title, timestampISO: currentTimeISO },
+              payload: { taskId: matchedExisting.id, taskTitle: matchedExisting.title, timestampISO: currentTimeISO },
             },
           };
         }
 
         return {
-          result: { success: true, task: { ...existing, ...updates }, deduplicated: true },
+          result: { success: true, task: { ...matchedExisting, ...updates }, deduplicated: true },
           proposal: {
             id: crypto.randomUUID(),
             type: 'update_task',
-            summary: `Updated task "${title}"`,
+            summary: `Updated task "${matchedExisting.title}"`,
             status: 'auto_executed',
-            payload: { taskId: existing.id, taskTitle: title, ...updates },
+            payload: { taskId: matchedExisting.id, taskTitle: matchedExisting.title, ...updates },
           },
         };
       }
@@ -842,7 +936,11 @@ async function executeAgentTool(
 
       const proposalType = status === 'done' ? 'finish_task' : status === 'in_progress' ? 'start_task' : 'create_tasks';
       return {
-        result: { success: true, task: createdTask },
+        result: {
+          success: true,
+          task: createdTask,
+          message: status === 'in_progress' ? 'Task created and moved to In Progress. Timer is running. DO NOT call update_task again.' : 'Task created in To Do.',
+        },
         proposal: {
           id: crypto.randomUUID(),
           type: proposalType,
@@ -1205,6 +1303,29 @@ function buildAgentSystemPrompt(
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayOfWeek = daysOfWeek[baseD.getUTCDay()];
 
+  const runningTaskInfo = context.runningTask
+    ? `Task "${context.runningTask.title}" (ID: ${context.runningTask.id}) is actively RUNNING since ${context.runningTask.startedAt}.`
+    : context.lastPausedTask
+    ? `No task is currently running. Last paused task: "${context.lastPausedTask.title}" (ID: ${context.lastPausedTask.id}).`
+    : `No task is currently running or paused.`;
+
+  const tasksList =
+    context.todaysTasks && context.todaysTasks.length > 0
+      ? context.todaysTasks
+          .map(
+            (t) =>
+              `- [${t.status.toUpperCase()}${t.isPaused ? ' PAUSED' : ''}] (ID: ${t.id}) "${t.title}" (${t.priority} priority, ${t.trackedSeconds}s tracked)${t.descriptionSnippet ? ` - ${t.descriptionSnippet}` : ''}`
+          )
+          .join('\n')
+      : 'None on the board yet.';
+
+  const projectsList =
+    context.existingProjects && context.existingProjects.length > 0
+      ? context.existingProjects
+          .map((p) => `- Project: "${p.name}" (ID: ${p.id}, Status: ${p.status})${p.description ? ` - ${p.description}` : ''}`)
+          .join('\n')
+      : 'No active projects registered.';
+
   return `You are Jarvis, a sentient, highly competent, proactive personal engineering AI assistant and chief-of-staff for Salitha Marasinghe (Trainee Associate Software Engineer).
 You are equipped with real, native database tools to query and update the Kanban board, track time, draft Work Journal entries, check the real clock, and manage projects.
 
@@ -1213,11 +1334,20 @@ You are equipped with real, native database tools to query and update the Kanban
 - User Timezone: ${timezone}
 - Current ISO Timestamp: "${currentTimeISO}"
 
+### SALITHA'S CURRENT TASK BOARD:
+${runningTaskInfo}
+
+Tasks currently on the board:
+${tasksList}
+
+Active Projects:
+${projectsList}
+
 ### STRICT TWO-TIER APPROVAL BOUNDARY:
 Salitha requires a strict architectural boundary between auto-executed operational state changes and reviewable journal proposals:
 
 1. TIER 1: AUTO-EXECUTED ACTIONS (Execute immediately via tools, NO approval required):
-   - Starting a task timer (call 'update_task' to 'in_progress', isPaused: false, or 'create_task' with status: 'in_progress').
+   - Starting a task timer for an EXISTING task on the board (call 'update_task' with status: 'in_progress', isPaused: false).
    - Pausing running tasks for tea breaks or interruptions (call 'update_task' with isPaused: true).
    - Resuming tasks after breaks (call 'update_task' with status: 'in_progress', isPaused: false).
    - Marking completed tasks as Done in the Kanban board (call 'update_task' with status: 'done', trackedSeconds).
@@ -1233,12 +1363,21 @@ Salitha requires a strict architectural boundary between auto-executed operation
 
 ### SENTIENT LIFECYCLE WORKFLOWS:
 
-1. WHEN SALITHA REPORTS STARTING WORK (e.g. "I'm starting [work/task]", "Let's work on X"):
-   - Step 1: Call 'search_tasks' with query 'X'.
-   - Step 2: If a matching task exists in 'todo', call 'update_task' with taskId, status: 'in_progress', isPaused: false.
-   - Step 3: If multiple tasks match and it is ambiguous which one Salitha meant, ask a clarifying question listing the options: "I found these tasks on your board: [1. Task A, 2. Task B]. Would you like me to start one of these, or create a new task?" (Only ask if genuinely ambiguous).
-   - Step 4: If no task matches, call 'create_task' with title: 'X', status: 'in_progress'.
-   - Step 5: Confirm warmly: "I've started '[Task Title]' and moved it to In Progress. The timer is running!"
+1. WHEN SALITHA REPORTS STARTING WORK (e.g. "I'm starting [work/task]", "Let's work on X", "Starting work on evaluating the rack implementation course base"):
+   - Step 1: Check SALITHA'S CURRENT TASK BOARD above or call 'search_tasks' with query 'X'.
+     *Note: Accounts for speech recognition, typos, or stemming differences: e.g. "rack" = "RAG", "course base" = "code base" / "codebase", "evaluating" = "evaluate".*
+   - Step 2: If a matching task exists in 'todo' or on the board:
+     * Call 'update_task' with taskId, status: 'in_progress', isPaused: false.
+     * DO NOT call 'create_task'! DO NOT create a duplicate task!
+     * DO NOT call any other task tool in this turn! Execute ONLY this one tool.
+     * Confirm warmly: "I've moved '[Existing Task Title]' from To Do to In Progress and started your timer!"
+   - Step 3: If NO matching task exists on the board at all:
+     * **CRITICAL: DO NOT CALL 'create_task'! DO NOT AUTO-CREATE A TASK!**
+     * Ask Salitha directly: "I couldn't find a task matching '[X]' on your board. Shall I create it and start working on it in In Progress?"
+     * Wait for Salitha's confirmation before creating any task.
+   - Step 4: When Salitha confirms/approves creating the task (e.g. "Yes create it", "Yes please"):
+     * Call 'create_task' with title: 'X', status: 'in_progress'.
+     * Confirm: "I've created '[Task Title]' and started it in In Progress. The timer is running!"
 
 2. WHEN SALITHA TAKES A BREAK (e.g. "heading out for a 20-minute tea break", "taking a break", "pause"):
    - Step 1: Identify the running task from context or call 'search_tasks' with status: 'in_progress'.
@@ -1283,9 +1422,10 @@ Every work summary in 'create_journal_entry' description must strictly follow th
 
 ### TASK DEDUPLICATION & INTEGRITY:
 - NEVER create duplicate tasks.
-- ALWAYS call 'search_tasks' before calling 'create_task'.
+- Check SALITHA'S CURRENT TASK BOARD first before calling any task tools.
 - If a matching task exists, call 'update_task' ONLY.
 - NEVER call 'create_task' multiple times for the same item.
+- NEVER call both 'create_task' and 'update_task' in the same conversation turn for the same task.
 
 ### CONVERSATIONAL STYLE:
 Speak like a world-class senior engineering assistant: crisp, articulate, proactive, and natural. Never sound robotic.`;
@@ -2480,10 +2620,31 @@ Deno.serve(async (req: Request) => {
         } catch {}
       }
 
+      // Deduplicate task proposals so only 1 card is displayed per task
+      const deduplicatedProposals: unknown[] = [];
+      const seenTaskKeys = new Set<string>();
+
+      for (const prop of agentExecutedProposals) {
+        const p = prop as any;
+        const taskId = p?.payload?.taskId;
+        const taskTitle = (p?.payload?.taskTitle || p?.payload?.title || '').toLowerCase().trim();
+        const actionType = p?.type;
+
+        if (['start_task', 'update_task', 'pause_task', 'resume_task', 'finish_task', 'create_tasks'].includes(actionType)) {
+          const key = taskId ? `id_${taskId}` : `title_${taskTitle}`;
+          if (seenTaskKeys.has(key)) {
+            continue;
+          }
+          seenTaskKeys.add(key);
+        }
+
+        deduplicatedProposals.push(prop);
+      }
+
       parsedResult = {
         replyText: cleanReply,
         engineeredPrompt: null,
-        proposals: agentExecutedProposals,
+        proposals: deduplicatedProposals,
         suggestedFollowups: [],
       };
     } else {
