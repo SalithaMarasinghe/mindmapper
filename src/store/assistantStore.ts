@@ -1391,6 +1391,16 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
                 .trim();
               const plannedDate = item.deadlineDate || p.payload.date;
               if (plannedDate) targetDate = plannedDate;
+
+              // Deduplication safety check: if a task with the exact same title already exists on the board, skip creating duplicate
+              const alreadyExists = taskStore.tasks.some(
+                (existing) => existing.title.toLowerCase().trim() === cleanTitle.toLowerCase()
+              );
+              if (alreadyExists) {
+                console.log(`[assistantStore] Task "${cleanTitle}" already exists on board, skipping duplicate creation.`);
+                continue;
+              }
+
               const created = await taskStore.createTask({
                 title: cleanTitle,
                 description: `*Action item from meeting: "${p.payload.title}" (${p.payload.date})*`,

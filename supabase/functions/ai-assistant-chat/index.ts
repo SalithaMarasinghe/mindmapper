@@ -813,7 +813,7 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'create_task',
-      description: 'Creates a new task in the Kanban board. NEVER call if a matching task already exists on the board. When starting work, if no task exists, ask Salitha for permission first before calling create_task.',
+      description: 'Creates a new standalone task in the Kanban board. NEVER call if a matching task already exists on the board. When starting work, if no task exists, ask Salitha for permission first before calling create_task. CRITICAL: NEVER call create_task for meeting action items; meeting action items must ONLY be supplied in create_journal_entry actionItems so the user can review and approve them before they are added to Kanban.',
       parameters: {
         type: 'object',
         properties: {
@@ -1055,6 +1055,21 @@ async function executeAgentTool(
       const trackedSeconds = Number(args.trackedSeconds) || 0;
       const description = args.description ? String(args.description) : null;
       const plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
+
+      // 0. Meeting guard: If the user is explaining/logging a meeting, action items must NOT be auto-created now!
+      // They belong inside the create_journal_entry proposal for user review and approval.
+      const uMsg = userMessage || '';
+      const isMeetingReport = /\b(meeting|sync|standup|call with|1-on-1|discussed with|just finished.*sync)\b/i.test(uMsg);
+      if (isMeetingReport && status === 'todo') {
+        console.log(`[ai-assistant-chat] Suppressing immediate create_task for "${title}" during meeting log to prevent duplicate tasks.`);
+        return {
+          result: {
+            success: true,
+            suppressed: true,
+            message: `Action item "${title}" will be included in the Meeting Journal review card and added to Kanban upon user approval. Do NOT call create_task again.`,
+          },
+        };
+      }
 
       // 1. Deduplication guard: Check if a task with similar title already exists
       const { data: recentTasks } = await supabase
@@ -1680,7 +1695,8 @@ Salitha requires a strict architectural boundary between auto-executed operation
    - Resuming tasks after breaks (call 'update_task' with status: 'in_progress', isPaused: false).
    - Marking completed tasks as Done in the Kanban board (call 'update_task' with status: 'done', trackedSeconds).
    - Pausing incomplete tasks when done for the day (call 'update_task' with isPaused: true).
-   - Adding tasks or action items from a meeting to the To Do list (call 'create_task' with status: 'todo').
+   - Adding standalone ad-hoc tasks directly requested by user (e.g. "Add a task to do X") (call 'create_task' with status: 'todo').
+   *CRITICAL: NEVER call 'create_task' for meeting action items! Meeting action items are bundled into create_journal_entry and added to Kanban ONLY upon user approval of the meeting proposal.*
    *All Tier 1 actions apply directly to the database and update the Kanban board immediately.*
 
 2. TIER 2: REVIEWABLE PROPOSALS (Draft via tools, NEVER auto-executed into database, REQUIRES USER APPROVAL):
@@ -1739,12 +1755,12 @@ Salitha requires a strict architectural boundary between auto-executed operation
    - CRITICAL GUARD: You MUST execute 'create_journal_entry' tool call in this turn! If you do not call 'create_journal_entry', NO review card will appear on Salitha's screen!
 
 6. WHEN EXPLAINING A MEETING (e.g. "I just finished a 45-minute architectural sync with the tech lead...", "Had a meeting with X, discussed Y, and need to do Z"):
-   - Step 1: Extract action items and deliverables assigned to Salitha. Call 'create_task' with status: 'todo' for each action item to add to the Kanban board.
-   - Step 2: Calculate timing:
+   - CRITICAL GUARD: DO NOT CALL 'create_task'! DO NOT CREATE TASKS IMMEDIATELY! All meeting action items must be bundled inside 'create_journal_entry' (in 'actionItems' and 'tasksAssigned'). The user will review the meeting card and its action items, and the system will automatically add them to Kanban To Do ONLY AFTER the user approves the proposal! Calling 'create_task' now causes DUPLICATE TASKS!
+   - Step 1: Calculate timing:
      * If Salitha said "I just finished a [X]-minute sync/meeting" or "for the last [X] minutes":
        - endTime: "${local.time24h}" (the current time the sync concluded!)
        - startTime: calculate ("${local.time24h}" minus X minutes, e.g. if current time is 11:37 and sync was 45 mins, startTime is 10:52! NEVER invent arbitrary rounded hours like 10:00 to 10:45!)
-   - Step 3: Call 'create_journal_entry' with:
+   - Step 2: Call 'create_journal_entry' with:
      * title: '[Meeting Topic / Discussion Title]' (e.g. 'Architecture Sync: Qdrant Hybrid Vector Search')
      * type: 'meeting'
      * startTime, endTime, date
@@ -1755,9 +1771,9 @@ Salitha requires a strict architectural boundary between auto-executed operation
        🏆 Strategic Consensus & Decisions [Accomplished X]: Accomplished architectural consensus on [X] as measured by [Y], by doing [Z]
        📊 Action Items & Deliverables [Measured by Y]: [Explicit deliverables assigned to Salitha and next alignment checkpoint]
      * decisions: "* **Agreed Architectural Direction**: Approved use of [Topic].\n* **Out of Scope / Deferred**: Non-critical alternatives deferred."
-     * actionItems: array of parsed action item objects with text, assignee, priority
-   - Step 4: In your reply text, confirm: "I have added your action items to the To Do board. Here is the Meeting Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:"
-   - CRITICAL GUARD: You MUST execute 'create_journal_entry' tool call!
+     * actionItems: array of parsed action item objects with text, assignee, priority (e.g. [{ text: "Implement Qdrant collection schema", assignee: "Salitha Marasinghe", priority: "high" }, { text: "Write unit tests for the embedder", assignee: "Salitha Marasinghe", priority: "medium" }])
+   - Step 3: In your reply text, confirm: "Here is the Meeting Journal entry I drafted with your action items using the Google XYZ formula for your review. When you approve it, your action items will automatically be added to your To Do board:"
+   - CRITICAL GUARD: You MUST execute ONLY 'create_journal_entry' tool call in this turn! DO NOT call 'create_task'!
 
 ### GOOGLE XYZ FORMULA STANDARD (4-BADGE STRUCTURE):
 Every Work Journal and Meeting Journal entry must be detailed, technical, quantitative, and strictly follow the 4-badge structure. NEVER compress into a single run-on sentence or generic summaries. Preserve all specific metrics, numbers, component names, models, algorithms, and latency targets.
@@ -1855,10 +1871,7 @@ Complete full-stack audit and performance evaluation of the production RAG imple
 Example 3: Meeting log with Tech Lead (Test 6 scenario):
 User: "I just finished a 45-minute architectural sync with the tech lead. We decided to use Qdrant for hybrid vector search. I need to implement the collection schema and write unit tests for the embedder."
 Actions:
-- Step 1: Call 'create_task' for action items:
-  * title: "Implement Qdrant collection schema", status: "todo", priority: "high"
-  * title: "Write unit tests for the embedder", status: "todo", priority: "medium"
-- Step 2: Call 'create_journal_entry':
+- Step 1: Call 'create_journal_entry' ONLY (CRITICAL: DO NOT call 'create_task'! The action items are bundled inside 'actionItems' and will be automatically added to Kanban upon user approval of the card):
   * title: "Architecture Sync: Qdrant Hybrid Vector Search"
   * type: "meeting"
   * endTime: "${local.time24h}" (e.g. "11:37" - current time when sync concluded)
@@ -3175,6 +3188,23 @@ Deno.serve(async (req: Request) => {
 
         const autoStartTime = subtractMinutesFromTime24h(localCurrent.time24h, durationM);
 
+        const deliverablesMatch = message.match(/need to ([^.]+)/i) || message.match(/action items? (?:are|is) ([^.]+)/i);
+        const actionItemsList: any[] = [];
+        if (deliverablesMatch) {
+          const rawItems = deliverablesMatch[1].split(/\band\b|,/);
+          for (const raw of rawItems) {
+            const cleaned = raw.replace(/^to\s+/i, '').trim();
+            if (cleaned.length > 2) {
+              actionItemsList.push({
+                text: cleaned.charAt(0).toUpperCase() + cleaned.slice(1),
+                assignee: 'Salitha Marasinghe',
+                priority: 'medium',
+                done: false,
+              });
+            }
+          }
+        }
+
         agentExecutedProposals.push({
           id: crypto.randomUUID(),
           type: 'create_meeting_event',
@@ -3189,8 +3219,8 @@ Deno.serve(async (req: Request) => {
             attendees: /tech lead|lead/i.test(message) ? ['Salitha Marasinghe', 'Tech Lead'] : ['Salitha Marasinghe'],
             discussionSummary: formatted.discussionSummary,
             decisions: formatted.decisions,
-            tasksAssigned: [],
-            actionItems: [],
+            tasksAssigned: actionItemsList.map((ai) => ({ text: ai.text, done: false })),
+            actionItems: actionItemsList,
             addTasksToKanban: true,
             projectTag: null,
           },
