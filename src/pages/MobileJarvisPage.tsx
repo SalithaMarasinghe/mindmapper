@@ -136,7 +136,7 @@ export function MobileJarvisPage() {
   ];
 
   return (
-    <div className="fixed inset-0 w-full flex flex-col bg-bg text-text overflow-hidden select-none">
+    <div className="h-full w-full flex flex-col bg-bg text-text overflow-hidden select-none">
       
       {/* ── Top Mobile Bar ────────────────────────────────────────────── */}
       <header className="pt-[max(env(safe-area-inset-top,0px),12px)] pb-2.5 px-3 border-b border-border bg-panel shrink-0 flex items-center justify-between z-30">
@@ -482,8 +482,6 @@ export function MobileJarvisPage() {
           </button>
         </div>
       </footer>
-      {/* Safe-area sentinel: fills the home indicator zone below the footer with bg-panel */}
-      <div className="bg-panel shrink-0" style={{ height: 'env(safe-area-inset-bottom, 0px)' }} aria-hidden="true" />
     </div>
   );
 }

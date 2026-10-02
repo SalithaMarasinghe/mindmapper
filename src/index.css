@@ -32,14 +32,25 @@
 /* =====================================================
    DARK MODE GLOBAL DEFAULTS
    ===================================================== */
-html, body {
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
   background-color: var(--bg);
   color: var(--text);
   color-scheme: dark;
 }
 
+/* Body bg matches the footer panel color so any OS-rendered
+   area below the app (home indicator, gesture bar) blends in. */
 body {
+  background-color: var(--panel);
+  color: var(--text);
   font-family: 'Inter', 'Geist', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
 /* Custom sleek dark scrollbar */
