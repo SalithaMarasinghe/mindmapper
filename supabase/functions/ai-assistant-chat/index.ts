@@ -588,22 +588,24 @@ function formatToGoogleXYZWorkDescription(
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?/i.test(trimmed)) {
+    const isHeaderLine = (trimmed.startsWith('#') || trimmed.includes(':') || /^[🎯🔎🛠️🏗️🏆🧐📊]/.test(trimmed) || /^\[[XYZ]\]/i.test(trimmed)) && trimmed.length < 75;
+
+    if (isHeaderLine && (/\b(?:Objective|Investigate)\b/i.test(trimmed) || /^\[Z\]/i.test(trimmed))) {
       currentSection = 'objective';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?\s*/i, '');
-      if (after) sections.objective.push(after);
-    } else if (/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Execution|Discussion)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s🎯🔎]+/, '').trim();
+      if (after && !/\b(?:Objective|Investigate)\b/i.test(after)) sections.objective.push(after);
+    } else if (isHeaderLine && (/\b(?:Technical|Execution|Discussion|Build)\b/i.test(trimmed) || /^\[Z\]/i.test(trimmed))) {
       currentSection = 'technical';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Execution|Discussion)(?:\s*\[[^\]]*\])?:?\s*/i, '');
-      if (after) sections.technical.push(after);
-    } else if (/^(?:#+\s*)?(?:🏆\s*)?(?:Key\s*Accomplishments?|Strategic\s*Consensus|Accomplished?)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s🛠️🏗️]+/, '').trim();
+      if (after && !/\b(?:Technical|Execution|Discussion|Build)\b/i.test(after)) sections.technical.push(after);
+    } else if (isHeaderLine && (/\b(?:Accomplish|Key|Consensus|Decisions|Think|Analyze)\b/i.test(trimmed) || /^\[X\]/i.test(trimmed))) {
       currentSection = 'accomplishments';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:🏆\s*)?(?:Key\s*Accomplishments?|Strategic\s*Consensus|Accomplished?)(?:\s*\[[^\]]*\])?:?\s*/i, '');
-      if (after) sections.accomplishments.push(after);
-    } else if (/^(?:#+\s*)?(?:📊\s*)?(?:Measured\s*Impact(?:\s*(?:&|and)\s*Metrics)?|Metrics?|Action\s*Items?)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s🏆🧐]+/, '').trim();
+      if (after && !/\b(?:Accomplish|Key|Consensus|Decisions|Think|Analyze)\b/i.test(after)) sections.accomplishments.push(after);
+    } else if (isHeaderLine && (/\b(?:Measured|Impact|Metrics|Action|Milestone|Goal)\b/i.test(trimmed) || /^\[Y\]/i.test(trimmed))) {
       currentSection = 'metrics';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:📊\s*)?(?:Measured\s*Impact(?:\s*(?:&|and)\s*Metrics)?|Metrics?|Action\s*Items?)(?:\s*\[[^\]]*\])?:?\s*/i, '');
-      if (after) sections.metrics.push(after);
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s📊🎯]+/, '').trim();
+      if (after && !/\b(?:Measured|Impact|Metrics|Action|Milestone|Goal)\b/i.test(after)) sections.metrics.push(after);
     } else {
       sections[currentSection].push(line);
     }
@@ -614,8 +616,8 @@ function formatToGoogleXYZWorkDescription(
   const accText = sections.accomplishments.join('\n').trim();
   const metText = sections.metrics.join('\n').trim();
 
-  // If technical or accomplishments were parsed from LLM, preserve 100% of LLM text!
-  if (techText || accText) {
+  // If technical or accomplishments or metrics were parsed from LLM, preserve 100% of LLM text!
+  if (techText || accText || metText) {
     return [
       '🎯 Objective & Context',
       objText,
@@ -686,22 +688,24 @@ function formatToGoogleXYZMeetingSummary(
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?/i.test(trimmed)) {
+    const isHeaderLine = (trimmed.startsWith('#') || trimmed.includes(':') || /^[🎯🔎🛠️🏗️🏆🧐📊]/.test(trimmed) || /^\[[XYZ]\]/i.test(trimmed)) && trimmed.length < 75;
+
+    if (isHeaderLine && (/\b(?:Objective|Investigate|Context)\b/i.test(trimmed) || /^\[Z\]/i.test(trimmed))) {
       currentSection = 'objective';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?\s*/i, '');
-      if (after) sections.objective.push(after);
-    } else if (/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Discussion|Execution)(?:\s*(?:&|and)\s*Trade-Offs)?(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s🎯🔎]+/, '').trim();
+      if (after && !/\b(?:Objective|Context)\b/i.test(after)) sections.objective.push(after);
+    } else if (isHeaderLine && (/\b(?:Technical|Discussion|Execution|Trade-Offs|Build)\b/i.test(trimmed) || /^\[Z\]/i.test(trimmed))) {
       currentSection = 'technical';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Discussion|Execution)(?:\s*(?:&|and)\s*Trade-Offs)?(?:\s*\[[^\]]*\])?:?\s*/i, '');
-      if (after) sections.technical.push(after);
-    } else if (/^(?:#+\s*)?(?:🏆\s*)?(?:Strategic\s*Consensus(?:\s*(?:&|and)\s*Decisions)?|Consensus|Decisions?|Key\s*Accomplishments?)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s🛠️🏗️]+/, '').trim();
+      if (after && !/\b(?:Technical|Discussion)\b/i.test(after)) sections.technical.push(after);
+    } else if (isHeaderLine && (/\b(?:Consensus|Decisions|Accomplish|Strategic|Key|Think)\b/i.test(trimmed) || /^\[X\]/i.test(trimmed))) {
       currentSection = 'consensus';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:🏆\s*)?(?:Strategic\s*Consensus(?:\s*(?:&|and)\s*Decisions)?|Consensus|Decisions?|Key\s*Accomplishments?)(?:\s*\[[^\]]*\])?:?\s*/i, '');
-      if (after) sections.consensus.push(after);
-    } else if (/^(?:#+\s*)?(?:📊\s*)?(?:Action\s*Items(?:\s*(?:&|and)\s*Deliverables)?|Deliverables?|Measured\s*Impact)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s🏆🧐]+/, '').trim();
+      if (after && !/\b(?:Consensus|Decisions|Strategic)\b/i.test(after)) sections.consensus.push(after);
+    } else if (isHeaderLine && (/\b(?:Action|Deliverables|Impact|Metrics|Milestone|Goal)\b/i.test(trimmed) || /^\[Y\]/i.test(trimmed))) {
       currentSection = 'actionItems';
-      const after = trimmed.replace(/^(?:#+\s*)?(?:📊\s*)?(?:Action\s*Items(?:\s*(?:&|and)\s*Deliverables)?|Deliverables?|Measured\s*Impact)(?:\s*\[[^\]]*\])?:?\s*/i, '');
-      if (after) sections.actionItems.push(after);
+      const after = trimmed.replace(/^[^:]*:?\s*/, '').replace(/^[#\s📊🎯]+/, '').trim();
+      if (after && !/\b(?:Action|Deliverables)\b/i.test(after)) sections.actionItems.push(after);
     } else {
       sections[currentSection].push(line);
     }
@@ -712,7 +716,7 @@ function formatToGoogleXYZMeetingSummary(
   const conText = sections.consensus.join('\n').trim();
   const actText = sections.actionItems.join('\n').trim();
 
-  if (techText || conText) {
+  if (techText || conText || actText) {
     const formattedDiscussion = [
       '🎯 Objective & Context',
       objText || `Architectural alignment session on ${title}.`,
@@ -1514,13 +1518,22 @@ async function executeAgentTool(
         const formattedDescription = formatToGoogleXYZWorkDescription(title, rawDesc, rawStatus);
 
         const targetTaskId = typeof args.linkedTaskId === 'string' ? args.linkedTaskId : (context?.runningTask ? context.runningTask.id : null);
-        if (targetTaskId && rawStatus === 'in_progress') {
-          // Defensively ensure the linked task timer is paused
-          await supabase
-            .from('tasks')
-            .update({ is_paused: true })
-            .eq('id', targetTaskId)
-            .eq('user_id', user.id);
+        if (targetTaskId) {
+          if (rawStatus === 'in_progress') {
+            // Automatically pause the linked task
+            await supabase
+              .from('tasks')
+              .update({ is_paused: true })
+              .eq('id', targetTaskId)
+              .eq('user_id', user.id);
+          } else if (rawStatus === 'done') {
+            // Automatically complete the linked task
+            await supabase
+              .from('tasks')
+              .update({ status: 'done', is_paused: true })
+              .eq('id', targetTaskId)
+              .eq('user_id', user.id);
+          }
         }
 
         return {
@@ -1739,11 +1752,11 @@ ${projectsList}
    - Call 'update_task' with taskId, status: 'in_progress', isPaused: false. Confirm timer resumed.
 
 4. TASK FULLY COMPLETED:
-   - MANDATORY: In THIS SINGLE TURN, invoke BOTH 'update_task' (status: 'done') AND 'create_journal_entry' (type: 'work', status: 'done', with 4-badge Google XYZ description). Do not invoke them across separate turns.
+   - Directly invoke 'create_journal_entry' with status: 'done', linkedTaskId, and 4-badge Google XYZ description. (The system automatically completes and pauses the linked task in the database; do NOT call update_task).
 
 5. DONE FOR THE DAY / HALFWAY DONE (e.g. "Done for the day regarding [task]", "halfway done — finished X, will do Y tomorrow"):
    - Task is NOT done! Do NOT move to 'done'!
-   - In THIS SINGLE TURN, invoke BOTH 'update_task' (taskId, isPaused: true, status: 'in_progress') AND 'create_journal_entry' (type: 'work', status: 'in_progress', and 4-badge Google XYZ description including: "Planned next milestone: [What Salitha will tackle tomorrow]"). Do NOT invoke update_task in a separate turn.
+   - Directly invoke 'create_journal_entry' with status: 'in_progress', linkedTaskId, and 4-badge Google XYZ description including: "Planned next milestone (Tomorrow): [What Salitha will tackle tomorrow]". (The system automatically pauses the running task in the database; do NOT call update_task).
 
 6. EXPLAINING A MEETING (e.g. "I just finished a 45-minute sync with tech lead..."):
    - CRITICAL GUARD: DO NOT call 'create_task'! DO NOT call 'calculate_relative_time' (compute directly: endTime = "${local.time24h}", startTime = subtract duration from "${local.time24h}", e.g. 45m before "${local.time24h}" is calculated directly).
@@ -2887,10 +2900,10 @@ Deno.serve(async (req: Request) => {
             );
 
             let turnMessages = agentMessages;
-            let turnMaxTokens = 850;
+            let turnMaxTokens = 2500;
 
             if (hasJournalProposal) {
-              turnMaxTokens = 350;
+              turnMaxTokens = 400;
               // Provide a lightweight system prompt for the final confirmation to save ~1,400 tokens and guarantee instant response within TPM limit
               turnMessages = [
                 {
