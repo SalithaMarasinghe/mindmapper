@@ -432,7 +432,7 @@ export function MobileJarvisPage() {
       </div>
 
       {/* ── Fixed Bottom Composer Dock (Touch & Thumb Optimized) ─────── */}
-      <footer className="bg-panel border-t border-border px-3 pt-2 pb-2 shrink-0 z-30">
+      <footer className="bg-panel border-t border-border px-3 pt-2 shrink-0 z-30" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 20px), 20px)' }}>
         <div className="bg-surface rounded-[20px] border border-border flex items-end px-2.5 py-1.5 gap-2 focus-within:border-accent/50 transition-colors">
           
           {/* Large Mic Toggle Button */}
