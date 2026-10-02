@@ -139,7 +139,7 @@ export function MobileJarvisPage() {
     <div className="h-[100dvh] w-full flex flex-col bg-bg text-text overflow-hidden select-none">
       
       {/* ── Top Mobile Bar ────────────────────────────────────────────── */}
-      <header className="h-12 border-b border-border bg-panel px-3 shrink-0 flex items-center justify-between z-30">
+      <header className="pt-[max(env(safe-area-inset-top,0px),12px)] pb-2.5 px-3 border-b border-border bg-panel shrink-0 flex items-center justify-between z-30">
         <div className="flex items-center gap-2">
           <Link
             to="/dashboard"

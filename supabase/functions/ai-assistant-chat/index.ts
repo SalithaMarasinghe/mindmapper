@@ -1126,7 +1126,11 @@ async function executeAgentTool(
       if (priority.toLowerCase() === 'urgent') priority = 'high';
       if (!priority) priority = 'medium';
       const trackedSeconds = Number(args.trackedSeconds) || 0;
-      const plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
+      const tomorrowDateISO = new Date(new Date(currentLocal.dateISO).getTime() + 86400000).toISOString().slice(0, 10);
+      let plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
+      if (args.plannedDate === 'tomorrow' || /\btomorrow\b/i.test(args.plannedDate || '') || (!args.plannedDate && /\btomorrow\b/i.test(userMessage || ''))) {
+        plannedDate = tomorrowDateISO;
+      }
 
       // Handle batch task creation if tasks array provided
       if (Array.isArray(args.tasks) && args.tasks.length > 0) {
@@ -1177,8 +1181,10 @@ async function executeAgentTool(
 
       // 0. Meeting guard: If the user is explaining/logging a meeting, action items must NOT be auto-created now!
       // They belong inside the create_journal_entry proposal for user review and approval.
+      // BUT if the user explicitly requested a task ("just add as a task", "don't create this as a meeting", etc.), NEVER suppress!
       const uMsg = userMessage || '';
-      const isMeetingReport = /\b(meeting|sync|standup|call with|1-on-1|discussed with|just finished.*sync)\b/i.test(uMsg);
+      const isExplicitTaskOnly = /\b(don'?t (?:create|log|make).*(?:meeting|look)|not a meeting|just (?:add|create|make).*(?:task|to ?do)|only (?:add|create|make).*(?:task|to ?do)|can you make a (?:to ?do )?task|add (?:a|this) task|create (?:a|this) task)\b/i.test(uMsg);
+      const isMeetingReport = !isExplicitTaskOnly && /\b(meeting|sync|standup|1-on-1|just finished.*sync)\b/i.test(uMsg) && !/\b(add task|create task|make a task)\b/i.test(uMsg);
       if (isMeetingReport && status === 'todo') {
         console.log(`[ai-assistant-chat] Suppressing immediate create_task for "${title}" during meeting log to prevent duplicate tasks.`);
         return {
@@ -2010,6 +2016,8 @@ Deliver a crisp, warm, 1-sentence confirmation.`;
           .join('\n')
       : 'No active projects registered.';
 
+  const tomorrowDateISO = new Date(new Date(local.dateISO).getTime() + 86400000).toISOString().slice(0, 10);
+
   return `You are Jarvis, a sentient, highly competent, proactive personal engineering AI assistant and chief-of-staff for Salitha Marasinghe (Trainee Associate Software Engineer).
 You have real, native database tools to query and update the Kanban board, track time, draft Work Journal entries, check the real clock, and manage projects.
 
@@ -2017,6 +2025,7 @@ You have real, native database tools to query and update the Kanban board, track
 - Real-World Current Local Time: "${local.time24h}" (${dayOfWeek}, ${local.dateISO})
 - User Timezone: ${timezone}
 - Current ISO Timestamp: "${currentTimeISO}"
+- Tomorrow's Date: "${tomorrowDateISO}"
 
 ### SALITHA'S ACTIVE FOCUS PROJECT (STORYLINE SPINE):
 Current Active Focus Project: ${activeProjectInfo}
@@ -2040,10 +2049,10 @@ ${projectsList}
    - Resuming task after break: call 'update_task' with status: 'in_progress', isPaused: false.
    - Marking completed task as Done: call 'update_task' with status: 'done', trackedSeconds.
    - Pausing incomplete task when done for the day: call 'update_task' with isPaused: true, status: 'in_progress'.
-   - Standalone user-requested tasks: call 'create_task' with status: 'todo' (or 'tasks' array if creating multiple tasks).
+   - Standalone user-requested tasks: call 'create_task' with status: 'todo' (or 'tasks' array if creating multiple tasks). If requested for tomorrow, use plannedDate: "${tomorrowDateISO}".
    - Deleting a task: call 'delete_task' with taskId.
    - Switching active focus project: call 'switch_active_project' with projectName.
-   *CRITICAL: NEVER call 'create_task' for meeting action items! Meeting action items are bundled into create_journal_entry.*
+   *CRITICAL: When logging a full meeting (creating a meeting journal entry), meeting action items are bundled into create_journal_entry. HOWEVER, if Salitha specifically requests creating or adding a task (e.g. "make a to do task for tomorrow", "just add as a task", "don't create this as a meeting"), ALWAYS invoke 'create_task'!*
 
 2. TIER 2: REVIEWABLE PROPOSALS (Draft via tools, NEVER auto-executed into DB, REQUIRES SALITHA'S APPROVAL):
    - Work Journal entries (call 'create_journal_entry' with type: 'work').
@@ -2070,13 +2079,18 @@ ${projectsList}
    - Directly invoke 'create_journal_entry' with status: 'in_progress', linkedTaskId, and 4-badge Google XYZ description including: "Planned next milestone (Tomorrow): [What Salitha will tackle tomorrow]". (The system automatically pauses the running task in the database; do NOT call update_task).
 
 6. EXPLAINING A MEETING (e.g. "I just finished a 45-minute sync with tech lead..."):
-   - CRITICAL GUARD: DO NOT call 'create_task'! DO NOT call 'calculate_relative_time' (compute directly: endTime = "${local.time24h}", startTime = subtract duration from "${local.time24h}", e.g. 45m before "${local.time24h}" is calculated directly).
-   - Call 'create_journal_entry' with:
-     * title: '[Meeting Topic / Discussion Title]'
-     * type: 'meeting'
-     * startTime, endTime, date: "${local.dateISO}"
-     * attendees: ["Salitha Marasinghe", "Tech Lead"]
-     * decisions: "* **[Agreed Direction]**: ...\n* **[Out of Scope / Deferred]**: ..."
+   - IMPORTANT OVERRIDE: If Salitha explicitly instructs NOT to create a meeting log (e.g. "don't create this as a meeting", "not a meeting", "just add this as a task", "make a to do task for tomorrow"):
+     * Respect Salitha's instruction! DO NOT call 'create_journal_entry'!
+     * Directly call 'create_task' with title (e.g. "Understand fundamentals of data engineering for upcoming project"), status: 'todo', plannedDate: "${tomorrowDateISO}".
+     * Deliver a crisp, warm confirmation that the task has been added to their board for tomorrow under their active project.
+   - Otherwise, when logging a full meeting:
+     * DO NOT call 'create_task'! All meeting action items are bundled inside 'create_journal_entry' (in 'actionItems' and 'tasksAssigned').
+     * Call 'create_journal_entry' with:
+       * title: '[Meeting Topic / Discussion Title]'
+       * type: 'meeting'
+       * startTime, endTime, date: "${local.dateISO}"
+       * attendees: ["Salitha Marasinghe", "Tech Lead"]
+       * decisions: "* **[Agreed Direction]**: ...\n* **[Out of Scope / Deferred]**: ..."
      * actionItems: array of action items (e.g. [{ text: "...", assignee: "Salitha Marasinghe", priority: "high" }])
      * description: structured strictly according to the **4-badge Meeting Google XYZ formula**.
 
@@ -3039,7 +3053,8 @@ Deno.serve(async (req: Request) => {
       headers?: Record<string, string>;
     }
 
-    const isMeetingReport = /\b(meeting|sync|standup|call with|1-on-1|discussed with|just finished.*sync)\b/i.test(message);
+    const isExplicitTaskOnly = /\b(don'?t (?:create|log|make).*(?:meeting|look)|not a meeting|just (?:add|create|make).*(?:task|to ?do)|only (?:add|create|make).*(?:task|to ?do)|can you make a (?:to ?do )?task|add (?:a|this) task|create (?:a|this) task)\b/i.test(message);
+    const isMeetingReport = !isExplicitTaskOnly && /\b(meeting|sync|standup|1-on-1|just finished.*sync)\b/i.test(message);
     const isWorkSessionOrJournal = /\b(done for the day|finished|completed|halfway|wrap up|wrapping up|heading out for the day|profiling|implemented|evaluated|journal|career)\b/i.test(message);
     const isExplicitExplainOrQA = /\b(explain|what is|how does|why does|difference between|compare|tell me about)\b/i.test(message);
 

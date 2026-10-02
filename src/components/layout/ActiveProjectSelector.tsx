@@ -54,7 +54,7 @@ export function ActiveProjectSelector({ compact = false }: ActiveProjectSelector
           ></span>
         </span>
 
-        <span className="font-medium text-text-secondary truncate max-w-[120px] sm:max-w-[160px]">
+        <span className="font-medium text-text-secondary truncate max-w-[105px] xs:max-w-[130px] sm:max-w-[160px]">
           {activeProject ? activeProject.name : 'Select Project'}
         </span>
 
