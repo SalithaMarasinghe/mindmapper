@@ -127,11 +127,12 @@ interface TimelineState {
   createProject: (
     name: string,
     description?: string,
-    status?: 'active' | 'completed' | 'on_hold' | 'planning'
+    status?: 'active' | 'completed' | 'on_hold' | 'planning',
+    category?: 'work' | 'study'
   ) => Promise<Project | null>;
   updateProject: (
     id: string,
-    updates: Partial<Pick<Project, 'name' | 'description' | 'status'>>
+    updates: Partial<Pick<Project, 'name' | 'description' | 'status' | 'category'>>
   ) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
 
@@ -217,6 +218,8 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         name: row.name,
         description: row.description,
         status: row.status,
+        category: (row.category as 'work' | 'study') || 'work',
+        summary_xyz: row.summary_xyz,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
@@ -241,7 +244,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   },
 
   // ── createProject ────────────────────────────────────────────────────────
-  createProject: async (name, description, status = 'active') => {
+  createProject: async (name, description, status = 'active', category = 'work') => {
     const { user } = useAuthStore.getState();
     if (!user) return null;
     try {
@@ -252,6 +255,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
           name: name.trim(),
           description: description?.trim() || null,
           status,
+          category,
         })
         .select()
         .single();
@@ -263,6 +267,8 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         name: data.name,
         description: data.description,
         status: data.status,
+        category: data.category || category,
+        summary_xyz: data.summary_xyz,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       };

@@ -32,6 +32,7 @@ export interface CareerLedgerModalProps {
 type DatePreset = '7d' | '30d' | '90d' | '180d' | 'all' | 'custom';
 type TabType = 'storylines' | 'chronological' | 'markdown' | 'synthesis';
 type SynthesisType = 'resume' | 'promotion' | 'linkedin';
+type CategoryScope = 'all' | 'work' | 'study';
 
 export function CareerLedgerModal({ isOpen, onClose }: CareerLedgerModalProps) {
   const { fetchRange, fetchProjects, projects } = useTimelineStore();
@@ -80,8 +81,14 @@ export function CareerLedgerModal({ isOpen, onClose }: CareerLedgerModalProps) {
   const [events, setEvents] = useState<TimelineEventFull[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [categoryScope, setCategoryScope] = useState<CategoryScope>('all');
   const [activeTab, setActiveTab] = useState<TabType>('storylines');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleCategoryScopeChange = (scope: CategoryScope) => {
+    setCategoryScope(scope);
+    setSelectedTag('all');
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -112,8 +119,9 @@ export function CareerLedgerModal({ isOpen, onClose }: CareerLedgerModalProps) {
 
   const compiledLedger: CompiledLedger = useMemo(() => {
     const tagFilter = selectedTag === 'all' ? null : selectedTag;
-    return compileLedger(events, startDate, endDate, tagFilter, sortOrder, projects);
-  }, [events, startDate, endDate, selectedTag, sortOrder, projects]);
+    const catFilter = categoryScope === 'all' ? null : categoryScope;
+    return compileLedger(events, startDate, endDate, tagFilter, sortOrder, projects, catFilter);
+  }, [events, startDate, endDate, selectedTag, sortOrder, projects, categoryScope]);
 
   const markdownContent = useMemo(() => {
     return compileLedgerToMarkdown(compiledLedger, {
@@ -133,15 +141,22 @@ export function CareerLedgerModal({ isOpen, onClose }: CareerLedgerModalProps) {
     setSynthesisOutput(null);
 
     let goalPrompt = '';
+    const scopeLabel =
+      categoryScope === 'study'
+        ? 'Data Engineering & Technical Self-Study Dossier'
+        : categoryScope === 'work'
+        ? 'Professional Client & Studio Engineering Ledger'
+        : 'Continuous Workload & Career Ledger';
+
     if (type === 'resume') {
       goalPrompt = `You are an elite Silicon Valley technical recruiter and resume writer.
-Review the following verified Continuous Workload & Career Ledger for Salitha Marasinghe (Trainee Associate Software Engineer).
+Review the following verified ${scopeLabel} for Salitha Marasinghe (Trainee Associate Software Engineer).
 Extract 5 to 7 high-impact, promotion-grade bullet points following the Google XYZ formula: "Accomplished [X] as measured by [Y], by doing [Z]".
 Highlight initiative ownership, technical judgment, latency/cost/scale wins, and trade-offs.
 Do not invent facts. Return formatted Markdown with a brief introductory sentence and clear bullet points.`;
     } else if (type === 'promotion') {
       goalPrompt = `You are a Principal Engineering Director conducting a semi-annual promotion audit.
-Review the following Continuous Workload & Career Ledger for Salitha Marasinghe.
+Review the following ${scopeLabel} for Salitha Marasinghe.
 Write a comprehensive, professional Promotion & Performance Review Dossier evaluating Salitha across four core engineering pillars:
 1. Technical Execution & Architecture
 2. Problem Solving & Technical Judgment
@@ -150,7 +165,7 @@ Write a comprehensive, professional Promotion & Performance Review Dossier evalu
 Cite specific chained initiatives and outcomes from the ledger.`;
     } else {
       goalPrompt = `You are a developer relations expert and technical author.
-Review the following Continuous Workload & Career Ledger for Salitha Marasinghe.
+Review the following ${scopeLabel} for Salitha Marasinghe.
 Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key engineering achievements, lessons learned, and architectural decisions made over this period.`;
     }
 
@@ -277,30 +292,77 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
 
         {/* ── Filters & Controls Bar ────────────────────────────────────────── */}
         <div className="px-6 py-3 border-b border-[#111111] bg-[#080808] flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0">
-          {/* Presets */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">
-              Range:
-            </span>
-            {(['7d', '30d', '90d', '180d', 'all'] as DatePreset[]).map((p) => {
-              const label =
-                p === '7d' ? '7D' : p === '30d' ? '1M' : p === '90d' ? '3M' : p === '180d' ? '6 Months' : 'All';
-              const active = preset === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => applyPreset(p)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
-                    active
-                      ? 'bg-amber-500 text-slate-950 font-bold'
-                      : 'bg-[#0a0a0a] text-slate-300 hover:bg-[#141414]'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Scope Selector: All vs Professional Work vs Self-Study */}
+            <div className="flex items-center gap-1 bg-[#0e0e0e] p-0.5 rounded-lg border border-[#161616]">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-1.5">
+                Scope:
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCategoryScopeChange('all')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                  categoryScope === 'all'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Full 360° Career Overview (Work + Self-Study)"
+              >
+                All (360°)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryScopeChange('work')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 ${
+                  categoryScope === 'work'
+                    ? 'bg-teal-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Professional Client & Studio Engineering Only"
+              >
+                <Briefcase className="w-3 h-3" />
+                <span>Professional Work</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryScopeChange('study')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 ${
+                  categoryScope === 'study'
+                    ? 'bg-purple-500 text-white font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Personal Technical Upskilling, Certifications & Drills"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Self-Study & Certs</span>
+              </button>
+            </div>
+
+            {/* Presets */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">
+                Range:
+              </span>
+              {(['7d', '30d', '90d', '180d', 'all'] as DatePreset[]).map((p) => {
+                const label =
+                  p === '7d' ? '7D' : p === '30d' ? '1M' : p === '90d' ? '3M' : p === '180d' ? '6 Months' : 'All';
+                const active = preset === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                      active
+                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        : 'bg-[#0a0a0a] text-slate-300 hover:bg-[#141414]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Date Inputs */}

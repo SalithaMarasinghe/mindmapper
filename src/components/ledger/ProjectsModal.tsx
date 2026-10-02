@@ -24,6 +24,7 @@ export function ProjectsModal({ isOpen, onClose }: ProjectsModalProps) {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newStatus, setNewStatus] = useState<'active' | 'planning' | 'completed' | 'on_hold'>('active');
+  const [newCategory, setNewCategory] = useState<'work' | 'study'>('work');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -50,12 +51,13 @@ export function ProjectsModal({ isOpen, onClose }: ProjectsModalProps) {
     }
     setIsSubmitting(true);
     try {
-      const created = await createProject(newName, newDesc, newStatus);
+      const created = await createProject(newName, newDesc, newStatus, newCategory);
       if (created) {
         toast.success(`Project "${created.name}" created!`);
         setNewName('');
         setNewDesc('');
         setNewStatus('active');
+        setNewCategory('work');
         setIsCreating(false);
       }
     } catch {
@@ -121,16 +123,27 @@ export function ProjectsModal({ isOpen, onClose }: ProjectsModalProps) {
         {isCreating && (
           <form onSubmit={handleCreate} className="p-5 border-b border-border bg-surface-2/40 flex flex-col gap-3 shrink-0 animate-in slide-in-from-top-2 duration-150">
             <div className="text-xs font-semibold text-text">New Project Initiative</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="sm:col-span-2">
                 <input
                   type="text"
-                  placeholder="Initiative Name (e.g. Omni-Search Indexer)"
+                  placeholder="Initiative Name (e.g. Fabric Data Engineering)"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-border-strong"
                   autoFocus
                 />
+              </div>
+              <div>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value as any)}
+                  className="w-full bg-surface border border-border rounded-lg px-2.5 py-2 text-xs text-text focus:outline-none focus:border-border-strong"
+                  title="Category"
+                >
+                  <option value="work">💼 Work</option>
+                  <option value="study">🎓 Study</option>
+                </select>
               </div>
               <div>
                 <select
@@ -225,6 +238,15 @@ export function ProjectsModal({ isOpen, onClose }: ProjectsModalProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm text-text truncate">{project.name}</span>
+                      {project.category === 'study' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border text-purple-400 bg-purple-950/40 border-purple-800/40 flex items-center gap-1">
+                          🎓 Study
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border text-teal-400 bg-teal-950/40 border-teal-800/40 flex items-center gap-1">
+                          💼 Work
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusColors} capitalize`}>
                         {project.status.replace('_', ' ')}
                       </span>

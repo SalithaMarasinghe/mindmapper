@@ -404,8 +404,13 @@ const JARVIS_TOOLS = [
         },
         status: {
           type: 'string',
-          enum: ['active', 'planned', 'completed'],
-          description: 'Status of the project (default "planned"). If "active", it becomes the current focus project.',
+          enum: ['active', 'planning', 'completed', 'on_hold'],
+          description: 'Status of the project (default "planning"). If "active", it becomes the current focus project.',
+        },
+        category: {
+          type: 'string',
+          enum: ['work', 'study'],
+          description: 'Category: "work" for professional client deliverables, "study" for personal upskilling/certifications (default "work").',
         },
       },
       required: ['name'],
@@ -1408,6 +1413,7 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
           id: p.id,
           name: p.name,
           status: p.status,
+          category: p.category || 'work',
           description: p.description,
           isActive: p.status === 'active',
         })),
@@ -1416,7 +1422,8 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
 
     case 'jarvis_create_project': {
       const name = String(args.name).trim();
-      const status = args.status || 'planned';
+      let status = args.status === 'planned' ? 'planning' : (args.status || 'planning');
+      const category = args.category === 'study' ? 'study' : 'work';
 
       if (status === 'active') {
         await supabase.from('projects').update({ status: 'completed' }).eq('user_id', userId).eq('status', 'active');
@@ -1429,6 +1436,7 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
           name,
           description: args.description || '',
           status,
+          category,
         })
         .select()
         .single();
@@ -1436,7 +1444,7 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
       if (error) throw error;
       return {
         success: true,
-        message: `Created project storyline "${project.name}" (Status: ${project.status}).`,
+        message: `Created project storyline "${project.name}" (Status: ${project.status}, Category: ${project.category}).`,
         project,
       };
     }

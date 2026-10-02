@@ -145,6 +145,8 @@ export interface Project {
   name: string;
   description?: string | null;
   status: 'active' | 'completed' | 'on_hold' | 'planning';
+  category?: 'work' | 'study';
+  summary_xyz?: string | null;
   createdAt: string;
   updatedAt: string;
 }

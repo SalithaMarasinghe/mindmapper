@@ -259,11 +259,31 @@ export function compileLedger(
   endDate: string,
   filterTag?: string | null,
   sortOrder: 'asc' | 'desc' = 'asc',
-  projects: Project[] = []
+  projects: Project[] = [],
+  categoryFilter?: 'work' | 'study' | null
 ): CompiledLedger {
-  const filtered = filterTag
-    ? events.filter((e) => e.projectTag?.toLowerCase() === filterTag.toLowerCase())
+  const projectMap = new Map<string, Project>();
+  const projectNameMap = new Map<string, Project>();
+  for (const p of projects) {
+    projectMap.set(p.id, p);
+    projectNameMap.set(p.name.toLowerCase(), p);
+  }
+
+  // 1. Filter by category ('work' vs 'study') if specified
+  const categoryFiltered = categoryFilter
+    ? events.filter((e) => {
+        const p =
+          (e.projectId ? projectMap.get(e.projectId) : undefined) ||
+          (e.projectTag ? projectNameMap.get(e.projectTag.toLowerCase()) : undefined);
+        const projCategory = p?.category || 'work';
+        return projCategory === categoryFilter;
+      })
     : events;
+
+  // 2. Filter by specific project tag if specified
+  const filtered = filterTag
+    ? categoryFiltered.filter((e) => e.projectTag?.toLowerCase() === filterTag.toLowerCase())
+    : categoryFiltered;
 
   const { storylines, standaloneEvents } = compileStorylines(filtered, sortOrder, projects);
   const weeks = compileChronologicalWeeks(filtered, sortOrder);
@@ -272,7 +292,7 @@ export function compileLedger(
   const meetingEventsCount = filtered.filter((e) => e.type === 'meeting').length;
 
   const tagsSet = new Set<string>();
-  for (const e of filtered) {
+  for (const e of categoryFiltered) {
     if (e.projectTag) tagsSet.add(e.projectTag);
   }
 
