@@ -821,18 +821,32 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'create_task',
-      description: 'Creates a standalone task. NEVER call for meeting action items.',
+      description: 'Creates one or more standalone tasks. Provide "title" for a single task, or "tasks" array for batch creation.',
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: 'Task title' },
-          status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
-          priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+          title: { type: ['string', 'null'], description: 'Task title (for single task)' },
+          status: { type: ['string', 'null'], enum: ['todo', 'in_progress', 'done', null] },
+          priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', 'urgent', null] },
           trackedSeconds: { type: ['number', 'null'] },
           description: { type: ['string', 'null'] },
           plannedDate: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+          tasks: {
+            type: ['array', 'null'],
+            description: 'Array of task objects when creating multiple tasks in batch',
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', 'urgent', null] },
+                status: { type: ['string', 'null'], enum: ['todo', 'in_progress', 'done', null] },
+                description: { type: ['string', 'null'] },
+                plannedDate: { type: ['string', 'null'] },
+              },
+              required: ['title'],
+            },
+          },
         },
-        required: ['title', 'status'],
       },
     },
   },
@@ -1091,8 +1105,52 @@ async function executeAgentTool(
       if (priority.toLowerCase() === 'urgent') priority = 'high';
       if (!priority) priority = 'medium';
       const trackedSeconds = Number(args.trackedSeconds) || 0;
-      const description = args.description ? String(args.description) : '';
       const plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
+
+      // Handle batch task creation if tasks array provided
+      if (Array.isArray(args.tasks) && args.tasks.length > 0) {
+        const createdTasksList: any[] = [];
+        for (const item of args.tasks) {
+          const itemTitle = String(item.title || '').trim();
+          if (!itemTitle) continue;
+          let itemPriority = item.priority || priority || 'medium';
+          if (typeof itemPriority === 'string' && itemPriority.toLowerCase() === 'urgent') itemPriority = 'high';
+          const itemStatus = item.status || status || 'todo';
+          const itemPlannedDate = item.plannedDate || plannedDate || currentLocal.dateISO;
+
+          const { data: inserted } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              title: itemTitle,
+              status: itemStatus,
+              priority: itemPriority,
+              description: item.description || '',
+              planned_date: itemPlannedDate,
+              tracked_seconds: 0,
+              is_paused: false,
+            })
+            .select()
+            .single();
+
+          if (inserted) {
+            createdTasksList.push(inserted);
+          }
+        }
+
+        return {
+          result: { success: true, count: createdTasksList.length, tasks: createdTasksList },
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'create_tasks',
+            summary: `Created ${createdTasksList.length} tasks: ${createdTasksList.map((t: any) => t.title).join(', ')}`,
+            status: 'auto_executed',
+            payload: {
+              tasks: createdTasksList.map((t: any) => ({ id: t.id, title: t.title, priority: t.priority })),
+            },
+          },
+        };
+      }
 
       // 0. Meeting guard: If the user is explaining/logging a meeting, action items must NOT be auto-created now!
       // They belong inside the create_journal_entry proposal for user review and approval.
@@ -1845,7 +1903,7 @@ ${tasksList}
 ### ACTIONS:
 - Pausing running task: call 'update_task' with isPaused: true.
 - Resuming / Starting task: call 'update_task' with taskId, status: 'in_progress', isPaused: false.
-- Creating task: call 'create_task' with title, status: 'todo', priority.
+- Creating task: call 'create_task' with title, status: 'todo', priority (or 'tasks' array if creating multiple tasks).
 - Deleting task: call 'delete_task' with taskId.
 - Updating task: call 'update_task' with taskId and updated fields.
 
@@ -1883,7 +1941,7 @@ ${projectsList}
    - Resuming task after break: call 'update_task' with status: 'in_progress', isPaused: false.
    - Marking completed task as Done: call 'update_task' with status: 'done', trackedSeconds.
    - Pausing incomplete task when done for the day: call 'update_task' with isPaused: true, status: 'in_progress'.
-   - Standalone user-requested tasks: call 'create_task' with status: 'todo'.
+   - Standalone user-requested tasks: call 'create_task' with status: 'todo' (or 'tasks' array if creating multiple tasks).
    *CRITICAL: NEVER call 'create_task' for meeting action items! Meeting action items are bundled into create_journal_entry.*
 
 2. TIER 2: REVIEWABLE PROPOSALS (Draft via tools, NEVER auto-executed into DB, REQUIRES SALITHA'S APPROVAL):
@@ -2866,6 +2924,7 @@ Deno.serve(async (req: Request) => {
     const openrouterKey = Deno.env.get('OPENROUTER_API_KEY');
     const codecraftKey = Deno.env.get('CODECRAFT_API_KEY');
     const groqKey = Deno.env.get('GROQ_API_KEY');
+    const groqPaidKey = Deno.env.get('GROQ_PAID_API_KEY');
 
     interface ProviderConfig {
       label: string;
@@ -2884,46 +2943,75 @@ Deno.serve(async (req: Request) => {
 
     const providers: ProviderConfig[] = [];
 
-    // Ultra-Fast LPU Engine: Specialized Model Ordering
+    // Tier 1: Ultra-Fast Free Groq LPU Engine (Primary - 100% Free Tier, $0.00 spent)
     if (groqKey) {
       if (isQuickOperational) {
-        // High-Speed Engine: Groq 20B / Qwen first (sub-second execution for operational commands)
         providers.push({
-          label: 'Groq-20B',
+          label: 'Groq-Free-20B',
           url: 'https://api.groq.com/openai/v1/chat/completions',
           key: groqKey,
           model: 'openai/gpt-oss-20b',
         });
         providers.push({
-          label: 'Groq-Qwen',
+          label: 'Groq-Free-Qwen',
           url: 'https://api.groq.com/openai/v1/chat/completions',
           key: groqKey,
           model: 'qwen/qwen3.8-27b',
         });
         providers.push({
-          label: 'Groq-120B',
+          label: 'Groq-Free-120B',
           url: 'https://api.groq.com/openai/v1/chat/completions',
           key: groqKey,
           model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
         });
       } else {
-        // Deep Reasoning Engine: Groq 120B first (maximum nuance for Google XYZ journals & meetings)
         providers.push({
-          label: 'Groq-120B',
+          label: 'Groq-Free-120B',
           url: 'https://api.groq.com/openai/v1/chat/completions',
           key: groqKey,
           model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
         });
         providers.push({
-          label: 'Groq-Qwen',
+          label: 'Groq-Free-Qwen',
           url: 'https://api.groq.com/openai/v1/chat/completions',
           key: groqKey,
           model: 'qwen/qwen3.8-27b',
         });
         providers.push({
-          label: 'Groq-20B',
+          label: 'Groq-Free-20B',
           url: 'https://api.groq.com/openai/v1/chat/completions',
           key: groqKey,
+          model: 'openai/gpt-oss-20b',
+        });
+      }
+    }
+
+    // Tier 2: Groq Pay-As-You-Go Overflow Cushion (Secondary - Only engages when Free quota is reached)
+    if (groqPaidKey && groqPaidKey !== groqKey) {
+      if (isQuickOperational) {
+        providers.push({
+          label: 'Groq-Paid-20B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqPaidKey,
+          model: 'openai/gpt-oss-20b',
+        });
+        providers.push({
+          label: 'Groq-Paid-120B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqPaidKey,
+          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
+        });
+      } else {
+        providers.push({
+          label: 'Groq-Paid-120B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqPaidKey,
+          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
+        });
+        providers.push({
+          label: 'Groq-Paid-20B',
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: groqPaidKey,
           model: 'openai/gpt-oss-20b',
         });
       }
@@ -3137,9 +3225,10 @@ Deno.serve(async (req: Request) => {
             while (llmRes.status === 429 && retryCount < 2) {
               retryCount++;
               lastErrText = await llmRes.text();
-              console.warn(`[ai-assistant-chat] ${provider.label} rate limit (429) in turn ${turn} (attempt ${retryCount}): ${lastErrText}`);
               const isDailyLimit = /tokens per day|TPD/i.test(lastErrText);
-              if (isDailyLimit) {
+              // If we have a paid key ready, don't wait on free-tier rate limits - immediately failover to paid key!
+              if (isDailyLimit || (groqPaidKey && provider.label.includes('Free'))) {
+                console.log(`[ai-assistant-chat] ${provider.label} 429 encountered, immediately failing over to paid overflow provider...`);
                 break;
               }
               let waitMs = 3000;
