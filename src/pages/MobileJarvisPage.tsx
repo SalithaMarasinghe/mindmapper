@@ -136,7 +136,7 @@ export function MobileJarvisPage() {
   ];
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col bg-bg text-text overflow-hidden select-none">
+    <div className="fixed inset-0 w-full flex flex-col bg-bg text-text overflow-hidden select-none">
       
       {/* ── Top Mobile Bar ────────────────────────────────────────────── */}
       <header className="pt-[max(env(safe-area-inset-top,0px),12px)] pb-2.5 px-3 border-b border-border bg-panel shrink-0 flex items-center justify-between z-30">
@@ -432,7 +432,7 @@ export function MobileJarvisPage() {
       </div>
 
       {/* ── Fixed Bottom Composer Dock (Touch & Thumb Optimized) ─────── */}
-      <footer className="bg-panel border-t border-border px-3 py-2 pb-[max(10px,env(safe-area-inset-bottom))] shrink-0 z-30">
+      <footer className="bg-panel border-t border-border px-3 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)] shrink-0 z-30">
         <div className="bg-surface rounded-[20px] border border-border flex items-end px-2.5 py-1.5 gap-2 focus-within:border-accent/50 transition-colors">
           
           {/* Large Mic Toggle Button */}
