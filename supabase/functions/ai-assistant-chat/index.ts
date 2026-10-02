@@ -769,11 +769,11 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'get_current_time',
-      description: 'Returns the exact, authoritative current local time, date, and day of the week for the user.',
+      description: 'Returns exact local time and date for user.',
       parameters: {
         type: 'object',
         properties: {
-          timezone: { type: ['string', 'null'], description: 'User timezone, e.g. "Asia/Colombo"' },
+          timezone: { type: ['string', 'null'], description: 'e.g. "Asia/Colombo"' },
         },
         required: ['timezone'],
       },
@@ -783,12 +783,12 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'calculate_relative_time',
-      description: 'Calculates the exact start time, end time, and date for work or events given duration in minutes (e.g. 120 for 2 hours ago). Automatically handles midnight rollover.',
+      description: 'Calculates start and end time given minutes ago (e.g. 120 for 2h ago).',
       parameters: {
         type: 'object',
         properties: {
-          minutesAgo: { type: 'number', description: 'Duration in minutes, e.g. 120 for 2 hours' },
-          timezone: { type: ['string', 'null'], description: 'User timezone, e.g. "Asia/Colombo"' },
+          minutesAgo: { type: 'number', description: 'Duration in minutes' },
+          timezone: { type: ['string', 'null'] },
         },
         required: ['minutesAgo'],
       },
@@ -798,11 +798,11 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'search_tasks',
-      description: 'Searches existing Kanban tasks by title, keyword, or concept using fuzzy matching. ALWAYS call this before attempting to update a task.',
+      description: 'Searches tasks by title/keyword fuzzy match.',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Keyword to search, e.g. "RAG", "auth", "latency", "evaluate"' },
+          query: { type: 'string', description: 'Keyword to search' },
           status: { type: ['string', 'null'], enum: ['todo', 'in_progress', 'done', null] },
         },
         required: ['query'],
@@ -813,16 +813,16 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'create_task',
-      description: 'Creates a new standalone task in the Kanban board. NEVER call if a matching task already exists on the board. When starting work, if no task exists, ask Salitha for permission first before calling create_task. CRITICAL: NEVER call create_task for meeting action items; meeting action items must ONLY be supplied in create_journal_entry actionItems so the user can review and approve them before they are added to Kanban.',
+      description: 'Creates a standalone task. NEVER call for meeting action items.',
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: 'Action-oriented task title' },
+          title: { type: 'string', description: 'Task title' },
           status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
           priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
-          trackedSeconds: { type: ['number', 'null'], description: 'Tracked seconds if already completed (e.g. 7200 for 2h)' },
-          description: { type: ['string', 'null'], description: 'Task description' },
-          plannedDate: { type: ['string', 'null'], description: 'Planned date (YYYY-MM-DD)' },
+          trackedSeconds: { type: ['number', 'null'] },
+          description: { type: ['string', 'null'] },
+          plannedDate: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
         },
         required: ['title', 'status'],
       },
@@ -832,13 +832,13 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'update_task',
-      description: 'Updates an existing task status (todo, in_progress, done), timer pause/resume (isPaused: true/false), or tracked seconds. Auto-executed immediately.',
+      description: 'Updates task status, timer pause/resume (isPaused: true/false), or tracked seconds.',
       parameters: {
         type: 'object',
         properties: {
-          taskId: { type: 'string', description: 'UUID of the task or task title if UUID is not known' },
+          taskId: { type: 'string', description: 'Task UUID or title' },
           status: { type: ['string', 'null'], enum: ['todo', 'in_progress', 'done', null] },
-          isPaused: { type: ['boolean', 'null'], description: 'true to pause timer, false to resume timer' },
+          isPaused: { type: ['boolean', 'null'], description: 'true to pause, false to resume' },
           trackedSeconds: { type: ['number', 'null'] },
           description: { type: ['string', 'null'] },
         },
@@ -850,22 +850,22 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'create_journal_entry',
-      description: 'Drafts a Work Journal or Meeting entry for user review and approval (Tier 2 proposal). Does NOT write directly to DB until approved. Work entry description must strictly follow the 4-badge Google XYZ format (🎯 Objective & Context, 🛠️ Technical Execution [Doing Z], 🏆 Key Accomplishments [Accomplished X], 📊 Measured Impact & Metrics [Measured by Y]). Meeting entry description must follow the 4-badge Meeting format (🎯 Objective & Context, 🛠️ Technical Discussion & Trade-Offs [Doing Z], 🏆 Strategic Consensus & Decisions [Accomplished X], 📊 Action Items & Deliverables [Measured by Y]).',
+      description: 'Drafts Work or Meeting entry for user approval. Work: 4-badge Google XYZ format. Meeting: 4-badge Meeting format.',
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: 'Concise title of the work session or meeting' },
-          date: { type: ['string', 'null'], description: 'Date (YYYY-MM-DD). Optional, defaults to current local date.' },
-          startTime: { type: ['string', 'null'], description: 'Start time in 24h format (HH:mm). Optional - automatically derived from tracked time or session.' },
-          endTime: { type: ['string', 'null'], description: 'End time in 24h format (HH:mm). Optional - defaults to current local time.' },
-          type: { type: 'string', enum: ['work', 'meeting'], description: 'work for work sessions, meeting for discussions/meetings' },
-          description: { type: 'string', description: 'Structured 4-badge Google XYZ breakdown: 🎯 Objective & Context, 🛠️ Technical Execution [Doing Z] (or Technical Discussion for meetings), 🏆 Key Accomplishments [Accomplished X] (or Strategic Consensus for meetings), 📊 Measured Impact & Metrics [Measured by Y] (or Action Items & Deliverables for meetings)' },
-          implementationNotes: { type: ['string', 'null'], description: 'Technical notes, code snippets, or decisions' },
-          status: { type: ['string', 'null'], enum: ['done', 'in_progress', 'planned', null], description: 'done if finished, in_progress if halfway / done for today' },
+          title: { type: 'string', description: 'Session or meeting title' },
+          date: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+          startTime: { type: ['string', 'null'], description: 'HH:mm (24h)' },
+          endTime: { type: ['string', 'null'], description: 'HH:mm (24h)' },
+          type: { type: 'string', enum: ['work', 'meeting'] },
+          description: { type: 'string', description: 'Structured 4-badge Google XYZ breakdown' },
+          implementationNotes: { type: ['string', 'null'] },
+          status: { type: ['string', 'null'], enum: ['done', 'in_progress', 'planned', null], description: 'done if finished, in_progress if halfway' },
           projectTag: { type: ['string', 'null'] },
           linkedTaskId: { type: ['string', 'null'], description: 'UUID of linked task' },
-          attendees: { type: ['array', 'null'], items: { type: 'string' }, description: 'Meeting attendees (meeting type only)' },
-          decisions: { type: ['string', 'null'], description: 'Agreed decisions (meeting type only)' },
+          attendees: { type: ['array', 'null'], items: { type: 'string' } },
+          decisions: { type: ['string', 'null'] },
           actionItems: {
             type: ['array', 'null'],
             items: {
@@ -882,7 +882,6 @@ const agentTools = [
                 },
               ],
             },
-            description: 'Action items assigned in meeting (meeting type only)',
           },
         },
         required: ['title', 'description'],
@@ -893,11 +892,11 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'update_journal_entry',
-      description: 'Updates an existing Work Journal entry in place.',
+      description: 'Updates an existing journal entry in place.',
       parameters: {
         type: 'object',
         properties: {
-          eventId: { type: 'string', description: 'UUID of the event' },
+          eventId: { type: 'string' },
           title: { type: ['string', 'null'] },
           startTime: { type: ['string', 'null'] },
           endTime: { type: ['string', 'null'] },
@@ -911,12 +910,12 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'search_journal_entries',
-      description: 'Searches Work Journal entries by date or keyword.',
+      description: 'Searches journal entries by date or keyword.',
       parameters: {
         type: 'object',
         properties: {
-          date: { type: ['string', 'null'], description: 'Date (YYYY-MM-DD)' },
-          query: { type: ['string', 'null'], description: 'Keyword' },
+          date: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+          query: { type: ['string', 'null'] },
         },
       },
     },
@@ -1427,6 +1426,13 @@ async function executeAgentTool(
 
       // Generic updates
       if (taskId) {
+        const uMsg = userMessage || '';
+        const isHalfway = /\b(halfway|partially|done for (?:the )?day|tomorrow)\b/i.test(uMsg);
+        if (isHalfway && updates.status === 'done') {
+          updates.status = 'in_progress';
+          updates.is_paused = true;
+        }
+
         const { data: updatedTask, error } = await supabase
           .from('tasks')
           .update(updates)
@@ -1502,6 +1508,16 @@ async function executeAgentTool(
       // DRAFT PROPOSAL ONLY: Do NOT write to DB directly! User approval is strictly required.
       if (eventType === 'work') {
         const formattedDescription = formatToGoogleXYZWorkDescription(title, rawDesc, rawStatus);
+
+        const targetTaskId = typeof args.linkedTaskId === 'string' ? args.linkedTaskId : (context?.runningTask ? context.runningTask.id : null);
+        if (targetTaskId && rawStatus === 'in_progress') {
+          // Defensively ensure the linked task timer is paused
+          await supabase
+            .from('tasks')
+            .update({ is_paused: true })
+            .eq('id', targetTaskId)
+            .eq('user_id', user.id);
+        }
 
         return {
           result: {
@@ -1719,13 +1735,11 @@ ${projectsList}
    - Call 'update_task' with taskId, status: 'in_progress', isPaused: false. Confirm timer resumed.
 
 4. TASK FULLY COMPLETED:
-   - MANDATORY: Call BOTH 'update_task' (status: 'done') AND 'create_journal_entry' (type: 'work', status: 'done', with 4-badge Google XYZ description).
+   - MANDATORY: In THIS SINGLE TURN, invoke BOTH 'update_task' (status: 'done') AND 'create_journal_entry' (type: 'work', status: 'done', with 4-badge Google XYZ description). Do not invoke them across separate turns.
 
 5. DONE FOR THE DAY / HALFWAY DONE (e.g. "Done for the day regarding [task]", "halfway done — finished X, will do Y tomorrow"):
    - Task is NOT done! Do NOT move to 'done'!
-   - Call 'update_task' with taskId, isPaused: true, status: 'in_progress'.
-   - Call 'create_journal_entry' with type: 'work', status: 'in_progress', and 4-badge Google XYZ description including:
-     "Planned next milestone: [What Salitha will tackle tomorrow]".
+   - In THIS SINGLE TURN, invoke BOTH 'update_task' (taskId, isPaused: true, status: 'in_progress') AND 'create_journal_entry' (type: 'work', status: 'in_progress', and 4-badge Google XYZ description including: "Planned next milestone: [What Salitha will tackle tomorrow]"). Do NOT invoke update_task in a separate turn.
 
 6. EXPLAINING A MEETING (e.g. "I just finished a 45-minute sync with tech lead..."):
    - CRITICAL GUARD: DO NOT call 'create_task'! DO NOT call 'calculate_relative_time' (compute directly: endTime = "${local.time24h}", startTime = subtract duration from "${local.time24h}", e.g. 45m before "${local.time24h}" is calculated directly).
@@ -1739,42 +1753,19 @@ ${projectsList}
      * description: structured strictly according to the **4-badge Meeting Google XYZ formula**.
 
 ### GOOGLE XYZ FORMULA STANDARD (4-BADGE STRUCTURE):
-Descriptions must be comprehensive, technical, multi-bullet, and formatted with clean Markdown headers (NEVER output placeholder tokens like "[Doing Z]" or "[Measured by Y]"). Preserve all specific metrics, numbers, component names, models, algorithms, and latency targets.
+Preserve all specific metrics, numbers, component names, models, algorithms, and latency targets.
 
 Work Journal Format:
-## 🎯 Objective & Context
-- [Executive overview of the engineering challenge, component, or milestone]
-
-## 🛠️ Technical Execution
-- [Specific technical bullet 1: module names, chunking algorithms, token overlap, data contracts]
-- [Specific technical bullet 2: profiling methods, index configurations, connection pooling]
-- [Specific technical bullet 3: integration checks, test suites executed]
-
-## 🏆 Key Accomplishments
-- [Primary deliverable completed or architectural milestone achieved]
-- [If halfway / done for today: explicitly include "Planned next milestone: [What Salitha will tackle tomorrow]"]
-
-## 📊 Measured Impact & Metrics
-- [Concrete metrics: latency benchmarks (p50/p95/p99), recall rates, throughput (QPS), test suite pass rates (e.g. 100% pass rate across test suites), memory/index footprint]
+🎯 Objective & Context: [Engineering challenge, component, or milestone]
+🛠️ Technical Execution [Doing Z]: [Specific algorithms, modules, token sizes, chunking strategies, test suites]
+🏆 Key Accomplishments [Accomplished X]: [Primary strategic deliverable. If halfway: explicitly include "Planned next milestone: ..."]
+📊 Measured Impact & Metrics [Measured by Y]: [Concrete metrics: latency percentiles, recall rates, test pass rates]
 
 Meeting Journal Format:
-## 🎯 Objective & Context
-- [Strategic purpose of architectural sync, topic domain, attendees: Salitha Marasinghe & Tech Lead]
-
-## 🛠️ Technical Discussion & Trade-Offs
-- [Engine/Component Evaluation: specific trade-offs weighed: latency, memory overhead, scalability, open-source flexibility]
-- [Retrieval / Indexing Strategy: sparse vs dense representations, cold-start handling, boundary preservation]
-- [Performance & Footprint: parameter tuning, query latency targets under load]
-
-## 🏆 Strategic Consensus & Decisions
-- [Core architectural decision finalized: e.g. unanimous agreement on adopting selected engine]
-- [Approved Technical Direction: standardized configurations, metrics, and schemas]
-- [Out of Scope / Deferred: non-critical secondary features deferred to Phase 2]
-
-## 📊 Action Items & Deliverables
-- [Salitha Marasinghe: explicit deliverable 1 with priority and verification criteria]
-- [Salitha Marasinghe: explicit deliverable 2 with priority and verification criteria]
-- [Next Alignment Checkpoint: scheduled checkpoint or benchmark review]
+🎯 Objective & Context: [Strategic purpose and sync partner]
+🛠️ Technical Discussion & Trade-Offs [Doing Z]: [Specific options and trade-offs weighed: engines, latency, memory footprint]
+🏆 Strategic Consensus & Decisions [Accomplished X]: Accomplished consensus on [decision]. Approved Direction: [...]. Out of Scope: [...]
+📊 Action Items & Deliverables [Measured by Y]: [Explicit deliverables assigned to Salitha and next alignment checkpoint]
 
 ### TASK DEDUPLICATION & INTEGRITY:
 - NEVER create duplicate tasks. Check SALITHA'S CURRENT TASK BOARD first.
@@ -2695,13 +2686,20 @@ Deno.serve(async (req: Request) => {
 
     const providers: ProviderConfig[] = [];
 
-    // Ultra-Fast LPU Engine: Groq (400+ tokens/sec, ~1.2s response time)
+    // Ultra-Fast LPU Engine: Groq Primary (120b)
     if (groqKey) {
       providers.push({
         label: 'Groq',
         url: 'https://api.groq.com/openai/v1/chat/completions',
         key: groqKey,
         model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
+      });
+      // Groq High-Speed Secondary (qwen/qwen3.8-27b - 1.8s parallel execution, separate quota)
+      providers.push({
+        label: 'Groq-Qwen',
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        key: groqKey,
+        model: 'qwen/qwen3.8-27b',
       });
     }
 
@@ -2866,11 +2864,26 @@ Deno.serve(async (req: Request) => {
               (p) => p.type === 'create_work_event' || p.type === 'create_meeting_event'
             );
 
+            let turnMessages = agentMessages;
+            let turnMaxTokens = 850;
+
+            if (hasJournalProposal) {
+              turnMaxTokens = 350;
+              // Provide a lightweight system prompt for the final confirmation to save ~1,400 tokens and guarantee instant response within TPM limit
+              turnMessages = [
+                {
+                  role: 'system',
+                  content: 'You are Jarvis, personal engineering AI assistant for Salitha Marasinghe. The requested actions and proposals have been successfully generated and placed as review cards in the chat. Deliver a crisp, warm, professional 1-2 sentence confirmation summarizing what was done and informing Salitha that the proposal card is ready for approval below.',
+                },
+                ...agentMessages.slice(1),
+              ];
+            }
+
             const llmBody: Record<string, unknown> = {
               model: provider.model,
-              messages: agentMessages,
+              messages: turnMessages,
               temperature: 0.2,
-              max_tokens: 3000,
+              max_tokens: turnMaxTokens,
             };
 
             // Only provide tools if a journal proposal hasn't been created yet.
@@ -2880,7 +2893,7 @@ Deno.serve(async (req: Request) => {
               llmBody.tool_choice = 'auto';
             }
 
-            const llmRes = await fetch(provider.url, {
+            let llmRes = await fetch(provider.url, {
               method: 'POST',
               headers: {
                 Authorization: 'Bearer ' + provider.key,
@@ -2890,6 +2903,35 @@ Deno.serve(async (req: Request) => {
               body: JSON.stringify(llmBody),
               signal: AbortSignal.timeout(15000),
             });
+
+            if (llmRes.status === 429) {
+              const errText = await llmRes.text();
+              console.warn(`[ai-assistant-chat] ${provider.label} rate limit (429) in turn ${turn}: ${errText}`);
+              const isDailyLimit = /tokens per day|TPD/i.test(errText);
+              let waitMs = 2500;
+              const match = errText.match(/try again in\s*([\d\.]+)\s*s/i);
+              if (match) {
+                waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 200;
+              }
+
+              if (!isDailyLimit && waitMs <= 6000) {
+                console.log(`[ai-assistant-chat] 429 backoff: waiting ${waitMs}ms before retry...`);
+                await new Promise((resolve) => setTimeout(resolve, waitMs));
+
+                llmRes = await fetch(provider.url, {
+                  method: 'POST',
+                  headers: {
+                    Authorization: 'Bearer ' + provider.key,
+                    'Content-Type': 'application/json',
+                    ...(provider.headers || {}),
+                  },
+                  body: JSON.stringify(llmBody),
+                  signal: AbortSignal.timeout(15000),
+                });
+              } else {
+                throw new Error(`${provider.label} daily or long rate limit: ${errText}`);
+              }
+            }
 
             if (!llmRes.ok) {
               const errText = await llmRes.text();
