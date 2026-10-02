@@ -416,6 +416,38 @@ const JARVIS_TOOLS = [
       required: ['name'],
     },
   },
+  {
+    name: 'jarvis_update_project',
+    description: 'Updates an existing project storyline (name/title, description, status, or category).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectId: {
+          type: 'string',
+          description: 'UUID or name/fuzzy title of the project to update.',
+        },
+        name: {
+          type: 'string',
+          description: 'New name/title for the project.',
+        },
+        description: {
+          type: 'string',
+          description: 'Updated description or project components.',
+        },
+        status: {
+          type: 'string',
+          enum: ['active', 'planning', 'completed', 'on_hold'],
+          description: 'Updated status for the project.',
+        },
+        category: {
+          type: 'string',
+          enum: ['work', 'study'],
+          description: 'Updated category: "work" or "study".',
+        },
+      },
+      required: ['projectId'],
+    },
+  },
 
   // ─── SUITE 4: MEETINGS & ARCHITECTURAL SYNCS ──────────────────────────────
   {
@@ -1446,6 +1478,81 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
         success: true,
         message: `Created project storyline "${project.name}" (Status: ${project.status}, Category: ${project.category}).`,
         project,
+      };
+    }
+
+    case 'jarvis_update_project': {
+      const identifier = String(args.projectId).trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+
+      const { data: projects, error: fetchErr } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', userId);
+      if (fetchErr) throw fetchErr;
+
+      const project = projects?.find((p: any) =>
+        (isUUID && p.id === identifier) ||
+        p.name.toLowerCase() === identifier.toLowerCase() ||
+        p.name.toLowerCase().includes(identifier.toLowerCase())
+      );
+
+      if (!project) {
+        throw new Error(`Project "${identifier}" not found.`);
+      }
+
+      const updates: any = {};
+      const oldName = project.name;
+      if (args.name) {
+        updates.name = String(args.name).trim();
+      }
+      if (args.description !== undefined) {
+        updates.description = String(args.description).trim();
+      }
+      if (args.status) {
+        const normalized = args.status === 'planned' ? 'planning' : args.status;
+        updates.status = normalized;
+        if (normalized === 'active') {
+          await supabase.from('projects').update({ status: 'completed' }).eq('user_id', userId).eq('status', 'active');
+        }
+      }
+      if (args.category) {
+        updates.category = args.category === 'study' ? 'study' : 'work';
+      }
+
+      const { data: updated, error: updateErr } = await supabase
+        .from('projects')
+        .update(updates)
+        .eq('id', project.id)
+        .select()
+        .single();
+      if (updateErr) throw updateErr;
+
+      // If name changed, update linked events project_tag
+      if (updates.name && updates.name !== oldName) {
+        await supabase
+          .from('events')
+          .update({ project_tag: updates.name })
+          .eq('project_id', project.id);
+      }
+
+      // Re-embed or update memory chunk
+      const masterContent = `[Project Storyline Apex: ${updated.name}] [Status: ${updated.status}]\n${updated.summary_xyz ? `★ Google XYZ Master Bullet:\n${updated.summary_xyz}\n` : ''}Description: ${updated.description || ''}`;
+      await storeMemoryChunk(supabase, {
+        userId,
+        sourceType: 'project_summary',
+        sourceId: updated.id,
+        projectId: updated.id,
+        projectName: updated.name,
+        eventDate: updated.created_at ? updated.created_at.split('T')[0] : null,
+        chunkType: 'project_summary',
+        content: masterContent,
+      });
+
+      return {
+        success: true,
+        message: `Updated project "${updated.name}" successfully (Category: ${updated.category}, Status: ${updated.status}).`,
+        project: updated,
       };
     }
 
