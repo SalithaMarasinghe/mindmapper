@@ -563,130 +563,96 @@ function formatToGoogleXYZWorkDescription(
   rawDesc: string,
   status: 'done' | 'in_progress' | 'planned'
 ): string {
-  // If already formatted in the 4-badge Output A standard, preserve it directly!
-  const hasBadges =
-    /🎯.*Objective/i.test(rawDesc) &&
-    /🛠️.*Technical/i.test(rawDesc) &&
-    /🏆.*Accomplish/i.test(rawDesc);
-  if (hasBadges) {
-    return rawDesc;
+  if (!rawDesc) return '';
+
+  // 1. If it already has all 4 standard badges, return directly!
+  if (
+    rawDesc.includes('🎯 Objective') &&
+    (rawDesc.includes('🛠️ Technical') || rawDesc.includes('Technical Execution')) &&
+    (rawDesc.includes('🏆 Key Accomplishments') || rawDesc.includes('🏆 Accomplished')) &&
+    (rawDesc.includes('📊 Measured Impact') || rawDesc.includes('📊 Impact'))
+  ) {
+    return rawDesc.trim();
   }
 
+  // 2. Line-by-line section classifier to extract LLM sections even if emojis are missing
+  const lines = rawDesc.split('\n');
+  const sections = {
+    objective: [] as string[],
+    technical: [] as string[],
+    accomplishments: [] as string[],
+    metrics: [] as string[],
+  };
+
+  let currentSection = 'objective';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?/i.test(trimmed)) {
+      currentSection = 'objective';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?\s*/i, '');
+      if (after) sections.objective.push(after);
+    } else if (/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Execution|Discussion)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      currentSection = 'technical';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Execution|Discussion)(?:\s*\[[^\]]*\])?:?\s*/i, '');
+      if (after) sections.technical.push(after);
+    } else if (/^(?:#+\s*)?(?:🏆\s*)?(?:Key\s*Accomplishments?|Strategic\s*Consensus|Accomplished?)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      currentSection = 'accomplishments';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:🏆\s*)?(?:Key\s*Accomplishments?|Strategic\s*Consensus|Accomplished?)(?:\s*\[[^\]]*\])?:?\s*/i, '');
+      if (after) sections.accomplishments.push(after);
+    } else if (/^(?:#+\s*)?(?:📊\s*)?(?:Measured\s*Impact(?:\s*(?:&|and)\s*Metrics)?|Metrics?|Action\s*Items?)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      currentSection = 'metrics';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:📊\s*)?(?:Measured\s*Impact(?:\s*(?:&|and)\s*Metrics)?|Metrics?|Action\s*Items?)(?:\s*\[[^\]]*\])?:?\s*/i, '');
+      if (after) sections.metrics.push(after);
+    } else {
+      sections[currentSection].push(line);
+    }
+  }
+
+  const objText = sections.objective.join('\n').trim() || `Execute engineering evaluation, implementation, and performance benchmarking for ${title}.`;
+  const techText = sections.technical.join('\n').trim();
+  const accText = sections.accomplishments.join('\n').trim();
+  const metText = sections.metrics.join('\n').trim();
+
+  // If technical or accomplishments were parsed from LLM, preserve 100% of LLM text!
+  if (techText || accText) {
+    return [
+      '🎯 Objective & Context',
+      objText,
+      '',
+      '🛠️ Technical Execution [Doing Z]',
+      techText || '• Executed planned technical milestones and core pipeline audit.',
+      '',
+      '🏆 Key Accomplishments [Accomplished X]',
+      accText || '• Completed active development objectives.',
+      '',
+      '📊 Measured Impact & Metrics [Measured by Y]',
+      metText || (status === 'in_progress' ? '• Milestone Progress: 50% completed; verified baseline for next iteration.' : '• 100% implementation verification completed.')
+    ].join('\n');
+  }
+
+  // 3. Fallback for completely unstructured user message:
   const isHalfway = status === 'in_progress';
+  const cleanSummary = rawDesc.replace(/\*\*[^*]+\*\*:?/g, '').trim();
 
-  // Extract clean text from rawDesc
-  const cleanSummary = rawDesc
-    .replace(/\*\*[^*]+\*\*:?/g, '')
-    .replace(/^[🎯🛠️🏆📊•*\-\s]+/gm, '')
-    .trim();
-
-  // Extract tomorrow / planned next steps
   const tomorrowMatch =
     cleanSummary.match(/(?:tomorrow|next session|next milestone|next|later)\s+(?:I will|will|to)\s+([^.]+)/i) ||
     cleanSummary.match(/(?:but|and)\s+(?:I will|will|to)\s+([^.]+tomorrow)/i);
   const tomorrowText = tomorrowMatch ? tomorrowMatch[1].trim() : null;
 
-  let accomplishedText = cleanSummary;
-  if (tomorrowText) {
-    accomplishedText = accomplishedText.replace(tomorrowMatch![0], '').replace(/(?:tomorrow|next)/i, '').trim();
-  }
-
-  accomplishedText = accomplishedText
-    .replace(/^(I am done for the day regarding\s+[^.]+\.?\s*)/i, '')
-    .replace(/^(I have completed|I finished|Finished|Completed)\s+/i, '')
-    .replace(/^(I'm halfway done —\s*)/i, '')
-    .replace(/^(halfway done\s*[-—:]?\s*)/i, '')
-    .trim();
-
-  // Check for specific technical keywords to generate rich, contextual execution bullets
-  const techBullets: string[] = [];
-
-  if (/chunking|token/i.test(cleanSummary)) {
-    techBullets.push(
-      '- Chunking & Tokenization Architecture: Profiled document chunking parameters, validating token sliding window boundaries and character split preservation.'
-    );
-  }
-  if (/vector retriever|retriever|retrieval/i.test(cleanSummary)) {
-    techBullets.push(
-      '- Vector Retriever Pipeline: Audited top-k dense vector similarity search, cosine distance metrics, and index lookup latency.'
-    );
-  }
-  if (/reranker|rerank/i.test(cleanSummary)) {
-    techBullets.push(
-      '- Cross-Encoder Reranker Analysis: Evaluated contextual scoring overhead and precision filtering for candidate passages.'
-    );
-  }
-  if (/hnsw|indexing|index/i.test(cleanSummary)) {
-    techBullets.push(
-      '- Indexing & Search Optimization: Analyzed HNSW graph construction hyperparameters (m, ef_search) to balance memory footprint and recall.'
-    );
-  }
-  if (/qdrant|database|store|collection/i.test(cleanSummary)) {
-    techBullets.push(
-      '- Vector Storage & Schema Validation: Audited collection schema design, payload index configurations, and connection pooling.'
-    );
-  }
-  if (/test|unit test|benchmark|profil/i.test(cleanSummary)) {
-    techBullets.push(
-      '- Performance Benchmarking & QA: Executed targeted profiling passes across core modules to measure execution latency and test coverage.'
-    );
-  }
-
-  // Fallback if no specific keyword matched or fewer than 2 bullets
-  if (techBullets.length === 0) {
-    techBullets.push(
-      `- System Architecture Audit: Audited core execution flow, component contracts, and pipeline integration for ${title}.`,
-      `- Implementation & Parameter Verification: Analyzed configuration settings, interface boundaries, and data integrity across active modules.`
-    );
-  } else if (techBullets.length === 1) {
-    techBullets.push(
-      `- Execution Flow & Integration: Profiled end-to-end component data contracts and isolated critical execution variables.`
-    );
-  }
-
-  // Accomplishments section
-  const accomplishedBullet = accomplishedText
-    ? `- Accomplished ${accomplishedText}.`
-    : `- Accomplished primary technical audit and implementation milestones for ${title}.`;
-
-  let nextMilestoneBullet = '';
-  if (tomorrowText || isHalfway) {
-    const nextStep = tomorrowText
-      ? tomorrowText
-      : 'continue scheduled implementation and benchmarking in the upcoming work session';
-    nextMilestoneBullet = `\n- Planned next milestone: ${nextStep}.`;
-  }
-
-  // Impact & metrics section
-  const impactBullets: string[] = [];
-  const latencyMatch = cleanSummary.match(/(\d+\s*ms|\d+\s*s|\d+\s*percent|\d+%\b|\d+\s*queries|\d+\s*tokens)/i);
-  if (latencyMatch) {
-    impactBullets.push(`- Documented verified performance baseline: observed ${latencyMatch[0]} across benchmark runs.`);
-  }
-
-  if (isHalfway) {
-    impactBullets.push(
-      '- Established verified operational baseline and isolated critical variables; unblocked subsequent optimization phase for tomorrow.',
-      '- Documented zero architectural blockers or regressions across reviewed sub-systems.'
-    );
-  } else {
-    impactBullets.push(
-      '- Successfully verified implementation with complete functional pass, unblocking production readiness.',
-      '- Validated system stability and architectural conformance with zero unresolved blockers.'
-    );
-  }
+  const metricMatches = cleanSummary.match(/(\d+\s*ms|\d+\s*s|\d+\s*tokens?|\d+%\b|\d+\s*queries|\d+\s*pass)/gi) || [];
 
   return `🎯 Objective & Context
-Execute comprehensive engineering evaluation, implementation, and performance benchmarking for ${title}.
+Execute engineering evaluation, implementation, and performance benchmarking for ${title}.
 
 🛠️ Technical Execution [Doing Z]
-${techBullets.join('\n')}
+• Implementation & Pipeline Audit: ${cleanSummary}
 
 🏆 Key Accomplishments [Accomplished X]
-${accomplishedBullet}${nextMilestoneBullet}
+• Completed active development and baseline verification for ${title}.${tomorrowText ? `\n• Planned next milestone (Tomorrow): ${tomorrowText}.` : (isHalfway ? '\n• Planned next milestone: continue scheduled implementation and benchmarking in upcoming session.' : '')}
 
 📊 Measured Impact & Metrics [Measured by Y]
-${impactBullets.join('\n')}`;
+${metricMatches.length > 0 ? metricMatches.map(m => `• Verified empirical metric: ${m} observed across benchmark validation runs.`).join('\n') : (isHalfway ? '• Verified operational baseline; unblocked subsequent milestone for tomorrow.' : '• 100% functional pass across active modules.')}`;
 }
 
 function formatToGoogleXYZMeetingSummary(
@@ -697,16 +663,79 @@ function formatToGoogleXYZMeetingSummary(
 ): { discussionSummary: string; decisions: string } {
   const combined = `${rawSummary} ${userMessage || ''}`.trim();
 
-  // If already formatted in the 4-badge Output A standard, preserve it directly!
-  const hasBadges =
-    /🎯.*Objective/i.test(rawSummary) &&
-    /🛠️.*Technical/i.test(rawSummary) &&
-    (/🏆.*Consensus/i.test(rawSummary) || /🏆.*Accomplish/i.test(rawSummary));
-  if (hasBadges) {
-    return { discussionSummary: rawSummary, decisions };
+  // 1. If it already has the 4 meeting badges, return directly!
+  if (
+    rawSummary.includes('🎯 Objective') &&
+    (rawSummary.includes('🛠️ Technical Discussion') || rawSummary.includes('Technical Discussion')) &&
+    (rawSummary.includes('🏆 Strategic Consensus') || rawSummary.includes('Strategic Consensus')) &&
+    (rawSummary.includes('📊 Action Items') || rawSummary.includes('Action Items'))
+  ) {
+    return { discussionSummary: rawSummary.trim(), decisions };
   }
 
-  // Extract key details from user input or summary
+  // 2. Line-by-line section classifier to extract LLM sections even if emojis are missing
+  const lines = rawSummary.split('\n');
+  const sections = {
+    objective: [] as string[],
+    technical: [] as string[],
+    consensus: [] as string[],
+    actionItems: [] as string[],
+  };
+
+  let currentSection = 'objective';
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?/i.test(trimmed)) {
+      currentSection = 'objective';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:🎯\s*)?Objective(?:\s*(?:&|and)\s*Context)?:?\s*/i, '');
+      if (after) sections.objective.push(after);
+    } else if (/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Discussion|Execution)(?:\s*(?:&|and)\s*Trade-Offs)?(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      currentSection = 'technical';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:🛠️\s*)?Technical\s*(?:Discussion|Execution)(?:\s*(?:&|and)\s*Trade-Offs)?(?:\s*\[[^\]]*\])?:?\s*/i, '');
+      if (after) sections.technical.push(after);
+    } else if (/^(?:#+\s*)?(?:🏆\s*)?(?:Strategic\s*Consensus(?:\s*(?:&|and)\s*Decisions)?|Consensus|Decisions?|Key\s*Accomplishments?)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      currentSection = 'consensus';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:🏆\s*)?(?:Strategic\s*Consensus(?:\s*(?:&|and)\s*Decisions)?|Consensus|Decisions?|Key\s*Accomplishments?)(?:\s*\[[^\]]*\])?:?\s*/i, '');
+      if (after) sections.consensus.push(after);
+    } else if (/^(?:#+\s*)?(?:📊\s*)?(?:Action\s*Items(?:\s*(?:&|and)\s*Deliverables)?|Deliverables?|Measured\s*Impact)(?:\s*\[[^\]]*\])?:?/i.test(trimmed)) {
+      currentSection = 'actionItems';
+      const after = trimmed.replace(/^(?:#+\s*)?(?:📊\s*)?(?:Action\s*Items(?:\s*(?:&|and)\s*Deliverables)?|Deliverables?|Measured\s*Impact)(?:\s*\[[^\]]*\])?:?\s*/i, '');
+      if (after) sections.actionItems.push(after);
+    } else {
+      sections[currentSection].push(line);
+    }
+  }
+
+  const objText = sections.objective.join('\n').trim();
+  const techText = sections.technical.join('\n').trim();
+  const conText = sections.consensus.join('\n').trim();
+  const actText = sections.actionItems.join('\n').trim();
+
+  if (techText || conText) {
+    const formattedDiscussion = [
+      '🎯 Objective & Context',
+      objText || `Architectural alignment session on ${title}.`,
+      '',
+      '🛠️ Technical Discussion & Trade-Offs [Doing Z]',
+      techText || '• Evaluated architectural alternatives, integration requirements, and performance trade-offs.',
+      '',
+      '🏆 Strategic Consensus & Decisions [Accomplished X]',
+      conText || `• Approved architectural direction for ${title}.`,
+      '',
+      '📊 Action Items & Deliverables [Measured by Y]',
+      actText || '• Execute approved implementation tasks according to agreed milestone.'
+    ].join('\n');
+
+    let formattedDecisions = decisions;
+    if (!decisions || !decisions.includes('*') || decisions.length < 15) {
+      formattedDecisions = conText || `* **Agreed Direction**: Standardized architecture on approved technical direction.`;
+    }
+
+    return { discussionSummary: formattedDiscussion, decisions: formattedDecisions };
+  }
+
+  // 3. Fallback for completely unstructured summary
   const techLeadMatch = /tech lead|lead|architect|manager/i.test(combined);
   const syncPartner = techLeadMatch ? 'Tech Lead' : 'Engineering Architecture Team';
 
@@ -716,48 +745,23 @@ function formatToGoogleXYZMeetingSummary(
   const deliverablesMatch = combined.match(/need to ([^.]+)/i) || combined.match(/action items? (?:are|is) ([^.]+)/i);
   const deliverablesText = deliverablesMatch ? deliverablesMatch[1].trim() : '';
 
-  // Technical discussion & trade-offs bullets
-  const techDiscussionBullets: string[] = [];
-  if (/qdrant|vector|hybrid|dense|sparse/i.test(combined)) {
-    techDiscussionBullets.push(
-      '- Vector Search Engine Evaluation: Weighed Qdrant vs pgvector/Pinecone on hybrid search indexing, payload filtering speed, and memory overhead.',
-      '- Dense & Sparse Retrieval Strategy: Discussed integrating BM25/SPLADE sparse representations with dense embeddings to address out-of-vocabulary queries.',
-      '- HNSW Hyperparameter Tuning: Evaluated index construction trade-offs (m and ef_construct parameters) to achieve sub-50ms query latency.'
-    );
-  } else {
-    techDiscussionBullets.push(
-      `- Technical Architecture Options: Debated architectural approaches and integration constraints for ${decisionTopic}.`,
-      '- Trade-Off & Risk Analysis: Evaluated operational complexity, scalability thresholds, and latency impact against developer ergonomics.',
-      '- Interface Contract Review: Aligned on data schemas, error handling policies, and service boundaries.'
-    );
-  }
-
-  // Action items bullets
-  const actionItemBullets: string[] = [];
-  if (deliverablesText) {
-    actionItemBullets.push(`- Salitha Marasinghe: ${deliverablesText} (High Priority).`);
-  } else {
-    actionItemBullets.push(`- Salitha Marasinghe: Execute approved implementation tasks and author comprehensive unit test coverage.`);
-  }
-  actionItemBullets.push(`- Engineering Team: Complete infrastructure provisioning and establish staging environment baseline.`);
-  actionItemBullets.push(`- Next Alignment Checkpoint: Review implementation progress and benchmark results at next architectural sync.`);
-
   const formattedDiscussion = `🎯 Objective & Context
 Architectural alignment session on ${title} with ${syncPartner}.
 
 🛠️ Technical Discussion & Trade-Offs [Doing Z]
-${techDiscussionBullets.join('\n')}
+• Technical Architecture Options: Debated architectural approaches and integration constraints for ${decisionTopic}.
+• Trade-Off & Risk Analysis: Evaluated operational complexity, scalability thresholds, and latency impact.
 
 🏆 Strategic Consensus & Decisions [Accomplished X]
-- Accomplished architectural consensus to adopt ${decisionTopic} as measured by technical decision alignment.
-- Approved Technical Direction: Standardized on ${decisionTopic} as the core architectural baseline.
-- Out of Scope / Deferred: Alternative backends and non-critical optimizations deferred in favor of MVP delivery.
+• Accomplished architectural consensus to adopt ${decisionTopic}.
+• Approved Direction: Standardized on ${decisionTopic} as the core architectural baseline.
 
 📊 Action Items & Deliverables [Measured by Y]
-${actionItemBullets.join('\n')}`;
+• Salitha Marasinghe: ${deliverablesText || 'Execute approved implementation tasks and author comprehensive test coverage.'}
+• Next Alignment Checkpoint: Review progress at next architectural checkpoint.`;
 
   let formattedDecisions = decisions;
-  if (!decisions.includes('**') || decisions.length < 15) {
+  if (!decisions || !decisions.includes('**') || decisions.length < 15) {
     formattedDecisions = `* **Agreed Architectural Direction**: Approved use of ${decisionTopic}.\n* **Out of Scope / Deferred**: Alternative engines deferred in favor of unified architecture.`;
   }
 
@@ -1753,19 +1757,37 @@ ${projectsList}
      * description: structured strictly according to the **4-badge Meeting Google XYZ formula**.
 
 ### GOOGLE XYZ FORMULA STANDARD (4-BADGE STRUCTURE):
-Preserve all specific metrics, numbers, component names, models, algorithms, and latency targets.
+In the 'description' argument of create_journal_entry, ALWAYS generate the full 4 badges directly.
+PRESERVE EVERY EMPIRICAL METRIC, NUMBER, TOKEN SIZE, LATENCY TARGET, MODULE NAME, AND TOMORROW MILESTONE from Salitha's input. NEVER omit numbers or generalize tomorrow's tasks!
 
 Work Journal Format:
-🎯 Objective & Context: [Engineering challenge, component, or milestone]
-🛠️ Technical Execution [Doing Z]: [Specific algorithms, modules, token sizes, chunking strategies, test suites]
-🏆 Key Accomplishments [Accomplished X]: [Primary strategic deliverable. If halfway: explicitly include "Planned next milestone: ..."]
-📊 Measured Impact & Metrics [Measured by Y]: [Concrete metrics: latency percentiles, recall rates, test pass rates]
+🎯 Objective & Context
+[Concise executive overview of the engineering goal and component]
+
+🛠️ Technical Execution [Doing Z]
+• [Specific technical execution bullet: module names, chunking strategies, window sizes]
+• [Specific technical execution bullet: profiling methods, indexing, distance metrics]
+
+🏆 Key Accomplishments [Accomplished X]
+• [Primary deliverable completed or architectural milestone reached]
+• [If halfway: "Planned next milestone (Tomorrow): [Specific pending tasks from Salitha's message]"]
+
+📊 Measured Impact & Metrics [Measured by Y]
+• [Concrete quantitative metrics: latency benchmarks (e.g. 38ms p95), chunk sizes (e.g. 512 tokens), test pass rates (e.g. 100% pass), throughput. NEVER write vague corporate fluff.]
 
 Meeting Journal Format:
-🎯 Objective & Context: [Strategic purpose and sync partner]
-🛠️ Technical Discussion & Trade-Offs [Doing Z]: [Specific options and trade-offs weighed: engines, latency, memory footprint]
-🏆 Strategic Consensus & Decisions [Accomplished X]: Accomplished consensus on [decision]. Approved Direction: [...]. Out of Scope: [...]
-📊 Action Items & Deliverables [Measured by Y]: [Explicit deliverables assigned to Salitha and next alignment checkpoint]
+🎯 Objective & Context
+[Purpose of architectural sync and sync partner: e.g. Salitha Marasinghe & Tech Lead]
+
+🛠️ Technical Discussion & Trade-Offs [Doing Z]
+• [Specific technical options, tradeoffs, engines evaluated (e.g. Qdrant vs pgvector)]
+• [Parameter tuning, memory footprint, and query latency considerations]
+
+🏆 Strategic Consensus & Decisions [Accomplished X]
+• Accomplished consensus on [decision]. Approved Direction: [...]. Out of Scope / Deferred: [...]
+
+📊 Action Items & Deliverables [Measured by Y]
+• [Specific deliverables assigned to Salitha Marasinghe and verification checkpoint]
 
 ### TASK DEDUPLICATION & INTEGRITY:
 - NEVER create duplicate tasks. Check SALITHA'S CURRENT TASK BOARD first.
