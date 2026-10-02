@@ -539,6 +539,27 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         // If already executed by the Sentient Agent runtime on the server, preserve directly!
         if (prop.status === 'auto_executed') {
           processedProposals.push(prop);
+
+          // Keep local taskStore runningTaskId & paused state in instant sync
+          if (prop.type === 'pause_task' || prop.type === 'pause_all') {
+            const pausedId = (prop.payload as any)?.taskId;
+            useTaskStore.setState((s) => ({
+              runningTaskId: null,
+              lastPausedTaskId: pausedId && pausedId !== 'none' ? pausedId : s.runningTaskId || s.lastPausedTaskId,
+            }));
+          } else if (prop.type === 'resume_task' || prop.type === 'start_task') {
+            const targetId = (prop.payload as any)?.taskId;
+            if (targetId) {
+              useTaskStore.setState({ runningTaskId: targetId });
+            }
+          } else if (prop.type === 'finish_task') {
+            const targetId = (prop.payload as any)?.taskId;
+            useTaskStore.setState((s) => ({
+              runningTaskId: s.runningTaskId === targetId ? null : s.runningTaskId,
+              lastPausedTaskId: s.lastPausedTaskId === targetId ? null : s.lastPausedTaskId,
+            }));
+          }
+
           continue;
         }
 

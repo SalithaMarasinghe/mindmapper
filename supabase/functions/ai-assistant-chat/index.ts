@@ -533,7 +533,7 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'calculate_relative_time',
-      description: 'Calculates the exact start time, end time, and date for work or events given duration in minutes (e.g. 120 for 2 hours ago).',
+      description: 'Calculates the exact start time, end time, and date for work or events given duration in minutes (e.g. 120 for 2 hours ago). Automatically handles midnight rollover.',
       parameters: {
         type: 'object',
         properties: {
@@ -548,7 +548,7 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'search_tasks',
-      description: 'Searches existing Kanban tasks by title or keyword to find open, in-progress, or related tasks.',
+      description: 'Searches existing Kanban tasks by title or keyword. ALWAYS call this before creating a task or updating a task.',
       parameters: {
         type: 'object',
         properties: {
@@ -563,7 +563,7 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'create_task',
-      description: 'Creates a new task directly in the Kanban board. Can mark done immediately with tracked seconds.',
+      description: 'Creates a new task directly in the Kanban board. NEVER call if a matching task already exists (use update_task instead). NEVER call more than once for the same item.',
       parameters: {
         type: 'object',
         properties: {
@@ -582,13 +582,13 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'update_task',
-      description: 'Updates an existing task status (todo/in_progress/done), timer pause/resume, or tracked seconds.',
+      description: 'Updates an existing task status (todo, in_progress, done), timer pause/resume (isPaused: true/false), or tracked seconds. Auto-executed immediately.',
       parameters: {
         type: 'object',
         properties: {
-          taskId: { type: 'string', description: 'UUID of the task' },
+          taskId: { type: 'string', description: 'UUID of the task or task title if UUID is not known' },
           status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
-          isPaused: { type: 'boolean' },
+          isPaused: { type: 'boolean', description: 'true to pause timer, false to resume timer' },
           trackedSeconds: { type: 'number' },
           description: { type: 'string' },
         },
@@ -600,18 +600,18 @@ const agentTools = [
     type: 'function',
     function: {
       name: 'create_journal_entry',
-      description: 'Creates an entry directly in the Work Journal (events & work_details). Description must strictly follow the Google XYZ formula: "Accomplished [X] as measured by [Y], by doing [Z]".',
+      description: 'Drafts a Work Journal or Meeting entry for user review and approval (Tier 2 proposal). Does NOT write directly to DB until approved. Description must strictly follow the Google XYZ formula: Problem / Initiative, My Contribution & Implementation (Accomplished [X] as measured by [Y] by doing [Z]), Engineering Judgment & Decisions, Impact & Results.',
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: 'Concise title of the work session' },
+          title: { type: 'string', description: 'Concise title of the work session or meeting' },
           date: { type: 'string', description: 'Date (YYYY-MM-DD)' },
           startTime: { type: 'string', description: 'Start time in 24h format (HH:mm)' },
           endTime: { type: 'string', description: 'End time in 24h format (HH:mm)' },
           type: { type: 'string', enum: ['work', 'meeting'] },
-          description: { type: 'string', description: 'Structured Google XYZ workload breakdown' },
-          implementationNotes: { type: 'string' },
-          status: { type: 'string', enum: ['done', 'planned', 'in_progress'] },
+          description: { type: 'string', description: 'Structured Google XYZ workload breakdown with headers: **Problem / Initiative**, **My Contribution & Implementation**, **Engineering Judgment & Decisions**, **Impact & Results**' },
+          implementationNotes: { type: 'string', description: 'Technical notes, code snippets, or decisions' },
+          status: { type: 'string', enum: ['done', 'in_progress', 'planned'], description: 'done if finished, in_progress if halfway / done for today' },
           projectTag: { type: 'string' },
           linkedTaskId: { type: 'string', description: 'UUID of linked task' },
         },
@@ -759,6 +759,49 @@ async function executeAgentTool(
       const description = args.description ? String(args.description) : null;
       const plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
 
+      // 1. Deduplication guard: Check if a task with this title already exists for this user
+      const { data: existingTasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .ilike('title', title)
+        .limit(1);
+
+      if (existingTasks && existingTasks.length > 0) {
+        const existing = existingTasks[0];
+        const updates: Record<string, unknown> = { updated_at: currentTimeISO };
+        if (status) updates.status = status;
+        if (trackedSeconds > 0) updates.tracked_seconds = trackedSeconds;
+        if (description) updates.description = description;
+
+        await supabase.from('tasks').update(updates).eq('id', existing.id);
+
+        if (status === 'done') {
+          return {
+            result: { success: true, task: { ...existing, ...updates }, deduplicated: true },
+            proposal: {
+              id: crypto.randomUUID(),
+              type: 'finish_task',
+              summary: `Completed "${title}"`,
+              status: 'auto_executed',
+              payload: { taskId: existing.id, taskTitle: title, timestampISO: currentTimeISO },
+            },
+          };
+        }
+
+        return {
+          result: { success: true, task: { ...existing, ...updates }, deduplicated: true },
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'update_task',
+            summary: `Updated task "${title}"`,
+            status: 'auto_executed',
+            payload: { taskId: existing.id, taskTitle: title, ...updates },
+          },
+        };
+      }
+
+      // 2. Insert new task
       const { data: createdTask, error } = await supabase
         .from('tasks')
         .insert({
@@ -776,6 +819,16 @@ async function executeAgentTool(
         .single();
       if (error) throw error;
 
+      if (status === 'in_progress') {
+        try {
+          await supabase.rpc('rpc_start_or_resume_task', {
+            p_task_id: createdTask.id,
+            p_timestamp: currentTimeISO,
+            p_is_resume: false,
+          });
+        } catch (_e) {}
+      }
+
       if (status === 'done' && trackedSeconds > 0) {
         const startMs = Date.parse(currentTimeISO) - trackedSeconds * 1000;
         await supabase.from('task_time_entries').insert({
@@ -787,14 +840,17 @@ async function executeAgentTool(
         });
       }
 
+      const proposalType = status === 'done' ? 'finish_task' : status === 'in_progress' ? 'start_task' : 'create_tasks';
       return {
         result: { success: true, task: createdTask },
         proposal: {
           id: crypto.randomUUID(),
-          type: 'create_tasks',
-          summary: `Created task "${title}"`,
+          type: proposalType,
+          summary: status === 'done' ? `Completed "${title}"` : status === 'in_progress' ? `Started "${title}"` : `Created task "${title}"`,
           status: 'auto_executed',
           payload: {
+            taskId: createdTask.id,
+            taskTitle: title,
             tasks: [{ title, description, priority, plannedDate, status }],
           },
         },
@@ -802,7 +858,50 @@ async function executeAgentTool(
     }
 
     case 'update_task': {
-      const taskId = String(args.taskId);
+      let taskId = String(args.taskId || '').trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
+
+      // Robust ID resolution: If not a valid UUID, search by title or current active task
+      if (!isUUID) {
+        let matchedTask: any = null;
+        if (taskId && taskId !== 'running' && taskId !== 'current' && taskId !== 'active') {
+          const { data: found } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('user_id', user.id)
+            .ilike('title', `%${taskId}%`)
+            .limit(1);
+          if (found && found.length > 0) matchedTask = found[0];
+        }
+
+        if (!matchedTask && (args.isPaused === true || args.status === 'done')) {
+          const { data: inProg } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('status', 'in_progress')
+            .order('updated_at', { ascending: false })
+            .limit(1);
+          if (inProg && inProg.length > 0) matchedTask = inProg[0];
+        }
+
+        if (!matchedTask && args.isPaused === false) {
+          const { data: paused } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('status', 'in_progress')
+            .eq('is_paused', true)
+            .order('updated_at', { ascending: false })
+            .limit(1);
+          if (paused && paused.length > 0) matchedTask = paused[0];
+        }
+
+        if (matchedTask) {
+          taskId = matchedTask.id;
+        }
+      }
+
       const updates: Record<string, unknown> = {
         updated_at: currentTimeISO,
       };
@@ -811,103 +910,155 @@ async function executeAgentTool(
       if (args.trackedSeconds !== undefined) updates.tracked_seconds = Number(args.trackedSeconds);
       if (args.description !== undefined) updates.description = String(args.description);
 
+      // Handle Completed / Done
       if (args.status === 'done') {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_complete_task', {
-          p_task_id: taskId,
+        const { data: rpcData } = await supabase.rpc('rpc_complete_task', {
+          p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
         });
-        if (!rpcErr && rpcData) {
-          if (args.trackedSeconds !== undefined && Number(args.trackedSeconds) > 0) {
-            await supabase.from('tasks').update({ tracked_seconds: Number(args.trackedSeconds) }).eq('id', taskId);
-          }
-          return {
-            result: { success: true, task: rpcData },
-            proposal: {
-              id: crypto.randomUUID(),
-              type: 'finish_task',
-              summary: `Completed "${rpcData.title || 'Task'}"`,
-              status: 'auto_executed',
-              payload: {
-                taskId,
-                taskTitle: rpcData.title,
-                timestampISO: currentTimeISO,
-              },
-            },
-          };
+
+        if (taskId) {
+          await supabase.from('tasks').update({
+            status: 'done',
+            is_paused: false,
+            updated_at: currentTimeISO,
+            ...(args.trackedSeconds !== undefined && Number(args.trackedSeconds) > 0
+              ? { tracked_seconds: Number(args.trackedSeconds) }
+              : {}),
+          }).eq('id', taskId).eq('user_id', user.id);
         }
+
+        let taskTitle = 'Task';
+        if (rpcData && rpcData.title) {
+          taskTitle = rpcData.title;
+        } else if (taskId) {
+          const { data: tRow } = await supabase.from('tasks').select('title').eq('id', taskId).maybeSingle();
+          if (tRow?.title) taskTitle = tRow.title;
+        }
+
+        return {
+          result: { success: true, taskId, taskTitle, status: 'done' },
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'finish_task',
+            summary: `Completed "${taskTitle}"`,
+            status: 'auto_executed',
+            payload: {
+              taskId,
+              taskTitle,
+              timestampISO: currentTimeISO,
+            },
+          },
+        };
       }
 
-      if (args.status === 'in_progress' && args.isPaused === false) {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_start_or_resume_task', {
-          p_task_id: taskId,
-          p_timestamp: currentTimeISO,
-          p_is_resume: true,
-        });
-        if (!rpcErr && rpcData) {
-          return {
-            result: { success: true, task: rpcData },
-            proposal: {
-              id: crypto.randomUUID(),
-              type: 'resume_task',
-              summary: `Resumed "${rpcData.title || 'Task'}"`,
-              status: 'auto_executed',
-              payload: {
-                taskId,
-                taskTitle: rpcData.title,
-                timestampISO: currentTimeISO,
-              },
-            },
-          };
-        }
-      }
-
+      // Handle Pause
       if (args.isPaused === true) {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_pause_task', {
-          p_task_id: taskId,
+        const { data: rpcData } = await supabase.rpc('rpc_pause_task', {
+          p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
           p_reason: 'paused',
         });
-        if (!rpcErr && rpcData) {
-          return {
-            result: { success: true, task: rpcData },
-            proposal: {
-              id: crypto.randomUUID(),
-              type: 'pause_task',
-              summary: `Paused "${rpcData.title || 'Task'}"`,
-              status: 'auto_executed',
-              payload: {
-                taskId,
-                taskTitle: rpcData.title,
-                timestampISO: currentTimeISO,
-              },
-            },
-          };
+
+        if (taskId) {
+          await supabase.from('tasks').update({
+            is_paused: true,
+            updated_at: currentTimeISO,
+          }).eq('id', taskId).eq('user_id', user.id);
         }
+
+        let taskTitle = 'Task';
+        if (rpcData && rpcData.title) {
+          taskTitle = rpcData.title;
+        } else if (taskId) {
+          const { data: tRow } = await supabase.from('tasks').select('title').eq('id', taskId).maybeSingle();
+          if (tRow?.title) taskTitle = tRow.title;
+        }
+
+        return {
+          result: { success: true, taskId, taskTitle, isPaused: true },
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'pause_task',
+            summary: `Paused "${taskTitle}"`,
+            status: 'auto_executed',
+            payload: {
+              taskId,
+              taskTitle,
+              timestampISO: currentTimeISO,
+            },
+          },
+        };
       }
 
-      const { data: updatedTask, error } = await supabase
-        .from('tasks')
-        .update(updates)
-        .eq('id', taskId)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      if (error) throw error;
+      // Handle Resume or Move to In Progress
+      if (args.status === 'in_progress' || args.isPaused === false) {
+        const { data: rpcData } = await supabase.rpc('rpc_start_or_resume_task', {
+          p_task_id: taskId || null,
+          p_timestamp: currentTimeISO,
+          p_is_resume: true,
+        });
 
-      return {
-        result: { success: true, task: updatedTask },
-        proposal: {
-          id: crypto.randomUUID(),
-          type: args.status === 'done' ? 'finish_task' : 'update_task',
-          summary: `Updated task "${updatedTask?.title || taskId}"`,
-          status: 'auto_executed',
-          payload: {
-            taskId,
-            taskTitle: updatedTask?.title,
-            ...updates,
+        if (taskId) {
+          await supabase.from('tasks').update({
+            status: 'in_progress',
+            is_paused: false,
+            updated_at: currentTimeISO,
+          }).eq('id', taskId).eq('user_id', user.id);
+        }
+
+        let taskTitle = 'Task';
+        if (rpcData && rpcData.title) {
+          taskTitle = rpcData.title;
+        } else if (taskId) {
+          const { data: tRow } = await supabase.from('tasks').select('title').eq('id', taskId).maybeSingle();
+          if (tRow?.title) taskTitle = tRow.title;
+        }
+
+        return {
+          result: { success: true, taskId, taskTitle, status: 'in_progress', isPaused: false },
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'resume_task',
+            summary: `Resumed "${taskTitle}"`,
+            status: 'auto_executed',
+            payload: {
+              taskId,
+              taskTitle,
+              timestampISO: currentTimeISO,
+            },
           },
-        },
-      };
+        };
+      }
+
+      // Generic updates
+      if (taskId) {
+        const { data: updatedTask, error } = await supabase
+          .from('tasks')
+          .update(updates)
+          .eq('id', taskId)
+          .eq('user_id', user.id)
+          .select()
+          .maybeSingle();
+        if (error) throw error;
+
+        return {
+          result: { success: true, task: updatedTask },
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'update_task',
+            summary: `Updated task "${updatedTask?.title || taskId}"`,
+            status: 'auto_executed',
+            payload: {
+              taskId,
+              taskTitle: updatedTask?.title,
+              ...updates,
+            },
+          },
+        };
+      }
+
+      return { result: { success: false, error: 'Task not found' } };
     }
 
     case 'create_journal_entry': {
@@ -916,68 +1067,82 @@ async function executeAgentTool(
       const endTime = typeof args.endTime === 'string' ? args.endTime : currentLocal.time24h;
       const title = String(args.title || 'Work Session').trim();
       const eventType = args.type === 'meeting' ? 'meeting' : 'work';
+      const rawDesc = String(args.description || '').trim();
 
-      const { data: eventRow, error: evError } = await supabase
-        .from('events')
-        .insert({
-          user_id: user.id,
-          date,
-          start_time: startTime,
-          end_time: endTime,
-          type: eventType,
-          title,
-          project_tag: typeof args.projectTag === 'string' ? args.projectTag : null,
-          source_task_id: typeof args.linkedTaskId === 'string' ? args.linkedTaskId : null,
-        })
-        .select('id')
-        .single();
-      if (evError) throw evError;
-
-      const eventId = eventRow.id;
+      // Ensure Google XYZ formula headers are present
+      let formattedDescription = rawDesc;
       if (eventType === 'work') {
-        const { error: workErr } = await supabase
-          .from('work_details')
-          .insert({
-            event_id: eventId,
-            description: String(args.description || ''),
-            implementation_notes: String(args.implementationNotes || ''),
-            status: typeof args.status === 'string' ? args.status : 'done',
-            links: [],
-          });
-        if (workErr) throw workErr;
-      } else {
-        const { error: meetErr } = await supabase
-          .from('meeting_details')
-          .insert({
-            event_id: eventId,
-            is_optional: false,
-            discussion_summary: String(args.description || ''),
-            decisions: '',
-            tasks_assigned: [],
-            links: [],
-          });
-        if (meetErr) throw meetErr;
+        const hasXYZHeaders = rawDesc.includes('**Problem') || rawDesc.includes('**My Contribution');
+        if (!hasXYZHeaders) {
+          formattedDescription = `* **Problem / Initiative**: ${title}\n* **My Contribution & Implementation**:\n  - Accomplished core objectives as measured by verified execution, by implementing: ${rawDesc}\n* **Engineering Judgment & Decisions**:\n  - Selected scalable, modular patterns aligned with codebase architecture.\n* **Impact & Results**:\n  - Verified end-to-end functionality, unblocking planned milestone.`;
+        }
       }
 
-      return {
-        result: { success: true, eventId, title, date, startTime, endTime },
-        proposal: {
-          id: crypto.randomUUID(),
-          type: 'create_work_event',
-          summary: `Added Work Journal entry: "${title}"`,
-          status: 'auto_executed',
-          payload: {
-            id: eventId,
+      // DRAFT PROPOSAL ONLY: Do NOT write to DB directly! User approval is strictly required.
+      if (eventType === 'work') {
+        return {
+          result: {
+            success: true,
+            status: 'pending_approval',
+            type: 'work',
             title,
             date,
             startTime,
             endTime,
-            description: args.description,
-            status: args.status || 'done',
-            linkedTaskId: args.linkedTaskId || null,
+            descriptionPreview: formattedDescription.slice(0, 150) + '...',
+            message: `Work Journal proposal drafted for "${title}" using Google XYZ formula. Awaiting user approval card in chat.`,
           },
-        },
-      };
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'create_work_event',
+            summary: `Drafted Work Journal: "${title}"`,
+            status: 'pending',
+            payload: {
+              title,
+              date,
+              startTime,
+              endTime,
+              description: formattedDescription,
+              implementationNotes: typeof args.implementationNotes === 'string' ? args.implementationNotes : '',
+              status: (typeof args.status === 'string' ? args.status : 'done') as any,
+              projectTag: typeof args.projectTag === 'string' ? args.projectTag : null,
+              linkedTaskId: typeof args.linkedTaskId === 'string' ? args.linkedTaskId : null,
+              syncToTaskLog: true,
+            },
+          },
+        };
+      } else {
+        return {
+          result: {
+            success: true,
+            status: 'pending_approval',
+            type: 'meeting',
+            title,
+            date,
+            startTime,
+            endTime,
+            message: `Meeting proposal drafted for "${title}". Awaiting user approval card in chat.`,
+          },
+          proposal: {
+            id: crypto.randomUUID(),
+            type: 'create_meeting_event',
+            summary: `Drafted Meeting: "${title}"`,
+            status: 'pending',
+            payload: {
+              title,
+              date,
+              startTime,
+              endTime,
+              isOptional: false,
+              discussionSummary: formattedDescription,
+              decisions: typeof args.implementationNotes === 'string' ? args.implementationNotes : '',
+              tasksAssigned: [],
+              actionItems: [],
+              projectTag: typeof args.projectTag === 'string' ? args.projectTag : null,
+            },
+          },
+        };
+      }
     }
 
     case 'update_journal_entry': {
@@ -1041,49 +1206,89 @@ function buildAgentSystemPrompt(
   const dayOfWeek = daysOfWeek[baseD.getUTCDay()];
 
   return `You are Jarvis, a sentient, highly competent, proactive personal engineering AI assistant and chief-of-staff for Salitha Marasinghe (Trainee Associate Software Engineer).
-You are equipped with real, native database tools to query and update the Kanban board, track time, log Work Journal entries, check the real clock, and manage projects.
+You are equipped with real, native database tools to query and update the Kanban board, track time, draft Work Journal entries, check the real clock, and manage projects.
 
 ### LIVE TEMPORAL CONTEXT:
 - Real-World Current Local Time: "${local.time24h}" (${dayOfWeek}, ${local.dateISO})
 - User Timezone: ${timezone}
 - Current ISO Timestamp: "${currentTimeISO}"
 
-### SENTIENT REASONING DIRECTIVES:
-1. AUTONOMOUS STEP-BY-STEP REASONING:
-   When Salitha speaks to you, reason step-by-step:
-   - If they report past work (e.g. "I completed an additional task for the last 2 hours on RAG..."):
-     1) Use 'calculate_relative_time' with minutesAgo (e.g. 120) to get the authoritative past start time, date, and end time.
-     2) Use 'search_tasks' to check if an existing task matches the work (e.g. "RAG", "auth", "latency").
-     3) If a matching task exists in 'todo' or 'in_progress', update it to 'done' using 'update_task' with trackedSeconds.
-     4) If no matching task exists, create it directly using 'create_task' with status 'done' and trackedSeconds.
-     5) Create the Work Journal entry using 'create_journal_entry' with a structured result-oriented summary following the Google XYZ formula: "Accomplished [X] as measured by [Y], by doing [Z]".
-     6) Respond warmly and concisely confirming exactly what was found, updated, and recorded.
-   - If they report starting a task:
-     1) Check existing tasks with 'search_tasks'. If exists, update its status to 'in_progress' and isPaused to false.
-     2) If doesn't exist, create it with status 'in_progress'.
-     3) Confirm the timer has started.
-   - If they report taking a break or heading out:
-     1) Call 'update_task' to pause the running task, or confirm all active tasks are paused.
-     2) Tell Salitha to enjoy their break.
-   - If they report a meeting:
-     1) Use 'create_journal_entry' with type 'meeting', capturing attendees, key trade-offs, decisions, and action items.
+### STRICT TWO-TIER APPROVAL BOUNDARY:
+Salitha requires a strict architectural boundary between auto-executed operational state changes and reviewable journal proposals:
 
-2. GOOGLE XYZ WORKLOAD FORMULA:
-   Every work summary in 'create_journal_entry' description must strictly follow:
-   * **Problem / Initiative**: [Brief context of challenge tackled]
-   * **My Contribution & Implementation**:
-     - [Active verb]: [Specific component or flow built or evaluated]
-     - [Key technical logic applied]
-   * **Engineering Judgment & Decisions**:
-     - [Architectural trade-offs evaluated, why this approach was chosen]
-   * **Impact & Results**:
-     - [Concrete outcome, unblocked milestone, test or architectural verification]
+1. TIER 1: AUTO-EXECUTED ACTIONS (Execute immediately via tools, NO approval required):
+   - Starting a task timer (call 'update_task' to 'in_progress', isPaused: false, or 'create_task' with status: 'in_progress').
+   - Pausing running tasks for tea breaks or interruptions (call 'update_task' with isPaused: true).
+   - Resuming tasks after breaks (call 'update_task' with status: 'in_progress', isPaused: false).
+   - Marking completed tasks as Done in the Kanban board (call 'update_task' with status: 'done', trackedSeconds).
+   - Pausing incomplete tasks when done for the day (call 'update_task' with isPaused: true).
+   - Adding tasks or action items from a meeting to the To Do list (call 'create_task' with status: 'todo').
+   *All Tier 1 actions apply directly to the database and update the Kanban board immediately.*
 
-3. NO BRITTLE PROPOSAL HESITATION:
-   When Salitha tells you they finished work or tells you to do something, EXECUTE IT via your tools. Do not sit passively waiting for manual button clicks. Your tools write directly to the database and generate transparent undoable action pills.
+2. TIER 2: REVIEWABLE PROPOSALS (Draft via tools, NEVER auto-executed into database, REQUIRES USER APPROVAL):
+   - Work Journal entries (call 'create_journal_entry' with type: 'work').
+   - Meeting log entries (call 'create_journal_entry' with type: 'meeting').
+   *Calling 'create_journal_entry' generates an interactive review card in the chat with status 'pending'. It is NOT written to the events table until Salitha clicks Approve on the card.*
+   *In your final reply text, you MUST clearly state that the entry was drafted for review and ask Salitha to inspect and approve it.*
 
-4. CONVERSATIONAL TONE:
-   Speak like a world-class senior engineering assistant: crisp, articulate, proactive, and natural. Never sound robotic or repetitive.`;
+### SENTIENT LIFECYCLE WORKFLOWS:
+
+1. WHEN SALITHA REPORTS STARTING WORK (e.g. "I'm starting [work/task]", "Let's work on X"):
+   - Step 1: Call 'search_tasks' with query 'X'.
+   - Step 2: If a matching task exists in 'todo', call 'update_task' with taskId, status: 'in_progress', isPaused: false.
+   - Step 3: If multiple tasks match and it is ambiguous which one Salitha meant, ask a clarifying question listing the options: "I found these tasks on your board: [1. Task A, 2. Task B]. Would you like me to start one of these, or create a new task?" (Only ask if genuinely ambiguous).
+   - Step 4: If no task matches, call 'create_task' with title: 'X', status: 'in_progress'.
+   - Step 5: Confirm warmly: "I've started '[Task Title]' and moved it to In Progress. The timer is running!"
+
+2. WHEN SALITHA TAKES A BREAK (e.g. "heading out for a 20-minute tea break", "taking a break", "pause"):
+   - Step 1: Identify the running task from context or call 'search_tasks' with status: 'in_progress'.
+   - Step 2: Call 'update_task' with taskId, isPaused: true.
+   - Step 3: Confirm warmly: "I've paused '[Task Title]'. Enjoy your tea break, Salitha!"
+
+3. WHEN SALITHA RETURNS FROM A BREAK (e.g. "I'm back, let's start working again", "back from tea break"):
+   - Step 1: Identify the paused task from context.lastPausedTask or call 'search_tasks' with status: 'in_progress'.
+   - Step 2: Call 'update_task' with taskId, status: 'in_progress', isPaused: false.
+   - Step 3: Confirm warmly: "Welcome back, Salitha! I've resumed '[Task Title]' and the timer is running."
+
+4. WHEN A TASK IS FULLY COMPLETED (e.g. "I completed [task]...", "Finished evaluating RAG..."):
+   - Step 1: If duration was mentioned (e.g. "for the last 2 hours"), call 'calculate_relative_time' with minutesAgo (e.g. 120) to get exact start time, end time, and date.
+   - Step 2: Call 'search_tasks' to find the task.
+   - Step 3: Call 'update_task' with taskId, status: 'done', trackedSeconds. (If no task existed at all, call 'create_task' with status: 'done' and trackedSeconds EXACTLY ONCE). NEVER duplicate tasks.
+   - Step 4: Call 'create_journal_entry' with type: 'work', status: 'done', startTime, endTime, date, and description formatted strictly according to the **Google XYZ formula**.
+   - Step 5: In your reply text, confirm: "I have moved '[Task Title]' to Completed. Here is the Work Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:"
+
+5. WHEN DONE FOR THE DAY / HALFWAY DONE (e.g. "Done for the day, did X, will do Y tomorrow"):
+   - The task is NOT finished! Do NOT move it to 'done'.
+   - Step 1: Call 'update_task' with taskId, isPaused: true (keeps it in 'in_progress' with paused timer).
+   - Step 2: Call 'calculate_relative_time' if duration was mentioned.
+   - Step 3: Call 'create_journal_entry' with type: 'work', status: 'in_progress', and description formatted using the **Google XYZ formula** summarizing today's accomplishments.
+   - Step 4: In your reply text, confirm: "I have paused '[Task Title]' for today (leaving it in In Progress for tomorrow). Here is the Work Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:"
+
+6. WHEN EXPLAINING A MEETING (e.g. "Had a meeting with X, discussed Y, and need to do Z"):
+   - Step 1: Extract action items and deliverables assigned to Salitha. Call 'create_task' with status: 'todo' for each action item to add to the Kanban board.
+   - Step 2: Call 'create_journal_entry' with type: 'meeting', structured discussion summary, agreed decisions, and action items.
+   - Step 3: In your reply text, confirm: "I have added your action items to the To Do board. Here is the Meeting Journal entry I drafted for your review. Please inspect and approve:"
+
+### GOOGLE XYZ WORKLOAD FORMULA FORMAT:
+Every work summary in 'create_journal_entry' description must strictly follow this exact structural markdown:
+* **Problem / Initiative**: [Context of the engineering challenge, bug, or feature]
+* **My Contribution & Implementation**:
+  - Accomplished [X] as measured by [Y], by doing [Z]
+  - [Specific technical components, architecture, or flow built or evaluated]
+  - [Core engineering logic applied]
+* **Engineering Judgment & Decisions**:
+  - [Architectural trade-offs evaluated, why this approach was chosen over alternatives]
+* **Impact & Results**:
+  - [Concrete verification, test coverage, benchmark latency result, or unblocked milestone]
+
+### TASK DEDUPLICATION & INTEGRITY:
+- NEVER create duplicate tasks.
+- ALWAYS call 'search_tasks' before calling 'create_task'.
+- If a matching task exists, call 'update_task' ONLY.
+- NEVER call 'create_task' multiple times for the same item.
+
+### CONVERSATIONAL STYLE:
+Speak like a world-class senior engineering assistant: crisp, articulate, proactive, and natural. Never sound robotic.`;
 }
 
 function buildOperationalSystemPrompt(
