@@ -1179,24 +1179,7 @@ async function executeAgentTool(
         };
       }
 
-      // 0. Meeting guard: If the user is explaining/logging a meeting, action items must NOT be auto-created now!
-      // They belong inside the create_journal_entry proposal for user review and approval.
-      // BUT if the user explicitly requested a task ("just add as a task", "don't create this as a meeting", etc.), NEVER suppress!
-      const uMsg = userMessage || '';
-      const isExplicitTaskOnly = /\b(don'?t (?:create|log|make).*(?:meeting|look)|not a meeting|just (?:add|create|make).*(?:task|to ?do)|only (?:add|create|make).*(?:task|to ?do)|can you make a (?:to ?do )?task|add (?:a|this) task|create (?:a|this) task)\b/i.test(uMsg);
-      const isMeetingReport = !isExplicitTaskOnly && /\b(meeting|sync|standup|1-on-1|just finished.*sync)\b/i.test(uMsg) && !/\b(add task|create task|make a task)\b/i.test(uMsg);
-      if (isMeetingReport && status === 'todo') {
-        console.log(`[ai-assistant-chat] Suppressing immediate create_task for "${title}" during meeting log to prevent duplicate tasks.`);
-        return {
-          result: {
-            success: true,
-            suppressed: true,
-            message: `Action item "${title}" will be included in the Meeting Journal review card and added to Kanban upon user approval. Do NOT call create_task again.`,
-          },
-        };
-      }
-
-      // 1. Deduplication guard: Check if a task with similar title already exists
+      // Deduplication guard: Check if a task with similar title already exists
       const { data: recentTasks } = await supabase
         .from('tasks')
         .select('*')
