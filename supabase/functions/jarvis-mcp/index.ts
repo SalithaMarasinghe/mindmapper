@@ -509,6 +509,69 @@ const JARVIS_TOOLS = [
       required: ['mapId', 'label'],
     },
   },
+
+  // ─── SUITE 6: LONG-TERM EPISODIC MEMORY & RAG ─────────────────────────────
+  {
+    name: 'jarvis_query_memory',
+    description: 'Semantic vector search across Jarvis long-term memory (work journals, meeting notes, project storylines, and Google XYZ summaries). Allows external IDE agents or chat to recall past decisions, bugs, architecture choices, or resume summaries.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Natural language search query (e.g. "Postgres function overload", "WhatsApp meeting with supervisor about data engineering", "resume summary").',
+        },
+        projectName: {
+          type: 'string',
+          description: 'Optional project name filter (e.g. "Cloud MCP Server").',
+        },
+        chunkType: {
+          type: 'string',
+          enum: ['executive', 'technical', 'decision', 'action_item', 'project_summary'],
+          description: 'Optional filter: "project_summary" for 6-month resume bullets, "technical" for code/diffs, "decision" for meeting agreements, "executive" for accomplishments.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max results to return (default 6).',
+        },
+        threshold: {
+          type: 'number',
+          description: 'Minimum similarity threshold between 0.0 and 1.0 (default 0.35).',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'jarvis_synthesize_project',
+    description: 'Synthesizes all daily work sessions, technical logs, and meeting notes under a project into a single master Google XYZ formula resume bullet ("Accomplished [X], as measured by [Y], by doing [Z]"). Stores the bullet on the project and embeds it into long-term memory.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectName: {
+          type: 'string',
+          description: 'Name of the project to synthesize. If omitted, uses current active focus project.',
+        },
+        markCompleted: {
+          type: 'boolean',
+          description: 'Optional: If true, also marks the project status as "completed" (default false).',
+        },
+      },
+    },
+  },
+  {
+    name: 'jarvis_backfill_memory',
+    description: 'Scans all existing work journals, meeting logs, and projects in the database, generates semantic vector embeddings using text-embedding-004, and populates the long-term memory table.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Max records to process in this batch (default 50).',
+        },
+      },
+    },
+  },
 ];
 
 // ─── DATABASE ENTITY RESOLVERS ───────────────────────────────────────────────
@@ -556,6 +619,189 @@ async function resolveMindmapId(supabase: any, userId: string, identifier: strin
   const clean = identifier.replace(/\b(the|map|mindmap)\b/gi, '').trim();
   const { data } = await supabase.from('mindmaps').select('id, title, node_count').eq('user_id', userId).ilike('title', `%${clean || identifier}%`).limit(1);
   return data?.[0] || null;
+}
+
+// ─── VECTOR EMBEDDING & SEMANTIC MEMORY HELPERS ──────────────────────────────
+
+async function generateEmbedding(text: string): Promise<{ vec: number[] | null; error?: string }> {
+  const apiKey = Deno.env.get('GEMINI_API_KEY');
+  if (!apiKey) {
+    return { vec: null, error: 'GEMINI_API_KEY environment variable is missing.' };
+  }
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/gemini-embedding-001',
+        content: { parts: [{ text: text.slice(0, 8000) }] },
+        outputDimensionality: 768,
+      }),
+    });
+    if (!resp.ok) {
+      const err = await resp.text();
+      return { vec: null, error: `Gemini API error ${resp.status}: ${err}` };
+    }
+    const data = await resp.json();
+    return { vec: data.embedding?.values || null };
+  } catch (e: any) {
+    console.error('[embed] Exception:', e);
+    return { vec: null, error: `Gemini exception: ${e?.message || String(e)}` };
+  }
+}
+
+async function storeMemoryChunk(
+  supabase: any,
+  params: {
+    userId: string;
+    sourceType: 'work_journal' | 'meeting' | 'project_summary' | 'mindmap' | 'task';
+    sourceId: string;
+    projectId?: string | null;
+    projectName?: string | null;
+    eventDate?: string | null;
+    chunkType: 'executive' | 'technical' | 'decision' | 'action_item' | 'project_summary';
+    content: string;
+    metadata?: any;
+  }
+) {
+  try {
+    const { vec: embedding, error: embedErr } = await generateEmbedding(params.content);
+    if (embedErr) {
+      console.warn(`[memory] Embedding notice for ${params.chunkType}: ${embedErr}`);
+    }
+
+    const { error } = await supabase.from('jarvis_memory_embeddings').insert({
+      user_id: params.userId,
+      source_type: params.sourceType,
+      source_id: params.sourceId,
+      project_id: params.projectId || null,
+      project_name: params.projectName || null,
+      event_date: params.eventDate || null,
+      chunk_type: params.chunkType,
+      content: params.content,
+      embedding: embedding ? (Array.isArray(embedding) ? JSON.stringify(embedding) : embedding) : null,
+      metadata: params.metadata || {},
+    });
+
+    if (error) {
+      console.error('[memory] Failed to insert chunk:', error);
+      throw error;
+    }
+  } catch (e: any) {
+    console.error('[memory] storeMemoryChunk exception:', e);
+    throw e;
+  }
+}
+
+async function generateGoogleXYZSummary(projectName: string, contextLogs: string): Promise<string> {
+  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  const groqKey = Deno.env.get('GROQ_PAID_API_KEY') || Deno.env.get('GROQ_API_KEY');
+  let lastErr = '';
+
+  const prompt = `You are a Principal Engineering Lead and Executive Resume Strategist specializing in Google's strict XYZ formula:
+"Accomplished [X], as measured by [Y], by doing [Z]."
+
+Here are the engineering work sessions, technical implementation details, and meeting syncs for the project "${projectName}":
+---
+${contextLogs}
+---
+
+Your task:
+Synthesize this entire project into ONE single, fluent, resume-ready sentence following the Google XYZ formula:
+"Accomplished [X], as measured by [Y], by doing [Z]."
+
+Strict Guidelines:
+1. Output EXACTLY ONE cohesive, natural sentence starting with an action verb (e.g. "Architected...", "Deployed...", "Engineered...", "Optimized...").
+2. Do NOT write "[X]", "[Y]", "[Z]" placeholders or bullet labels in your output. Write it as a clean, continuous English sentence.
+3. Explicitly include concrete metrics, benchmarks, or numbers found in the logs (e.g. 5 core UI components, 6-stage automated state machine, 0% SPA routing errors).
+4. Explicitly mention key technical stacks (e.g. React, TypeScript, Figma tokens, Netlify).
+5. Output ONLY the single sentence. No preambles, headers, or quotes.`;
+
+  // 1. Try Gemini Flash models (primary)
+  if (geminiKey) {
+    const geminiModels = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    for (const model of geminiModels) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 2048,
+            },
+          }),
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const candidate = data.candidates?.[0];
+          const parts = candidate?.content?.parts || [];
+          const nonThoughtText = parts
+            .filter((p: any) => !p.thought)
+            .map((p: any) => p.text || '')
+            .join('\n')
+            .trim();
+          const fullText = nonThoughtText || parts.map((p: any) => p.text || '').join('\n').trim();
+          if (fullText && fullText.length > 10) return fullText.replace(/^["']|["']$/g, '');
+          lastErr = `Gemini (${model}) returned empty: ${JSON.stringify(candidate || data)}`;
+        } else {
+          const errText = await resp.text();
+          lastErr = `Gemini (${model}) HTTP ${resp.status}: ${errText}`;
+          console.warn(`[synthesis] ${lastErr}`);
+        }
+      } catch (e: any) {
+        lastErr = `Gemini (${model}) exception: ${e?.message || String(e)}`;
+        console.warn(`[synthesis] Gemini (${model}) exception:`, e);
+      }
+    }
+  }
+
+  // 2. Fallback to Groq with 2048 max_tokens and explicit model fallbacks
+  const activeGroqKey = groqKey;
+  if (activeGroqKey) {
+    const groqCandidateModels = [
+      Deno.env.get('GROQ_MODEL'),
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+    ].filter(Boolean) as string[];
+
+    for (const model of groqCandidateModels) {
+      try {
+        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${activeGroqKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.2,
+            max_tokens: 2048,
+          }),
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const choice = data.choices?.[0];
+          const content = choice?.message?.content?.trim()?.replace(/^["']|["']$/g, '');
+          if (content && content.length > 10) return content;
+          lastErr += ` | Groq (${model}) empty content: ${JSON.stringify(choice || data)}`;
+        } else {
+          const errText = await resp.text();
+          lastErr += ` | Groq (${model}) HTTP ${resp.status}: ${errText}`;
+        }
+      } catch (gErr: any) {
+        lastErr += ` | Groq (${model}) exception: ${gErr?.message || String(gErr)}`;
+      }
+    }
+  }
+
+  throw new Error(`Unable to synthesize project summary. Diagnostics: ${lastErr}`);
 }
 
 // ─── EXECUTE TOOL IMPLEMENTATION ─────────────────────────────────────────────
@@ -1000,6 +1246,42 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
         }
       }
 
+      // 4. Auto-embed hierarchical semantic memory chunks
+      const executiveChunk = `[Project: ${projectTag || 'General'}] [Date: ${eventDate}] [Work Journal: ${args.title}]
+🎯 Objective & Context: ${args.objective.trim()}
+🏆 Key Accomplishments: ${toBulletPoints(args.keyAccomplishments)}
+📊 Measured Impact: ${toBulletPoints(args.measuredImpact)}`;
+
+      const technicalChunk = `[Project: ${projectTag || 'General'}] [Date: ${eventDate}] [Work Journal: ${args.title}]
+🛠️ Technical Execution: ${toBulletPoints(args.technicalExecution)}
+Implementation Notes: ${args.implementationNotes || 'None'}
+${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
+
+      await Promise.all([
+        storeMemoryChunk(supabase, {
+          userId,
+          sourceType: 'work_journal',
+          sourceId: eventId,
+          projectId,
+          projectName: projectTag,
+          eventDate,
+          chunkType: 'executive',
+          content: executiveChunk,
+          metadata: { title: args.title, startTime: args.startTime, endTime: args.endTime, status: rawStatus },
+        }),
+        storeMemoryChunk(supabase, {
+          userId,
+          sourceType: 'work_journal',
+          sourceId: eventId,
+          projectId,
+          projectName: projectTag,
+          eventDate,
+          chunkType: 'technical',
+          content: technicalChunk,
+          metadata: { title: args.title, startTime: args.startTime, endTime: args.endTime },
+        }),
+      ]);
+
       return {
         success: true,
         eventId,
@@ -1230,6 +1512,41 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
         }
       }
 
+      // Auto-embed hierarchical meeting chunks
+      const decisionChunk = `[Project: ${projectTag || 'General'}] [Date: ${eventDate}] [Meeting: ${args.title}]
+Attendees: ${(args.attendees || []).join(', ')}
+Discussion Summary: ${args.discussionSummary}
+Decisions Made: ${args.decisions || 'None recorded'}`;
+
+      const actionChunk = `[Project: ${projectTag || 'General'}] [Date: ${eventDate}] [Meeting: ${args.title}]
+Action Items & Assigned Deliverables:
+${actionItems.map((a: any) => `- ${typeof a === 'string' ? a : a.text} (Priority: ${a.priority || 'medium'})`).join('\n')}`;
+
+      await Promise.all([
+        storeMemoryChunk(supabase, {
+          userId,
+          sourceType: 'meeting',
+          sourceId: eventId,
+          projectId,
+          projectName: projectTag,
+          eventDate,
+          chunkType: 'decision',
+          content: decisionChunk,
+          metadata: { title: args.title, startTime: args.startTime, endTime: args.endTime },
+        }),
+        storeMemoryChunk(supabase, {
+          userId,
+          sourceType: 'meeting',
+          sourceId: eventId,
+          projectId,
+          projectName: projectTag,
+          eventDate,
+          chunkType: 'action_item',
+          content: actionChunk,
+          metadata: { title: args.title, actionItemCount: actionItems.length },
+        }),
+      ]);
+
       return {
         success: true,
         eventId,
@@ -1289,6 +1606,304 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
         success: true,
         message: `Added node "${args.label}" to mindmap "${map.title}".`,
         nodeId: node.id,
+      };
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // SUITE 6: LONG-TERM EPISODIC MEMORY & RAG
+    // ═════════════════════════════════════════════════════════════════════════
+
+    case 'jarvis_query_memory': {
+      const query = args.query?.trim();
+      if (!query) throw new Error('Query string is required.');
+      const limit = Math.min(Number(args.limit) || 6, 20);
+      const threshold = typeof args.threshold === 'number' ? args.threshold : 0.35;
+      const projectName = args.projectName ? args.projectName.trim() : null;
+      const chunkType = args.chunkType || null;
+      const startDate = args.startDate || null;
+      const endDate = args.endDate || null;
+
+      // 1. Generate query embedding
+      const { vec: queryVec, error: embedError } = await generateEmbedding(query);
+      if (!queryVec) {
+        // Fallback to text ILIKE match if vector embedding cannot be generated
+        let q = supabase
+          .from('jarvis_memory_embeddings')
+          .select('id, source_type, source_id, project_name, event_date, chunk_type, content, metadata')
+          .eq('user_id', userId)
+          .ilike('content', `%${query}%`)
+          .limit(limit);
+
+        if (projectName) q = q.ilike('project_name', `%${projectName}%`);
+        if (chunkType) q = q.eq('chunk_type', chunkType);
+
+        const { data: fallbackRows, error } = await q;
+        if (error) throw error;
+        return {
+          query,
+          searchMode: 'text_fallback',
+          embeddingNotice: embedError,
+          count: fallbackRows?.length || 0,
+          results: fallbackRows || [],
+        };
+      }
+
+      // 2. Call RPC match_jarvis_memory
+      const { data: matchedRows, error: rpcErr } = await supabase.rpc('match_jarvis_memory', {
+        query_embedding: queryVec,
+        match_threshold: threshold,
+        match_count: limit,
+        p_user_id: userId,
+        p_project_name: projectName,
+        p_chunk_type: chunkType,
+        p_start_date: startDate,
+        p_end_date: endDate,
+      });
+
+      if (rpcErr) throw rpcErr;
+
+      const { count: totalStored } = await supabase
+        .from('jarvis_memory_embeddings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      return {
+        query,
+        searchMode: 'vector_hnsw_semantic',
+        totalStoredEmbeddings: totalStored || 0,
+        count: matchedRows?.length || 0,
+        results: (matchedRows || []).map((r: any) => ({
+          similarity: Math.round(r.similarity * 1000) / 1000,
+          chunkType: r.chunk_type,
+          sourceType: r.source_type,
+          projectName: r.project_name,
+          date: r.event_date,
+          content: r.content,
+          metadata: r.metadata,
+        })),
+      };
+    }
+
+    case 'jarvis_synthesize_project': {
+      let project: any = null;
+      if (args.projectName) {
+        const { data: projects } = await supabase.from('projects').select('*').eq('user_id', userId);
+        project = projects?.find((p: any) => p.name.toLowerCase() === args.projectName.toLowerCase());
+      }
+      if (!project) {
+        project = await getActiveProject(supabase, userId);
+      }
+      if (!project) {
+        throw new Error('Project not found to synthesize.');
+      }
+
+      // 1. Gather all work journals and meetings under this project
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, title, date, start_time, end_time, type')
+        .eq('user_id', userId)
+        .eq('project_id', project.id)
+        .order('date', { ascending: true });
+
+      const eventIds = (events || []).map((e: any) => e.id);
+
+      let workDetailsText = '';
+      if (eventIds.length > 0) {
+        const { data: details } = await supabase
+          .from('work_details')
+          .select('event_id, description, implementation_notes')
+          .in('event_id', eventIds);
+
+        const { data: meetingDetails } = await supabase
+          .from('meeting_details')
+          .select('event_id, discussion_summary, decisions, tasks_assigned')
+          .in('event_id', eventIds);
+
+        const detailMap = new Map((details || []).map((d: any) => [d.event_id, d]));
+        const meetingMap = new Map((meetingDetails || []).map((m: any) => [m.event_id, m]));
+
+        workDetailsText = (events || [])
+          .map((e: any) => {
+            const wd = detailMap.get(e.id);
+            const md = meetingMap.get(e.id);
+            let block = `Date: ${e.date} | Type: ${e.type} | Title: ${e.title}\n`;
+            if (wd?.description) block += `${wd.description}\n`;
+            if (wd?.implementation_notes) block += `Notes: ${wd.implementation_notes}\n`;
+            if (md?.discussion_summary) block += `Discussion: ${md.discussion_summary}\n`;
+            if (md?.decisions) block += `Decisions: ${md.decisions}\n`;
+            return block;
+          })
+          .join('\n---\n');
+      }
+
+      if (!workDetailsText.trim()) {
+        workDetailsText = `Project Name: ${project.name}\nDescription: ${project.description || 'No detailed logs recorded yet.'}`;
+      }
+
+      // 2. Synthesize Google XYZ bullet
+      const summaryXYZ = await generateGoogleXYZSummary(project.name, workDetailsText);
+
+      if (!summaryXYZ) {
+        throw new Error(`Failed to synthesize Google XYZ summary for "${project.name}". The LLM response was empty.`);
+      }
+
+      // 3. Update projects table
+      const updatePayload: any = { summary_xyz: summaryXYZ };
+      if (args.markCompleted) {
+        updatePayload.status = 'completed';
+      }
+      await supabase.from('projects').update(updatePayload).eq('id', project.id);
+
+      // 4. Embed into long-term memory
+      const masterContent = `[Project Storyline Apex: ${project.name}] [Status: ${args.markCompleted ? 'completed' : project.status}]
+🎯 Google XYZ Master Resume Bullet:
+${summaryXYZ}
+Project Description: ${project.description || ''}`;
+
+      // Delete any previous project summary chunks for this project to prevent duplicates
+      await supabase
+        .from('jarvis_memory_embeddings')
+        .delete()
+        .eq('user_id', userId)
+        .eq('source_id', project.id)
+        .eq('chunk_type', 'project_summary');
+
+      await storeMemoryChunk(supabase, {
+        userId,
+        sourceType: 'project_summary',
+        sourceId: project.id,
+        projectId: project.id,
+        projectName: project.name,
+        eventDate: todayISO,
+        chunkType: 'project_summary',
+        content: masterContent,
+        metadata: {
+          projectId: project.id,
+          projectName: project.name,
+          summaryXYZ,
+          eventCount: events?.length || 0,
+        },
+      });
+
+      return {
+        success: true,
+        projectName: project.name,
+        status: args.markCompleted ? 'completed' : project.status,
+        masterGoogleXYZ: summaryXYZ,
+        totalSessionsSynthesized: events?.length || 0,
+        message: `Synthesized "${project.name}" into 1 master Google XYZ formula and embedded into memory.`,
+      };
+    }
+
+    case 'jarvis_backfill_memory': {
+      const batchLimit = Math.min(Number(args.limit) || 50, 100);
+
+      // Clean up any stale un-embedded rows (where embedding IS NULL)
+      await supabase.from('jarvis_memory_embeddings').delete().eq('user_id', userId).is('embedding', null);
+
+      if (args.force) {
+        await supabase.from('jarvis_memory_embeddings').delete().eq('user_id', userId);
+      }
+
+      // 1. Find existing embedded source IDs
+      const { data: existingEmbeddings } = await supabase
+        .from('jarvis_memory_embeddings')
+        .select('source_id')
+        .eq('user_id', userId);
+
+      const embeddedSourceIds = new Set((existingEmbeddings || []).map((e: any) => e.source_id));
+
+      const { data: allEvents } = await supabase
+        .from('events')
+        .select('id, title, date, start_time, end_time, type, project_id, project_tag')
+        .eq('user_id', userId)
+        .order('date', { ascending: false });
+
+      let embeddedCount = 0;
+      for (const ev of (allEvents || [])) {
+        if (embeddedSourceIds.has(ev.id)) continue;
+        if (embeddedCount >= batchLimit) break;
+
+        if (ev.type === 'work') {
+          const { data: wd } = await supabase
+            .from('work_details')
+            .select('*')
+            .eq('event_id', ev.id)
+            .maybeSingle();
+
+          if (wd) {
+            const executiveChunk = `[Project: ${ev.project_tag || 'General'}] [Date: ${ev.date}] [Work Journal: ${ev.title}]\n${wd.description}`;
+            const technicalChunk = `[Project: ${ev.project_tag || 'General'}] [Date: ${ev.date}] [Work Journal: ${ev.title}]\nTechnical Notes: ${wd.implementation_notes || 'None'}`;
+            await Promise.all([
+              storeMemoryChunk(supabase, {
+                userId,
+                sourceType: 'work_journal',
+                sourceId: ev.id,
+                projectId: ev.project_id,
+                projectName: ev.project_tag,
+                eventDate: ev.date,
+                chunkType: 'executive',
+                content: executiveChunk,
+              }),
+              storeMemoryChunk(supabase, {
+                userId,
+                sourceType: 'work_journal',
+                sourceId: ev.id,
+                projectId: ev.project_id,
+                projectName: ev.project_tag,
+                eventDate: ev.date,
+                chunkType: 'technical',
+                content: technicalChunk,
+              }),
+            ]);
+            embeddedCount++;
+          }
+        } else if (ev.type === 'meeting') {
+          const { data: md } = await supabase
+            .from('meeting_details')
+            .select('*')
+            .eq('event_id', ev.id)
+            .maybeSingle();
+
+          if (md) {
+            const decisionChunk = `[Project: ${ev.project_tag || 'General'}] [Date: ${ev.date}] [Meeting: ${ev.title}]\nDiscussion: ${md.discussion_summary}\nDecisions: ${md.decisions || ''}`;
+            await storeMemoryChunk(supabase, {
+              userId,
+              sourceType: 'meeting',
+              sourceId: ev.id,
+              projectId: ev.project_id,
+              projectName: ev.project_tag,
+              eventDate: ev.date,
+              chunkType: 'decision',
+              content: decisionChunk,
+            });
+            embeddedCount++;
+          }
+        }
+      }
+
+      // Also embed projects
+      const { data: projects } = await supabase.from('projects').select('*').eq('user_id', userId);
+      for (const p of (projects || [])) {
+        if (embeddedSourceIds.has(p.id)) continue;
+        const content = `[Project Storyline Apex: ${p.name}] [Status: ${p.status}]\n${p.summary_xyz ? `🎯 Google XYZ Master Bullet:\n${p.summary_xyz}\n` : ''}Description: ${p.description || ''}`;
+        await storeMemoryChunk(supabase, {
+          userId,
+          sourceType: 'project_summary',
+          sourceId: p.id,
+          projectId: p.id,
+          projectName: p.name,
+          eventDate: p.created_at ? p.created_at.split('T')[0] : null,
+          chunkType: 'project_summary',
+          content,
+        });
+        embeddedCount++;
+      }
+
+      return {
+        success: true,
+        processedItems: embeddedCount,
+        message: `Successfully backfilled and embedded ${embeddedCount} historical items into long-term memory.`,
       };
     }
 

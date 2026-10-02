@@ -311,6 +311,59 @@ async function performTavilySearch(query: string, apiKey: string): Promise<Searc
   }
 }
 
+// ─── SEMANTIC VECTOR MEMORY RETRIEVAL (pgvector + HNSW) ──────────────────────
+async function retrieveRelevantMemory(
+  supabase: any,
+  userId: string,
+  query: string,
+  chunkTypeFilter?: string | null
+): Promise<string> {
+  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  if (!geminiKey || !query || query.trim().length < 4) return '';
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${geminiKey}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/gemini-embedding-001',
+        content: { parts: [{ text: query.slice(0, 1000) }] },
+        outputDimensionality: 768,
+      }),
+      signal: AbortSignal.timeout(4000),
+    });
+
+    if (!resp.ok) return '';
+    const data = await resp.json();
+    const vec = data.embedding?.values;
+    if (!vec || !Array.isArray(vec)) return '';
+
+    const rpcParams: Record<string, any> = {
+      query_embedding: JSON.stringify(vec),
+      match_threshold: 0.35,
+      match_count: 3,
+      p_user_id: userId,
+    };
+    if (chunkTypeFilter) {
+      rpcParams.p_chunk_type = chunkTypeFilter;
+    }
+
+    const { data: matches, error } = await supabase.rpc('match_jarvis_memory', rpcParams);
+    if (error || !matches || matches.length === 0) return '';
+
+    return matches
+      .map((m: any, idx: number) => {
+        const tag = `[Memory #${idx + 1} | Project: ${m.project_name || 'General'} | Date: ${m.event_date || 'N/A'} | Type: ${m.chunk_type}] (Relevance: ${(m.similarity * 100).toFixed(0)}%)`;
+        return `${tag}\n${m.content}`;
+      })
+      .join('\n---\n');
+  } catch (e) {
+    console.warn('[memory] retrieveRelevantMemory error:', e);
+    return '';
+  }
+}
+
 function buildPromptEngineeringSystemPrompt(promptRefinementTarget?: string): string {
   return `You are an elite Context Engineering & Prompt Architecture specialist.
 Your mission is to transform user requests into world-class, production-grade AI prompts following the R-T-C-O-G framework.
@@ -1002,6 +1055,25 @@ const agentTools = [
           projectName: { type: 'string', description: 'Name of the project to switch focus to' },
         },
         required: ['projectName'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_long_term_memory',
+      description: 'Performs semantic vector search across Jarvis long-term episodic memory (work journals, meeting notes, project storylines, and Google XYZ summaries). Allows Jarvis to recall past decisions, bugs, architecture choices, or resume summaries.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Natural language search query (e.g. "RAG codebase architecture", "decision on reconciliation state machine", "Google XYZ resume summary")' },
+          chunkType: {
+            type: ['string', 'null'],
+            enum: ['executive', 'technical', 'decision', 'action_item', 'project_summary', null],
+            description: 'Optional filter: project_summary for resume bullets, technical for code details, decision for meeting agreements, executive for accomplishments',
+          },
+        },
+        required: ['query'],
       },
     },
   },
@@ -1924,6 +1996,19 @@ async function executeAgentTool(
             projectId: targetId,
             projectName: targetName,
           },
+        },
+      };
+    }
+
+    case 'query_long_term_memory': {
+      const q = String(args.query || '').trim();
+      const chunkType = typeof args.chunkType === 'string' ? args.chunkType : null;
+      const memChunks = await retrieveRelevantMemory(supabase, user.id, q, chunkType);
+      return {
+        result: {
+          query: q,
+          memoryFound: Boolean(memChunks),
+          context: memChunks || 'No matching long-term memory records found with sufficient similarity.',
         },
       };
     }
@@ -3239,6 +3324,20 @@ Deno.serve(async (req: Request) => {
       searchAddendum = `\n\n### LIVE WEB SEARCH CONTEXT (Verified Fresh Sources):\n${searchResult.rawContext}\n(Ground your answer or engineered prompt using these live sources. Cite key documentation references naturally.)\n`;
     }
 
+    // 7.2 Semantic Long-Term Episodic Memory Retrieval (pgvector + HNSW)
+    let memoryAddendum = '';
+    const isTrivialTimerCmd = /^(pause|resume|take a break|break|lunch|stop timer)\b/i.test(cleanMsg);
+    if (!isTrivialTimerCmd) {
+      try {
+        const memChunks = await retrieveRelevantMemory(supabase, user.id, message);
+        if (memChunks && memChunks.length > 0) {
+          memoryAddendum = `\n\n### LONG-TERM EPISODIC MEMORY (Verified Past Journals, Meetings & Storyline Apexes):\n${memChunks}\n(Ground your answers in these verified historical engineering logs, decisions, and resume metrics.)\n`;
+        }
+      } catch (memErr) {
+        console.warn('[ai-assistant-chat] Memory retrieval notice:', memErr);
+      }
+    }
+
     let systemPrompt = '';
     if (isPromptRequest) {
       systemPrompt = buildPromptEngineeringSystemPrompt(promptRefinementTarget);
@@ -3247,7 +3346,7 @@ Deno.serve(async (req: Request) => {
       systemPrompt = buildOperationalSystemPrompt(currentTimeISO, timezone, context, mode);
     }
 
-    systemPrompt += searchAddendum;
+    systemPrompt += searchAddendum + memoryAddendum;
     const messagesPayload = [
       { role: 'system', content: systemPrompt },
       ...formattedHistory,
@@ -3267,7 +3366,7 @@ Deno.serve(async (req: Request) => {
 
           const historyForCall = isQuickOperational ? formattedHistory.slice(-2) : formattedHistory;
           const agentMessages: any[] = [
-            { role: 'system', content: buildAgentSystemPrompt(currentTimeISO, timezone, context, isQuickOperational) + searchAddendum },
+            { role: 'system', content: buildAgentSystemPrompt(currentTimeISO, timezone, context, isQuickOperational) + searchAddendum + memoryAddendum },
             ...historyForCall,
             { role: 'user', content: message },
           ];
