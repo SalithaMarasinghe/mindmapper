@@ -773,7 +773,7 @@ const agentTools = [
       parameters: {
         type: 'object',
         properties: {
-          timezone: { type: 'string', description: 'User timezone, e.g. "Asia/Colombo"' },
+          timezone: { type: ['string', 'null'], description: 'User timezone, e.g. "Asia/Colombo"' },
         },
         required: ['timezone'],
       },
@@ -788,9 +788,9 @@ const agentTools = [
         type: 'object',
         properties: {
           minutesAgo: { type: 'number', description: 'Duration in minutes, e.g. 120 for 2 hours' },
-          timezone: { type: 'string', description: 'User timezone, e.g. "Asia/Colombo"' },
+          timezone: { type: ['string', 'null'], description: 'User timezone, e.g. "Asia/Colombo"' },
         },
-        required: ['minutesAgo', 'timezone'],
+        required: ['minutesAgo'],
       },
     },
   },
@@ -803,7 +803,7 @@ const agentTools = [
         type: 'object',
         properties: {
           query: { type: 'string', description: 'Keyword to search, e.g. "RAG", "auth", "latency", "evaluate"' },
-          status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
+          status: { type: ['string', 'null'], enum: ['todo', 'in_progress', 'done', null] },
         },
         required: ['query'],
       },
@@ -819,10 +819,10 @@ const agentTools = [
         properties: {
           title: { type: 'string', description: 'Action-oriented task title' },
           status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
-          priority: { type: 'string', enum: ['low', 'medium', 'high'] },
-          trackedSeconds: { type: 'number', description: 'Tracked seconds if already completed (e.g. 7200 for 2h)' },
-          description: { type: 'string', description: 'Task description' },
-          plannedDate: { type: 'string', description: 'Planned date (YYYY-MM-DD)' },
+          priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+          trackedSeconds: { type: ['number', 'null'], description: 'Tracked seconds if already completed (e.g. 7200 for 2h)' },
+          description: { type: ['string', 'null'], description: 'Task description' },
+          plannedDate: { type: ['string', 'null'], description: 'Planned date (YYYY-MM-DD)' },
         },
         required: ['title', 'status'],
       },
@@ -837,10 +837,10 @@ const agentTools = [
         type: 'object',
         properties: {
           taskId: { type: 'string', description: 'UUID of the task or task title if UUID is not known' },
-          status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
-          isPaused: { type: 'boolean', description: 'true to pause timer, false to resume timer' },
-          trackedSeconds: { type: 'number' },
-          description: { type: 'string' },
+          status: { type: ['string', 'null'], enum: ['todo', 'in_progress', 'done', null] },
+          isPaused: { type: ['boolean', 'null'], description: 'true to pause timer, false to resume timer' },
+          trackedSeconds: { type: ['number', 'null'] },
+          description: { type: ['string', 'null'] },
         },
         required: ['taskId'],
       },
@@ -855,27 +855,32 @@ const agentTools = [
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Concise title of the work session or meeting' },
-          date: { type: 'string', description: 'Date (YYYY-MM-DD). Optional, defaults to current local date.' },
-          startTime: { type: 'string', description: 'Start time in 24h format (HH:mm). Optional - automatically derived from tracked time or session.' },
-          endTime: { type: 'string', description: 'End time in 24h format (HH:mm). Optional - defaults to current local time.' },
+          date: { type: ['string', 'null'], description: 'Date (YYYY-MM-DD). Optional, defaults to current local date.' },
+          startTime: { type: ['string', 'null'], description: 'Start time in 24h format (HH:mm). Optional - automatically derived from tracked time or session.' },
+          endTime: { type: ['string', 'null'], description: 'End time in 24h format (HH:mm). Optional - defaults to current local time.' },
           type: { type: 'string', enum: ['work', 'meeting'], description: 'work for work sessions, meeting for discussions/meetings' },
           description: { type: 'string', description: 'Structured 4-badge Google XYZ breakdown: 🎯 Objective & Context, 🛠️ Technical Execution [Doing Z] (or Technical Discussion for meetings), 🏆 Key Accomplishments [Accomplished X] (or Strategic Consensus for meetings), 📊 Measured Impact & Metrics [Measured by Y] (or Action Items & Deliverables for meetings)' },
-          implementationNotes: { type: 'string', description: 'Technical notes, code snippets, or decisions' },
-          status: { type: 'string', enum: ['done', 'in_progress', 'planned'], description: 'done if finished, in_progress if halfway / done for today' },
-          projectTag: { type: 'string' },
-          linkedTaskId: { type: 'string', description: 'UUID of linked task' },
-          attendees: { type: 'array', items: { type: 'string' }, description: 'Meeting attendees (meeting type only)' },
-          decisions: { type: 'string', description: 'Agreed decisions (meeting type only)' },
+          implementationNotes: { type: ['string', 'null'], description: 'Technical notes, code snippets, or decisions' },
+          status: { type: ['string', 'null'], enum: ['done', 'in_progress', 'planned', null], description: 'done if finished, in_progress if halfway / done for today' },
+          projectTag: { type: ['string', 'null'] },
+          linkedTaskId: { type: ['string', 'null'], description: 'UUID of linked task' },
+          attendees: { type: ['array', 'null'], items: { type: 'string' }, description: 'Meeting attendees (meeting type only)' },
+          decisions: { type: ['string', 'null'], description: 'Agreed decisions (meeting type only)' },
           actionItems: {
-            type: 'array',
+            type: ['array', 'null'],
             items: {
-              type: 'object',
-              properties: {
-                text: { type: 'string' },
-                assignee: { type: 'string' },
-                priority: { type: 'string', enum: ['low', 'medium', 'high'] },
-              },
-              required: ['text'],
+              anyOf: [
+                { type: 'string' },
+                {
+                  type: 'object',
+                  properties: {
+                    text: { type: 'string' },
+                    assignee: { type: ['string', 'null'] },
+                    priority: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+                  },
+                  required: ['text'],
+                },
+              ],
             },
             description: 'Action items assigned in meeting (meeting type only)',
           },
@@ -893,10 +898,10 @@ const agentTools = [
         type: 'object',
         properties: {
           eventId: { type: 'string', description: 'UUID of the event' },
-          title: { type: 'string' },
-          startTime: { type: 'string' },
-          endTime: { type: 'string' },
-          description: { type: 'string' },
+          title: { type: ['string', 'null'] },
+          startTime: { type: ['string', 'null'] },
+          endTime: { type: ['string', 'null'] },
+          description: { type: ['string', 'null'] },
         },
         required: ['eventId'],
       },
@@ -910,8 +915,8 @@ const agentTools = [
       parameters: {
         type: 'object',
         properties: {
-          date: { type: 'string', description: 'Date (YYYY-MM-DD)' },
-          query: { type: 'string', description: 'Keyword' },
+          date: { type: ['string', 'null'], description: 'Date (YYYY-MM-DD)' },
+          query: { type: ['string', 'null'], description: 'Keyword' },
         },
       },
     },
@@ -936,8 +941,8 @@ const agentTools = [
         type: 'object',
         properties: {
           name: { type: 'string', description: 'Project name' },
-          description: { type: 'string' },
-          status: { type: 'string', enum: ['active', 'planning', 'completed', 'on_hold'] },
+          description: { type: ['string', 'null'] },
+          status: { type: ['string', 'null'], enum: ['active', 'planning', 'completed', 'on_hold', null] },
         },
         required: ['name'],
       },
@@ -2991,6 +2996,24 @@ Deno.serve(async (req: Request) => {
             turn++;
             console.log(`[ai-assistant-chat] ReAct Turn ${turn} calling ${provider.label}...`);
 
+            const hasJournalProposal = agentExecutedProposals.some(
+              (p) => p.type === 'create_work_event' || p.type === 'create_meeting_event'
+            );
+
+            const llmBody: Record<string, unknown> = {
+              model: provider.model,
+              messages: agentMessages,
+              temperature: 0.2,
+              max_tokens: 3000,
+            };
+
+            // Only provide tools if a journal proposal hasn't been created yet.
+            // Once the proposal card is ready, the next turn is strictly conversational confirmation!
+            if (!hasJournalProposal) {
+              llmBody.tools = agentTools;
+              llmBody.tool_choice = 'auto';
+            }
+
             const llmRes = await fetch(provider.url, {
               method: 'POST',
               headers: {
@@ -2998,14 +3021,8 @@ Deno.serve(async (req: Request) => {
                 'Content-Type': 'application/json',
                 ...(provider.headers || {}),
               },
-              body: JSON.stringify({
-                model: provider.model,
-                messages: agentMessages,
-                temperature: 0.2,
-                max_tokens: 3000,
-                tools: agentTools,
-                tool_choice: 'auto',
-              }),
+              body: JSON.stringify(llmBody),
+              signal: AbortSignal.timeout(15000),
             });
 
             if (!llmRes.ok) {
@@ -3059,6 +3076,17 @@ Deno.serve(async (req: Request) => {
                 });
               }
 
+              const hasJournalProposalNow = agentExecutedProposals.some(
+                (p) => p.type === 'create_work_event' || p.type === 'create_meeting_event'
+              );
+
+              if (hasJournalProposalNow) {
+                agentMessages.push({
+                  role: 'user',
+                  content: 'The proposal card has been successfully prepared for Salitha. Now deliver your friendly conversational confirmation explaining the details and confirming that the proposal card is ready for approval.',
+                });
+              }
+
               // Continue to next turn
               continue;
             }
@@ -3069,11 +3097,11 @@ Deno.serve(async (req: Request) => {
               /\b(done for the day|finished|completed|worked on|halfway|wrap up|wrapping up|heading out for the day|profiling|implemented|evaluated|meeting|sync|standup|call with)\b/i.test(message);
             const replyClaimsJournalDrafted =
               /\b(work journal|meeting journal|journal entry|drafted.*(?:review|entry)|prepared.*review|below for your review)\b/i.test(replyContent);
-            const hasJournalProposal = agentExecutedProposals.some(
+            const hasJournalProposalCheck = agentExecutedProposals.some(
               (p) => p.type === 'create_work_event' || p.type === 'create_meeting_event'
             );
 
-            if (!hasJournalProposal && (userReportedWorkOrMeeting || replyClaimsJournalDrafted) && turn < maxTurns) {
+            if (!hasJournalProposalCheck && (userReportedWorkOrMeeting || replyClaimsJournalDrafted) && turn < maxTurns) {
               console.log(`[ai-assistant-chat] ReAct Enforcement Turn ${turn}: LLM replied without calling 'create_journal_entry'. Enforcing tool execution...`);
               agentMessages.push(msg);
               agentMessages.push({
@@ -3084,6 +3112,13 @@ Deno.serve(async (req: Request) => {
             }
 
             agentFinalReply = replyContent;
+            if (!agentFinalReply && hasJournalProposalCheck) {
+              if (agentExecutedProposals.some((p) => p.type === 'create_meeting_event')) {
+                agentFinalReply = "Here is the Meeting Journal entry I drafted with your action items using the Google XYZ formula for your review. When you approve it, your action items will automatically be added to your To Do board:";
+              } else {
+                agentFinalReply = "Here is the Work Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:";
+              }
+            }
             break;
           }
 
