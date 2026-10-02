@@ -483,6 +483,42 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         }
       }
 
+      // Guard for inverted start/end times on completed work proposals:
+      const now = new Date();
+      const currentLocalH = now.getHours();
+      const currentLocalM = now.getMinutes();
+      const currentLocalTotalM = currentLocalH * 60 + currentLocalM;
+      const todayLocalStr = toDateStr(now);
+
+      for (const prop of rawProposals) {
+        if (
+          prop.type === 'create_work_event' &&
+          (prop.payload?.status === 'done' || !prop.payload?.status) &&
+          prop.payload?.startTime &&
+          prop.payload?.endTime
+        ) {
+          const sMin = Math.round(timeToHours(prop.payload.startTime) * 60);
+          const eMin = Math.round(timeToHours(prop.payload.endTime) * 60);
+          const eventDate = prop.payload.date || todayLocalStr;
+
+          const isFutureDate = eventDate > todayLocalStr;
+          const isFutureTimeToday = eventDate === todayLocalStr && eMin > currentLocalTotalM + 5;
+
+          if (isFutureDate || isFutureTimeToday) {
+            let durationM = eMin - sMin;
+            if (durationM <= 0 || durationM > 720) durationM = 120; // default 2 hours
+
+            const endTimestamp = now.getTime();
+            const startTimestamp = endTimestamp - durationM * 60 * 1000;
+            const startDateObj = new Date(startTimestamp);
+
+            prop.payload.endTime = `${String(currentLocalH).padStart(2, '0')}:${String(currentLocalM).padStart(2, '0')}`;
+            prop.payload.startTime = `${String(startDateObj.getHours()).padStart(2, '0')}:${String(startDateObj.getMinutes()).padStart(2, '0')}`;
+            prop.payload.date = toDateStr(startDateObj);
+          }
+        }
+      }
+
       // Guard for midnight rollover in past work reports:
       // If current local time is early morning (< 5am) and event date is today with late evening startTime (> 17:00),
       // anchor date to yesterdayDate!
@@ -500,6 +536,12 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       }
 
       for (const prop of rawProposals) {
+        // If already executed by the Sentient Agent runtime on the server, preserve directly!
+        if (prop.status === 'auto_executed') {
+          processedProposals.push(prop);
+          continue;
+        }
+
         const isTier1Candidate =
           prop.type === 'pause_task' ||
           prop.type === 'pause_all' ||
@@ -897,13 +939,18 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         processedProposals.push(prop);
       }
 
-      // If any proposal was auto-executed, sync to DB
+      // If any proposal was auto-executed, sync to DB and refresh stores
       const hasAutoExecuted = processedProposals.some((p) => p.status === 'auto_executed');
       if (hasAutoExecuted) {
         await supabase
           .from('assistant_messages')
           .update({ proposals: processedProposals })
           .eq('id', messageId);
+
+        // Immediately refresh local stores so Kanban & Work Journal show live changes immediately!
+        void taskStore.fetchTasks();
+        const currentSelectedDate = taskStore.selectedDate || today;
+        void timelineStore.fetchWeek(currentSelectedDate, currentSelectedDate);
       }
 
       const assistantMsg: AssistantMessage = {

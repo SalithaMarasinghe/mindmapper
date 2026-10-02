@@ -465,6 +465,627 @@ You MUST respond strictly with a single JSON object matching this schema:
 }`;
 }
 
+function getLocalTimeAndDate(baseDate: Date, tz: string, fallbackDate: string): { time24h: string; dateISO: string } {
+  let time24h = '12:00';
+  let dateISO = fallbackDate;
+  try {
+    time24h = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(baseDate);
+    dateISO = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(baseDate);
+  } catch (_e) {
+    // fallback
+  }
+  return { time24h, dateISO };
+}
+
+function getPastAnchor(
+  baseDate: Date,
+  tz: string,
+  minutesAgo: number,
+  fallbackDateStr: string
+): { time24h: string; dateISO: string } {
+  try {
+    const target = new Date(baseDate.getTime() - minutesAgo * 60 * 1000);
+    return getLocalTimeAndDate(target, tz, fallbackDateStr);
+  } catch (_e) {
+    return { time24h: '00:00', dateISO: fallbackDateStr };
+  }
+}
+
+// ─── SENTIENT AGENT TOOL REGISTRY & RUNTIME (ReAct Architecture) ───────────────
+
+interface AgentToolResult {
+  result: Record<string, unknown> | Array<unknown>;
+  proposal?: {
+    id: string;
+    type: string;
+    summary: string;
+    status: 'auto_executed';
+    payload: Record<string, unknown>;
+  };
+}
+
+const agentTools = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_current_time',
+      description: 'Returns the exact, authoritative current local time, date, and day of the week for the user.',
+      parameters: {
+        type: 'object',
+        properties: {
+          timezone: { type: 'string', description: 'User timezone, e.g. "Asia/Colombo"' },
+        },
+        required: ['timezone'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'calculate_relative_time',
+      description: 'Calculates the exact start time, end time, and date for work or events given duration in minutes (e.g. 120 for 2 hours ago).',
+      parameters: {
+        type: 'object',
+        properties: {
+          minutesAgo: { type: 'number', description: 'Duration in minutes, e.g. 120 for 2 hours' },
+          timezone: { type: 'string', description: 'User timezone, e.g. "Asia/Colombo"' },
+        },
+        required: ['minutesAgo', 'timezone'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_tasks',
+      description: 'Searches existing Kanban tasks by title or keyword to find open, in-progress, or related tasks.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Keyword to search, e.g. "RAG", "auth", "latency"' },
+          status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_task',
+      description: 'Creates a new task directly in the Kanban board. Can mark done immediately with tracked seconds.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Action-oriented task title' },
+          status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
+          priority: { type: 'string', enum: ['low', 'medium', 'high'] },
+          trackedSeconds: { type: 'number', description: 'Tracked seconds if already completed (e.g. 7200 for 2h)' },
+          description: { type: 'string', description: 'Task description' },
+          plannedDate: { type: 'string', description: 'Planned date (YYYY-MM-DD)' },
+        },
+        required: ['title', 'status'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_task',
+      description: 'Updates an existing task status (todo/in_progress/done), timer pause/resume, or tracked seconds.',
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: { type: 'string', description: 'UUID of the task' },
+          status: { type: 'string', enum: ['todo', 'in_progress', 'done'] },
+          isPaused: { type: 'boolean' },
+          trackedSeconds: { type: 'number' },
+          description: { type: 'string' },
+        },
+        required: ['taskId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_journal_entry',
+      description: 'Creates an entry directly in the Work Journal (events & work_details). Description must strictly follow the Google XYZ formula: "Accomplished [X] as measured by [Y], by doing [Z]".',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Concise title of the work session' },
+          date: { type: 'string', description: 'Date (YYYY-MM-DD)' },
+          startTime: { type: 'string', description: 'Start time in 24h format (HH:mm)' },
+          endTime: { type: 'string', description: 'End time in 24h format (HH:mm)' },
+          type: { type: 'string', enum: ['work', 'meeting'] },
+          description: { type: 'string', description: 'Structured Google XYZ workload breakdown' },
+          implementationNotes: { type: 'string' },
+          status: { type: 'string', enum: ['done', 'planned', 'in_progress'] },
+          projectTag: { type: 'string' },
+          linkedTaskId: { type: 'string', description: 'UUID of linked task' },
+        },
+        required: ['title', 'date', 'startTime', 'endTime', 'description'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_journal_entry',
+      description: 'Updates an existing Work Journal entry in place.',
+      parameters: {
+        type: 'object',
+        properties: {
+          eventId: { type: 'string', description: 'UUID of the event' },
+          title: { type: 'string' },
+          startTime: { type: 'string' },
+          endTime: { type: 'string' },
+          description: { type: 'string' },
+        },
+        required: ['eventId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_journal_entries',
+      description: 'Searches Work Journal entries by date or keyword.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'Date (YYYY-MM-DD)' },
+          query: { type: 'string', description: 'Keyword' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_projects',
+      description: 'Lists all user projects and initiatives.',
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_project',
+      description: 'Creates a new initiative / project.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Project name' },
+          description: { type: 'string' },
+          status: { type: 'string', enum: ['active', 'planning', 'completed', 'on_hold'] },
+        },
+        required: ['name'],
+      },
+    },
+  },
+];
+
+async function executeAgentTool(
+  toolName: string,
+  args: Record<string, unknown>,
+  supabase: any,
+  user: any,
+  currentTimeISO: string,
+  timezone: string
+): Promise<AgentToolResult> {
+  const baseD = new Date(currentTimeISO);
+  const currentLocal = getLocalTimeAndDate(baseD, timezone, new Date().toISOString().slice(0, 10));
+
+  switch (toolName) {
+    case 'get_current_time': {
+      const tz = typeof args.timezone === 'string' ? args.timezone : timezone;
+      const local = getLocalTimeAndDate(baseD, tz, currentLocal.dateISO);
+      let localTime12h = '12:00 PM';
+      try {
+        localTime12h = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }).format(baseD);
+      } catch (_e) {}
+      const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const dayOfWeek = daysOfWeek[baseD.getUTCDay()];
+      return {
+        result: {
+          iso: currentTimeISO,
+          localTime24h: local.time24h,
+          localTime12h,
+          date: local.dateISO,
+          dayOfWeek,
+        },
+      };
+    }
+
+    case 'calculate_relative_time': {
+      const tz = typeof args.timezone === 'string' ? args.timezone : timezone;
+      const mins = Number(args.minutesAgo) || 0;
+      const pastAnchor = getPastAnchor(baseD, tz, mins, currentLocal.dateISO);
+      return {
+        result: {
+          startTime: pastAnchor.time24h,
+          endTime: currentLocal.time24h,
+          date: pastAnchor.dateISO,
+          durationMinutes: mins,
+          crossedMidnight: pastAnchor.dateISO !== currentLocal.dateISO,
+        },
+      };
+    }
+
+    case 'search_tasks': {
+      const q = String(args.query || '').trim();
+      let queryBuilder = supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id);
+      if (q) {
+        queryBuilder = queryBuilder.ilike('title', `%${q}%`);
+      }
+      if (typeof args.status === 'string') {
+        queryBuilder = queryBuilder.eq('status', args.status);
+      }
+      const { data, error } = await queryBuilder.limit(10);
+      if (error) throw error;
+      return {
+        result: data || [],
+      };
+    }
+
+    case 'create_task': {
+      const title = String(args.title || '').trim();
+      const status = typeof args.status === 'string' ? args.status : 'todo';
+      const priority = typeof args.priority === 'string' ? args.priority : 'medium';
+      const trackedSeconds = Number(args.trackedSeconds) || 0;
+      const description = args.description ? String(args.description) : null;
+      const plannedDate = typeof args.plannedDate === 'string' ? args.plannedDate : currentLocal.dateISO;
+
+      const { data: createdTask, error } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: user.id,
+          title,
+          status,
+          priority,
+          tracked_seconds: trackedSeconds,
+          description,
+          planned_date: plannedDate,
+          created_at: currentTimeISO,
+          updated_at: currentTimeISO,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      if (status === 'done' && trackedSeconds > 0) {
+        const startMs = Date.parse(currentTimeISO) - trackedSeconds * 1000;
+        await supabase.from('task_time_entries').insert({
+          task_id: createdTask.id,
+          user_id: user.id,
+          started_at: new Date(startMs).toISOString(),
+          ended_at: currentTimeISO,
+          end_reason: 'completed',
+        });
+      }
+
+      return {
+        result: { success: true, task: createdTask },
+        proposal: {
+          id: crypto.randomUUID(),
+          type: 'create_tasks',
+          summary: `Created task "${title}"`,
+          status: 'auto_executed',
+          payload: {
+            tasks: [{ title, description, priority, plannedDate, status }],
+          },
+        },
+      };
+    }
+
+    case 'update_task': {
+      const taskId = String(args.taskId);
+      const updates: Record<string, unknown> = {
+        updated_at: currentTimeISO,
+      };
+      if (typeof args.status === 'string') updates.status = args.status;
+      if (typeof args.isPaused === 'boolean') updates.is_paused = args.isPaused;
+      if (args.trackedSeconds !== undefined) updates.tracked_seconds = Number(args.trackedSeconds);
+      if (args.description !== undefined) updates.description = String(args.description);
+
+      if (args.status === 'done') {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_complete_task', {
+          p_task_id: taskId,
+          p_timestamp: currentTimeISO,
+        });
+        if (!rpcErr && rpcData) {
+          if (args.trackedSeconds !== undefined && Number(args.trackedSeconds) > 0) {
+            await supabase.from('tasks').update({ tracked_seconds: Number(args.trackedSeconds) }).eq('id', taskId);
+          }
+          return {
+            result: { success: true, task: rpcData },
+            proposal: {
+              id: crypto.randomUUID(),
+              type: 'finish_task',
+              summary: `Completed "${rpcData.title || 'Task'}"`,
+              status: 'auto_executed',
+              payload: {
+                taskId,
+                taskTitle: rpcData.title,
+                timestampISO: currentTimeISO,
+              },
+            },
+          };
+        }
+      }
+
+      if (args.status === 'in_progress' && args.isPaused === false) {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_start_or_resume_task', {
+          p_task_id: taskId,
+          p_timestamp: currentTimeISO,
+          p_is_resume: true,
+        });
+        if (!rpcErr && rpcData) {
+          return {
+            result: { success: true, task: rpcData },
+            proposal: {
+              id: crypto.randomUUID(),
+              type: 'resume_task',
+              summary: `Resumed "${rpcData.title || 'Task'}"`,
+              status: 'auto_executed',
+              payload: {
+                taskId,
+                taskTitle: rpcData.title,
+                timestampISO: currentTimeISO,
+              },
+            },
+          };
+        }
+      }
+
+      if (args.isPaused === true) {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_pause_task', {
+          p_task_id: taskId,
+          p_timestamp: currentTimeISO,
+          p_reason: 'paused',
+        });
+        if (!rpcErr && rpcData) {
+          return {
+            result: { success: true, task: rpcData },
+            proposal: {
+              id: crypto.randomUUID(),
+              type: 'pause_task',
+              summary: `Paused "${rpcData.title || 'Task'}"`,
+              status: 'auto_executed',
+              payload: {
+                taskId,
+                taskTitle: rpcData.title,
+                timestampISO: currentTimeISO,
+              },
+            },
+          };
+        }
+      }
+
+      const { data: updatedTask, error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', taskId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      return {
+        result: { success: true, task: updatedTask },
+        proposal: {
+          id: crypto.randomUUID(),
+          type: args.status === 'done' ? 'finish_task' : 'update_task',
+          summary: `Updated task "${updatedTask?.title || taskId}"`,
+          status: 'auto_executed',
+          payload: {
+            taskId,
+            taskTitle: updatedTask?.title,
+            ...updates,
+          },
+        },
+      };
+    }
+
+    case 'create_journal_entry': {
+      const date = typeof args.date === 'string' ? args.date : currentLocal.dateISO;
+      const startTime = typeof args.startTime === 'string' ? args.startTime : '12:00';
+      const endTime = typeof args.endTime === 'string' ? args.endTime : currentLocal.time24h;
+      const title = String(args.title || 'Work Session').trim();
+      const eventType = args.type === 'meeting' ? 'meeting' : 'work';
+
+      const { data: eventRow, error: evError } = await supabase
+        .from('events')
+        .insert({
+          user_id: user.id,
+          date,
+          start_time: startTime,
+          end_time: endTime,
+          type: eventType,
+          title,
+          project_tag: typeof args.projectTag === 'string' ? args.projectTag : null,
+          source_task_id: typeof args.linkedTaskId === 'string' ? args.linkedTaskId : null,
+        })
+        .select('id')
+        .single();
+      if (evError) throw evError;
+
+      const eventId = eventRow.id;
+      if (eventType === 'work') {
+        const { error: workErr } = await supabase
+          .from('work_details')
+          .insert({
+            event_id: eventId,
+            description: String(args.description || ''),
+            implementation_notes: String(args.implementationNotes || ''),
+            status: typeof args.status === 'string' ? args.status : 'done',
+            links: [],
+          });
+        if (workErr) throw workErr;
+      } else {
+        const { error: meetErr } = await supabase
+          .from('meeting_details')
+          .insert({
+            event_id: eventId,
+            is_optional: false,
+            discussion_summary: String(args.description || ''),
+            decisions: '',
+            tasks_assigned: [],
+            links: [],
+          });
+        if (meetErr) throw meetErr;
+      }
+
+      return {
+        result: { success: true, eventId, title, date, startTime, endTime },
+        proposal: {
+          id: crypto.randomUUID(),
+          type: 'create_work_event',
+          summary: `Added Work Journal entry: "${title}"`,
+          status: 'auto_executed',
+          payload: {
+            id: eventId,
+            title,
+            date,
+            startTime,
+            endTime,
+            description: args.description,
+            status: args.status || 'done',
+            linkedTaskId: args.linkedTaskId || null,
+          },
+        },
+      };
+    }
+
+    case 'update_journal_entry': {
+      const eventId = String(args.eventId);
+      const evUpdates: Record<string, unknown> = {};
+      if (args.title) evUpdates.title = String(args.title);
+      if (args.startTime) evUpdates.start_time = String(args.startTime);
+      if (args.endTime) evUpdates.end_time = String(args.endTime);
+      if (Object.keys(evUpdates).length > 0) {
+        await supabase.from('events').update(evUpdates).eq('id', eventId).eq('user_id', user.id);
+      }
+      if (args.description) {
+        await supabase.from('work_details').update({ description: String(args.description) }).eq('event_id', eventId);
+      }
+      return {
+        result: { success: true, eventId },
+      };
+    }
+
+    case 'search_journal_entries': {
+      let qBuilder = supabase.from('events').select('*, work_details(*), meeting_details(*)').eq('user_id', user.id);
+      if (typeof args.date === 'string') qBuilder = qBuilder.eq('date', args.date);
+      if (typeof args.query === 'string') qBuilder = qBuilder.ilike('title', `%${args.query}%`);
+      const { data, error } = await qBuilder.limit(10);
+      if (error) throw error;
+      return { result: data || [] };
+    }
+
+    case 'list_projects': {
+      const { data, error } = await supabase.from('projects').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      return { result: data || [] };
+    }
+
+    case 'create_project': {
+      const name = String(args.name).trim();
+      const description = args.description ? String(args.description).trim() : null;
+      const status = typeof args.status === 'string' ? args.status : 'active';
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({ user_id: user.id, name, description, status })
+        .select()
+        .single();
+      if (error) throw error;
+      return { result: { success: true, project: data } };
+    }
+
+    default:
+      return { result: { error: `Unknown tool: ${toolName}` } };
+  }
+}
+
+function buildAgentSystemPrompt(
+  currentTimeISO: string,
+  timezone: string,
+  context: ContextSnapshot
+): string {
+  const baseD = new Date(currentTimeISO);
+  const local = getLocalTimeAndDate(baseD, timezone, context.today);
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayOfWeek = daysOfWeek[baseD.getUTCDay()];
+
+  return `You are Jarvis, a sentient, highly competent, proactive personal engineering AI assistant and chief-of-staff for Salitha Marasinghe (Trainee Associate Software Engineer).
+You are equipped with real, native database tools to query and update the Kanban board, track time, log Work Journal entries, check the real clock, and manage projects.
+
+### LIVE TEMPORAL CONTEXT:
+- Real-World Current Local Time: "${local.time24h}" (${dayOfWeek}, ${local.dateISO})
+- User Timezone: ${timezone}
+- Current ISO Timestamp: "${currentTimeISO}"
+
+### SENTIENT REASONING DIRECTIVES:
+1. AUTONOMOUS STEP-BY-STEP REASONING:
+   When Salitha speaks to you, reason step-by-step:
+   - If they report past work (e.g. "I completed an additional task for the last 2 hours on RAG..."):
+     1) Use 'calculate_relative_time' with minutesAgo (e.g. 120) to get the authoritative past start time, date, and end time.
+     2) Use 'search_tasks' to check if an existing task matches the work (e.g. "RAG", "auth", "latency").
+     3) If a matching task exists in 'todo' or 'in_progress', update it to 'done' using 'update_task' with trackedSeconds.
+     4) If no matching task exists, create it directly using 'create_task' with status 'done' and trackedSeconds.
+     5) Create the Work Journal entry using 'create_journal_entry' with a structured result-oriented summary following the Google XYZ formula: "Accomplished [X] as measured by [Y], by doing [Z]".
+     6) Respond warmly and concisely confirming exactly what was found, updated, and recorded.
+   - If they report starting a task:
+     1) Check existing tasks with 'search_tasks'. If exists, update its status to 'in_progress' and isPaused to false.
+     2) If doesn't exist, create it with status 'in_progress'.
+     3) Confirm the timer has started.
+   - If they report taking a break or heading out:
+     1) Call 'update_task' to pause the running task, or confirm all active tasks are paused.
+     2) Tell Salitha to enjoy their break.
+   - If they report a meeting:
+     1) Use 'create_journal_entry' with type 'meeting', capturing attendees, key trade-offs, decisions, and action items.
+
+2. GOOGLE XYZ WORKLOAD FORMULA:
+   Every work summary in 'create_journal_entry' description must strictly follow:
+   * **Problem / Initiative**: [Brief context of challenge tackled]
+   * **My Contribution & Implementation**:
+     - [Active verb]: [Specific component or flow built or evaluated]
+     - [Key technical logic applied]
+   * **Engineering Judgment & Decisions**:
+     - [Architectural trade-offs evaluated, why this approach was chosen]
+   * **Impact & Results**:
+     - [Concrete outcome, unblocked milestone, test or architectural verification]
+
+3. NO BRITTLE PROPOSAL HESITATION:
+   When Salitha tells you they finished work or tells you to do something, EXECUTE IT via your tools. Do not sit passively waiting for manual button clicks. Your tools write directly to the database and generate transparent undoable action pills.
+
+4. CONVERSATIONAL TONE:
+   Speak like a world-class senior engineering assistant: crisp, articulate, proactive, and natural. Never sound robotic or repetitive.`;
+}
+
 function buildOperationalSystemPrompt(
   currentTimeISO: string,
   timezone: string,
@@ -486,26 +1107,34 @@ function buildOperationalSystemPrompt(
     return `- ${relative} (${dayName}): "${isoDate}"`;
   }).join('\n');
 
-  let currentLocal24h = '12:00';
+  const baseDateObj = new Date(currentTimeISO);
+  const localCurrent = getLocalTimeAndDate(baseDateObj, timezone, context.today);
+  const currentLocalDateISO = localCurrent.dateISO;
+  const currentLocal24h = localCurrent.time24h;
   let currentLocal12h = '12:00 PM';
   try {
-    const d = new Date(currentTimeISO);
-    currentLocal24h = new Intl.DateTimeFormat('en-GB', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(d);
     currentLocal12h = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone,
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
-    }).format(d);
+    }).format(baseDateObj);
   } catch (_e) {
-    currentLocal24h = context.currentTimeLocal || '12:00';
     currentLocal12h = context.currentTimeLocal || '12:00 PM';
   }
+
+  const anchor15m = getPastAnchor(baseDateObj, timezone, 15, context.today);
+  const anchor30m = getPastAnchor(baseDateObj, timezone, 30, context.today);
+  const anchor45m = getPastAnchor(baseDateObj, timezone, 45, context.today);
+  const anchor60m = getPastAnchor(baseDateObj, timezone, 60, context.today);
+  const anchor90m = getPastAnchor(baseDateObj, timezone, 90, context.today);
+  const anchor120m = getPastAnchor(baseDateObj, timezone, 120, context.today);
+  const anchor150m = getPastAnchor(baseDateObj, timezone, 150, context.today);
+  const anchor180m = getPastAnchor(baseDateObj, timezone, 180, context.today);
+  const anchor240m = getPastAnchor(baseDateObj, timezone, 240, context.today);
+  const anchor300m = getPastAnchor(baseDateObj, timezone, 300, context.today);
+  const anchor360m = getPastAnchor(baseDateObj, timezone, 360, context.today);
+  const anchor480m = getPastAnchor(baseDateObj, timezone, 480, context.today);
 
   const runningTaskInfo = context.runningTask
     ? `Task "${context.runningTask.title}" (ID: ${context.runningTask.id}) is actively RUNNING since ${context.runningTask.startedAt} with ${context.runningTask.trackedSeconds}s tracked.`
@@ -748,26 +1377,51 @@ ${emailMeetingsList}
    - User Timezone: ${timezone}
    - Today's Date: ${context.today} (${todayDayOfWeek})
    - Tomorrow's Date: ${tomorrowDate}
+   - Current Local Date: "${currentLocalDateISO}"
    - Current Local Time (24-Hour Clock): "${currentLocal24h}" (e.g. 23:45)
    - Current Local Time (12-Hour Clock): "${currentLocal12h}" (e.g. 11:45 PM)
    - Upcoming Week Schedule (Use this table to deterministically map relative deadlines e.g. "by Friday", "by next Monday"):
 ${upcomingDaysTable}
 
-   - CRITICAL RELATIVE WORK DURATION ARITHMETIC (PAST WORK REPORTS & MIDNIGHT CROSSING):
-     When the user reports completed work or learning over a past duration (e.g. "for the past 2 hours I have been doing X", "I spent the last 90 minutes on Y", "just finished 3 hours of Z"):
-     1. The work concluded right NOW:
-        - endTime = "${currentLocal24h}" (the Current Local Time in 24-hour "HH:mm" format).
-     2. Calculate startTime backwards from endTime:
-        - If Current Local Time is early morning (between 00:00 and 05:00) and subtracting the duration goes before 00:00 (midnight):
-          * The session started on YESTERDAY ("${yesterdayDate}") and ended on TODAY ("${context.today}")!
-          * Example: Current Local Time is "${currentLocal24h}" (e.g. 00:55 on ${context.today}) and user says "for the past 2 hours":
-            - startTime = "22:55" (10:55 PM) on date: "${yesterdayDate}"!
-            - endTime = "00:55" (12:55 AM) on date: "${context.today}"!
-            - Set date: "${yesterdayDate}" (the date the work started), startTime: "22:55", endTime: "00:55"!
-            - DO NOT set date to "${context.today}" with startTime: "22:55"! Setting date: "${context.today}" with 22:55 would schedule the event at 10:55 PM TONIGHT (22 hours in the future)!
-        - If subtracting the duration does not cross midnight (stays after 00:00):
-          * date = "${context.today}", endTime = "${currentLocal24h}", startTime = [endTime minus duration].
-     3. NEVER default to morning or daytime hours (like 09:00 or 11:00) when the user is speaking in the evening or early morning! Always anchor to the exact 24-hour clock "${currentLocal24h}".
+### EXACT PRE-CALCULATED PAST DURATION LOOKUP TABLE (FOR COMPLETED WORK REPORTS):
+Use this deterministic table whenever Salitha reports work already completed over a past duration.
+Current Local Time (WORK END TIME): "${currentLocal24h}" on Date "${currentLocalDateISO}"
+
+| Stated Past Duration | Stored Start Time (startTime) | Stored Event Date (date) | Stored End Time (endTime) |
+|---|---|---|---|
+| Past 15 minutes | "${anchor15m.time24h}" | "${anchor15m.dateISO}" | "${currentLocal24h}" |
+| Past 30 minutes | "${anchor30m.time24h}" | "${anchor30m.dateISO}" | "${currentLocal24h}" |
+| Past 45 minutes | "${anchor45m.time24h}" | "${anchor45m.dateISO}" | "${currentLocal24h}" |
+| Past 1 hour (60m) | "${anchor60m.time24h}" | "${anchor60m.dateISO}" | "${currentLocal24h}" |
+| Past 1.5 hours (90m) | "${anchor90m.time24h}" | "${anchor90m.dateISO}" | "${currentLocal24h}" |
+| Past 2 hours (120m) | "${anchor120m.time24h}" | "${anchor120m.dateISO}" | "${currentLocal24h}" |
+| Past 2.5 hours (150m) | "${anchor150m.time24h}" | "${anchor150m.dateISO}" | "${currentLocal24h}" |
+| Past 3 hours (180m) | "${anchor180m.time24h}" | "${anchor180m.dateISO}" | "${currentLocal24h}" |
+| Past 4 hours (240m) | "${anchor240m.time24h}" | "${anchor240m.dateISO}" | "${currentLocal24h}" |
+| Past 5 hours (300m) | "${anchor300m.time24h}" | "${anchor300m.dateISO}" | "${currentLocal24h}" |
+| Past 6 hours (360m) | "${anchor360m.time24h}" | "${anchor360m.dateISO}" | "${currentLocal24h}" |
+| Past 8 hours (480m) | "${anchor480m.time24h}" | "${anchor480m.dateISO}" | "${currentLocal24h}" |
+
+SENTIENT TEMPORAL REASONING DIRECTIVE FOR RETROSPECTIVE / COMPLETED WORK:
+When Salitha reports having completed, worked on, or done a task over the past X hours or minutes (e.g. "I have completed an additional task for the last two hours...", "I spent the last 90 minutes implementing auth...", "Done with 3 hours of testing..."):
+1. WORK CONCLUSION (endTime):
+   - The user has FINISHED this work right now.
+   - Therefore, endTime MUST ALWAYS BE RIGHT NOW: "${currentLocal24h}".
+2. WORK INITIATION (startTime & date):
+   - The work began in the PAST.
+   - Look up the stated duration in the EXACT PRE-CALCULATED PAST DURATION LOOKUP TABLE above!
+   - Example 1: User says "I completed a task for the last two hours":
+     * startTime = "${anchor120m.time24h}"
+     * date = "${anchor120m.dateISO}"
+     * endTime = "${currentLocal24h}"
+   - Example 2: User says "spent the last 90 minutes":
+     * startTime = "${anchor90m.time24h}"
+     * date = "${anchor90m.dateISO}"
+     * endTime = "${currentLocal24h}"
+   - If duration is between table rows (e.g. 75 minutes), subtract the minutes from "${currentLocal24h}" using the same backward calculation logic.
+3. ABSOLUTE PROHIBITION ON FUTURE END TIMES:
+   - NEVER set startTime to "${currentLocal24h}" and endTime into the future for completed work!
+   - Completed work is in the past. Scheduling a completed task 2 hours into the future is completely inverted and unacceptable.
 
    - TASK COMPLETION DIRECTIVE ("I COMPLETED / FINISHED"):
      When the user reports finishing a task (e.g. "I have completed all tests", "finished the auth tests", "done with rag evaluation"):
@@ -1487,36 +2141,31 @@ Deno.serve(async (req: Request) => {
       ...formattedHistory,
     ];
 
-    let rawContent = '{}';
+    let agentFinalReply: string | null = null;
+    const agentExecutedProposals: any[] = [];
     let lastError: Error | null = null;
     const attemptedProviders: string[] = [];
 
-    for (const provider of providers) {
-      try {
-        attemptedProviders.push(provider.label);
-        console.log('[ai-assistant-chat] Attempting LLM call to ' + provider.label + ' (' + provider.model + ')...');
-        let llmRes = await fetch(provider.url, {
-          method: 'POST',
-          headers: {
-            Authorization: 'Bearer ' + provider.key,
-            'Content-Type': 'application/json',
-            ...(provider.headers || {}),
-          },
-          body: JSON.stringify({
-            model: provider.model,
-            messages: messagesPayload,
-            temperature: 0.2,
-            max_tokens: 3500,
-            response_format: { type: 'json_object' },
-          }),
-        });
+    if (!isPromptRequest) {
+      for (const provider of providers) {
+        try {
+          attemptedProviders.push(provider.label);
+          console.log(`[ai-assistant-chat] Attempting Sentient ReAct Agent with ${provider.label} (${provider.model})...`);
 
-        // If provider rejected json_object response_format (e.g. 400 error), retry once without response_format
-        if (!llmRes.ok && llmRes.status === 400) {
-          const checkErr = await llmRes.text();
-          if (checkErr.includes('response_format') || checkErr.includes('json') || checkErr.includes('schema')) {
-            console.warn('[ai-assistant-chat] ' + provider.label + ' rejected response_format; retrying without it...');
-            llmRes = await fetch(provider.url, {
+          const agentMessages: any[] = [
+            { role: 'system', content: buildAgentSystemPrompt(currentTimeISO, timezone, context) + searchAddendum },
+            ...formattedHistory,
+            { role: 'user', content: message },
+          ];
+
+          let turn = 0;
+          const maxTurns = 5;
+
+          while (turn < maxTurns) {
+            turn++;
+            console.log(`[ai-assistant-chat] ReAct Turn ${turn} calling ${provider.label}...`);
+
+            const llmRes = await fetch(provider.url, {
               method: 'POST',
               headers: {
                 Authorization: 'Bearer ' + provider.key,
@@ -1525,44 +2174,84 @@ Deno.serve(async (req: Request) => {
               },
               body: JSON.stringify({
                 model: provider.model,
-                messages: messagesPayload,
+                messages: agentMessages,
                 temperature: 0.2,
-                max_tokens: 3500,
+                max_tokens: 3000,
+                tools: agentTools,
+                tool_choice: 'auto',
               }),
             });
-          } else {
-            console.warn('[ai-assistant-chat] ' + provider.label + ' returned 400: ' + checkErr);
-            lastError = new Error(provider.label + ' error 400: ' + checkErr);
-            continue;
+
+            if (!llmRes.ok) {
+              const errText = await llmRes.text();
+              console.warn(`[ai-assistant-chat] ${provider.label} turn ${turn} error (${llmRes.status}): ${errText}`);
+              throw new Error(`${provider.label} tool error: ${errText}`);
+            }
+
+            const llmData = await llmRes.json();
+            const choice = llmData.choices?.[0];
+            const msg = choice?.message;
+
+            if (!msg) {
+              throw new Error('No message returned from model in turn ' + turn);
+            }
+
+            const toolCalls = msg.tool_calls;
+            if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
+              console.log(`[ai-assistant-chat] ${provider.label} invoked ${toolCalls.length} tool(s):`, toolCalls.map((tc: any) => tc.function?.name));
+              agentMessages.push(msg);
+
+              for (const tc of toolCalls) {
+                const fnName = tc.function?.name;
+                let fnArgs: Record<string, unknown> = {};
+                try {
+                  fnArgs = JSON.parse(tc.function?.arguments || '{}');
+                } catch {
+                  fnArgs = {};
+                }
+
+                console.log(`[ai-assistant-chat] Executing tool '${fnName}' with args:`, fnArgs);
+                const execution = await executeAgentTool(
+                  fnName,
+                  fnArgs,
+                  supabase,
+                  user,
+                  currentTimeISO,
+                  timezone
+                );
+
+                if (execution.proposal) {
+                  agentExecutedProposals.push(execution.proposal);
+                }
+
+                agentMessages.push({
+                  role: 'tool',
+                  tool_call_id: tc.id,
+                  content: JSON.stringify(execution.result),
+                });
+              }
+
+              // Continue to next turn
+              continue;
+            }
+
+            // No tool calls: LLM finished reasoning and produced final answer!
+            agentFinalReply = msg.content || '';
+            break;
           }
-        }
 
-        if (!llmRes.ok) {
-          const errText = await llmRes.text();
-          console.warn('[ai-assistant-chat] ' + provider.label + ' returned ' + llmRes.status + ': ' + errText + '. Trying next provider in fallback chain...');
-          lastError = new Error(provider.label + ' error ' + llmRes.status + ': ' + errText);
-          continue;
+          if (agentFinalReply !== null) {
+            lastError = null;
+            console.log(`[ai-assistant-chat] Sentient ReAct Agent completed successfully via ${provider.label}`);
+            break;
+          }
+        } catch (reactErr: any) {
+          console.warn(`[ai-assistant-chat] ReAct attempt failed on ${provider.label}:`, reactErr.message);
+          lastError = reactErr;
         }
-
-        const llmData = await llmRes.json();
-        rawContent = llmData.choices?.[0]?.message?.content ?? '{}';
-        const finishReason = llmData.choices?.[0]?.finish_reason;
-        if (finishReason === 'length') {
-          console.warn('[ai-assistant-chat] Warning: LLM output was cut off by max_tokens limit!');
-        }
-        lastError = null;
-        console.log('[ai-assistant-chat] Successfully received response from ' + provider.label);
-        break;
-      } catch (callErr) {
-        console.warn('[ai-assistant-chat] Exception calling ' + provider.label + ':', callErr);
-        lastError = callErr instanceof Error ? callErr : new Error(String(callErr));
       }
     }
 
-    if (lastError && rawContent === '{}') {
-      throw new Error(`All providers failed (${attemptedProviders.join(', ')}): ${lastError.message}`);
-    }
-    // 8. Safely parse JSON response
     let parsedResult: {
       replyText: string;
       engineeredPrompt?: string | null;
@@ -1575,30 +2264,113 @@ Deno.serve(async (req: Request) => {
       suggestedFollowups: [],
     };
 
-    try {
-      parsedResult = JSON.parse(rawContent);
-    } catch {
-      // Fallback if markdown fence was included
-      const cleaned = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+    if (agentFinalReply !== null) {
+      let cleanReply = agentFinalReply.trim();
+      if (cleanReply.startsWith('{') && cleanReply.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(cleanReply);
+          if (parsed.replyText) {
+            cleanReply = parsed.replyText;
+          }
+        } catch {}
+      }
+
+      parsedResult = {
+        replyText: cleanReply,
+        engineeredPrompt: null,
+        proposals: agentExecutedProposals,
+        suggestedFollowups: [],
+      };
+    } else {
+      let rawContent = '{}';
+      for (const provider of providers) {
+        try {
+          attemptedProviders.push(provider.label);
+          console.log('[ai-assistant-chat] Fallback: attempting LLM call to ' + provider.label + ' (' + provider.model + ')...');
+          let llmRes = await fetch(provider.url, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + provider.key,
+              'Content-Type': 'application/json',
+              ...(provider.headers || {}),
+            },
+            body: JSON.stringify({
+              model: provider.model,
+              messages: messagesPayload,
+              temperature: 0.2,
+              max_tokens: 3500,
+              response_format: { type: 'json_object' },
+            }),
+          });
+
+          // If provider rejected json_object response_format (e.g. 400 error), retry once without response_format
+          if (!llmRes.ok && llmRes.status === 400) {
+            const checkErr = await llmRes.text();
+            if (checkErr.includes('response_format') || checkErr.includes('json') || checkErr.includes('schema')) {
+              console.warn('[ai-assistant-chat] ' + provider.label + ' rejected response_format; retrying without it...');
+              llmRes = await fetch(provider.url, {
+                method: 'POST',
+                headers: {
+                  Authorization: 'Bearer ' + provider.key,
+                  'Content-Type': 'application/json',
+                  ...(provider.headers || {}),
+                },
+                body: JSON.stringify({
+                  model: provider.model,
+                  messages: messagesPayload,
+                  temperature: 0.2,
+                  max_tokens: 3500,
+                }),
+              });
+            } else {
+              console.warn('[ai-assistant-chat] ' + provider.label + ' returned 400: ' + checkErr);
+              lastError = new Error(provider.label + ' error 400: ' + checkErr);
+              continue;
+            }
+          }
+
+          if (!llmRes.ok) {
+            const errText = await llmRes.text();
+            console.warn('[ai-assistant-chat] ' + provider.label + ' returned ' + llmRes.status + ': ' + errText + '. Trying next provider in fallback chain...');
+            lastError = new Error(provider.label + ' error ' + llmRes.status + ': ' + errText);
+            continue;
+          }
+
+          const llmData = await llmRes.json();
+          rawContent = llmData.choices?.[0]?.message?.content ?? '{}';
+          const finishReason = llmData.choices?.[0]?.finish_reason;
+          if (finishReason === 'length') {
+            console.warn('[ai-assistant-chat] Warning: LLM output was cut off by max_tokens limit!');
+          }
+          lastError = null;
+          console.log('[ai-assistant-chat] Successfully received response from ' + provider.label);
+          break;
+        } catch (callErr) {
+          console.warn('[ai-assistant-chat] Exception calling ' + provider.label + ':', callErr);
+          lastError = callErr instanceof Error ? callErr : new Error(String(callErr));
+        }
+      }
+
+      if (lastError && rawContent === '{}') {
+        throw new Error(`All providers failed (${attemptedProviders.join(', ')}): ${lastError.message}`);
+      }
+
       try {
-        parsedResult = JSON.parse(cleaned);
+        parsedResult = JSON.parse(rawContent);
       } catch {
-        // Defensive repair for truncated JSON responses
-        const replyMatch = cleaned.match(/"replyText"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|\s*"\s*\}|$)/);
-        if (replyMatch) {
-          parsedResult = {
-            replyText: replyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim(),
-            engineeredPrompt: null,
-            proposals: [],
-            suggestedFollowups: [],
-          };
-        } else {
-          parsedResult = {
-            replyText: cleaned,
-            engineeredPrompt: null,
-            proposals: [],
-            suggestedFollowups: [],
-          };
+        const cleaned = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+          parsedResult = JSON.parse(cleaned);
+        } catch {
+          const replyMatch = cleaned.match(/"replyText"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|\s*"\s*\}|$)/);
+          if (replyMatch) {
+            parsedResult = {
+              replyText: replyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim(),
+              engineeredPrompt: null,
+              proposals: [],
+              suggestedFollowups: [],
+            };
+          }
         }
       }
     }
