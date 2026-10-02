@@ -28,6 +28,12 @@ interface ContextSnapshot {
     trackedSeconds: number;
     descriptionSnippet: string;
   }>;
+  activeProject?: {
+    id: string;
+    name: string;
+    status: string;
+    description?: string | null;
+  } | null;
   existingProjects?: Array<{
     id: string;
     name: string;
@@ -984,10 +990,25 @@ const agentTools = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'switch_active_project',
+      description: "Switches Salitha's active focus project. All subsequent tasks, workload logs, timer sessions, and meetings inherit this project as their storyline narrative.",
+      parameters: {
+        type: 'object',
+        properties: {
+          projectId: { type: ['string', 'null'], description: 'UUID of project if known' },
+          projectName: { type: 'string', description: 'Name of the project to switch focus to' },
+        },
+        required: ['projectName'],
+      },
+    },
+  },
 ];
 
 const operationalTools = agentTools.filter((t) =>
-  ['update_task', 'create_task', 'delete_task'].includes(t.function.name)
+  ['update_task', 'create_task', 'delete_task', 'switch_active_project'].includes(t.function.name)
 );
 
 async function executeAgentTool(
@@ -1129,6 +1150,8 @@ async function executeAgentTool(
               planned_date: itemPlannedDate,
               tracked_seconds: 0,
               is_paused: false,
+              project_id: (typeof item.projectId === 'string' ? item.projectId : context?.activeProject?.id) || null,
+              project_tag: (typeof item.projectTag === 'string' ? item.projectTag : context?.activeProject?.name) || null,
             })
             .select()
             .single();
@@ -1250,6 +1273,8 @@ async function executeAgentTool(
           tracked_seconds: trackedSeconds,
           description,
           planned_date: plannedDate,
+          project_id: (typeof args.projectId === 'string' ? args.projectId : context?.activeProject?.id) || null,
+          project_tag: (typeof args.projectTag === 'string' ? args.projectTag : context?.activeProject?.name) || null,
           created_at: currentTimeISO,
           updated_at: currentTimeISO,
         })
@@ -1306,53 +1331,86 @@ async function executeAgentTool(
         String(args.isPaused).toLowerCase() === 'true' ||
         args.isPaused === 'true';
 
-      if (!taskId || taskId === 'running' || taskId === 'current' || taskId === 'active') {
-        if (isExplicitPause && context?.runningTask?.id) {
-          taskId = context.runningTask.id;
-        } else if ((args.isPaused === false || args.status === 'in_progress') && (context?.lastPausedTask?.id || context?.runningTask?.id)) {
-          taskId = context?.lastPausedTask?.id || context?.runningTask?.id;
-        } else if (context?.runningTask?.id) {
-          taskId = context.runningTask.id;
+      const isStartCommand = /\b(start|starting|begin|work on|working on)\b/i.test(userMessage || '');
+      const isResumeCommand = /\b(resume|resuming|back|continue|unpause)\b/i.test(userMessage || '') || (args.isPaused === false && !isStartCommand);
+
+      // Helper to find task matching query text in context or database
+      const findTaskByQuery = async (queryText: string) => {
+        if (!queryText) return null;
+        const clean = queryText.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!clean) return null;
+
+        // In-memory search first (fastest)
+        if (context?.todaysTasks && context.todaysTasks.length > 0) {
+          const direct = context.todaysTasks.find((t) => t.title.toLowerCase().includes(clean) || clean.includes(t.title.toLowerCase()));
+          if (direct) return direct;
+
+          let best: any = null;
+          let maxSim = 0;
+          for (const t of context.todaysTasks) {
+            const sim = calculateTitleSimilarity(clean, t.title);
+            if (sim > maxSim && sim >= 0.35) {
+              maxSim = sim;
+              best = t;
+            }
+          }
+          if (best) return best;
+
+          const words = clean.split(/\s+/).filter((w) => w.length >= 3 && !['task', 'the', 'now', 'for', 'with', 'and', 'start', 'starting', 'codebase', 'work'].includes(w));
+          if (words.length > 0) {
+            const wordMatch = context.todaysTasks.find((t) => {
+              const tLow = t.title.toLowerCase();
+              return words.some((w) => tLow.includes(w));
+            });
+            if (wordMatch) return wordMatch;
+          }
         }
-      }
+
+        // Database search
+        const { data: dbMatch } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', user.id)
+          .ilike('title', `%${clean}%`)
+          .limit(1);
+        if (dbMatch && dbMatch.length > 0) return dbMatch[0];
+
+        return null;
+      };
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
       let matchedTask: any = null;
 
-      // Robust ID resolution: If not a valid UUID, search by title or current active task
-      if (!isUUID) {
+      if (isUUID) {
+        const { data: found } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', taskId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (found) matchedTask = found;
+      } else {
+        // 1. If taskId is a title search phrase
         if (taskId && taskId !== 'running' && taskId !== 'current' && taskId !== 'active') {
-          const cleanSearch = taskId.replace(/\b(the|task|my)\b/gi, '').trim();
-          const { data: found } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('user_id', user.id)
-            .ilike('title', `%${cleanSearch || taskId}%`)
-            .limit(1);
-          if (found && found.length > 0) matchedTask = found[0];
-
-          if (!matchedTask) {
-            const words = (cleanSearch || taskId).split(/\s+/).filter((w: string) => w.length >= 3);
-            for (const word of words) {
-              const { data: wordMatch } = await supabase
-                .from('tasks')
-                .select('*')
-                .eq('user_id', user.id)
-                .ilike('title', `%${word}%`)
-                .limit(1);
-              if (wordMatch && wordMatch.length > 0) {
-                matchedTask = wordMatch[0];
-                break;
-              }
-            }
-          }
+          matchedTask = await findTaskByQuery(taskId);
         }
 
+        // 2. If title provided in args
+        if (!matchedTask && typeof args.title === 'string' && args.title) {
+          matchedTask = await findTaskByQuery(args.title);
+        }
+
+        // 3. If user is explicitly starting work on a task mentioned in userMessage
+        if (!matchedTask && isStartCommand && userMessage) {
+          matchedTask = await findTaskByQuery(userMessage);
+        }
+
+        // 4. Fallback defaults:
         if (!matchedTask && isExplicitPause && context?.runningTask) {
           matchedTask = context.runningTask;
         }
 
-        if (!matchedTask && (isExplicitPause || args.status === 'done')) {
+        if (!matchedTask && isExplicitPause) {
           const { data: inProg } = await supabase
             .from('tasks')
             .select('*')
@@ -1363,7 +1421,7 @@ async function executeAgentTool(
           if (inProg && inProg.length > 0) matchedTask = inProg[0];
         }
 
-        if (!matchedTask && (args.isPaused === false || args.status === 'in_progress')) {
+        if (!matchedTask && isResumeCommand) {
           if (context?.lastPausedTask?.id) {
             const { data: lastP } = await supabase
               .from('tasks')
@@ -1389,14 +1447,6 @@ async function executeAgentTool(
         if (matchedTask) {
           taskId = matchedTask.id;
         }
-      } else {
-        const { data: found } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('id', taskId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (found) matchedTask = found;
       }
 
       const updates: Record<string, unknown> = {
@@ -1746,7 +1796,8 @@ async function executeAgentTool(
               description: formattedDescription,
               implementationNotes: typeof args.implementationNotes === 'string' ? args.implementationNotes : '',
               status: rawStatus,
-              projectTag: typeof args.projectTag === 'string' ? args.projectTag : null,
+              projectId: (typeof args.projectId === 'string' ? args.projectId : context?.activeProject?.id) || null,
+              projectTag: (typeof args.projectTag === 'string' ? args.projectTag : context?.activeProject?.name) || null,
               linkedTaskId: typeof args.linkedTaskId === 'string' ? args.linkedTaskId : (context?.runningTask ? context.runningTask.id : null),
               syncToTaskLog: true,
             },
@@ -1802,7 +1853,8 @@ async function executeAgentTool(
               tasksAssigned: rawActionItems.map((ai: any) => ({ text: ai.text, done: false })),
               actionItems: rawActionItems,
               addTasksToKanban: true,
-              projectTag: typeof args.projectTag === 'string' ? args.projectTag : null,
+              projectId: (typeof args.projectId === 'string' ? args.projectId : context?.activeProject?.id) || null,
+              projectTag: (typeof args.projectTag === 'string' ? args.projectTag : context?.activeProject?.name) || null,
             },
           },
         };
@@ -1854,6 +1906,39 @@ async function executeAgentTool(
       return { result: { success: true, project: data } };
     }
 
+    case 'switch_active_project': {
+      const projectName = String(args.projectName || '').trim();
+      let matchedProj = context?.existingProjects?.find(
+        (p) => p.name.toLowerCase() === projectName.toLowerCase() || (args.projectId && p.id === args.projectId)
+      );
+      if (!matchedProj && projectName) {
+        matchedProj = context?.existingProjects?.find(
+          (p) => p.name.toLowerCase().includes(projectName.toLowerCase()) || projectName.toLowerCase().includes(p.name.toLowerCase())
+        );
+      }
+      const targetId = matchedProj?.id || (args.projectId as string) || null;
+      const targetName = matchedProj?.name || projectName;
+
+      return {
+        result: {
+          success: true,
+          projectId: targetId,
+          projectName: targetName,
+          message: `Active focus project switched to "${targetName}". All subsequent tasks and journal events will inherit this project storyline.`,
+        },
+        proposal: {
+          id: crypto.randomUUID(),
+          type: 'switch_active_project',
+          summary: `Switched focus project to "${targetName}"`,
+          status: 'auto_executed',
+          payload: {
+            projectId: targetId,
+            projectName: targetName,
+          },
+        },
+      };
+    }
+
     default:
       return { result: { error: `Unknown tool: ${toolName}` } };
   }
@@ -1886,13 +1971,20 @@ function buildAgentSystemPrompt(
           .join('\n')
       : 'None on the board yet.';
 
+  const activeProjectInfo = context.activeProject
+    ? `"${context.activeProject.name}" (ID: ${context.activeProject.id}, Status: ${context.activeProject.status})`
+    : 'None explicitly selected (defaulting to the first active project).';
+
   if (isQuickOperational) {
     return `You are Jarvis, personal engineering AI assistant for Salitha Marasinghe.
-You operate Salitha's Kanban Task Log and timer using real database tools.
+You operate Salitha's Kanban Task Log, active project focus, and timer using real database tools.
 
 ### LIVE TEMPORAL CONTEXT:
 - Real-World Current Local Time: "${local.time24h}" (${dayOfWeek}, ${local.dateISO})
 - Current ISO Timestamp: "${currentTimeISO}"
+
+### SALITHA'S ACTIVE FOCUS PROJECT (STORYLINE SPINE):
+Active Project: ${activeProjectInfo}
 
 ### SALITHA'S CURRENT TASK BOARD:
 ${runningTaskInfo}
@@ -1906,6 +1998,7 @@ ${tasksList}
 - Creating task: call 'create_task' with title, status: 'todo', priority (or 'tasks' array if creating multiple tasks).
 - Deleting task: call 'delete_task' with taskId.
 - Updating task: call 'update_task' with taskId and updated fields.
+- Switching active project: call 'switch_active_project' with projectName.
 
 Deliver a crisp, warm, 1-sentence confirmation.`;
   }
@@ -1925,6 +2018,12 @@ You have real, native database tools to query and update the Kanban board, track
 - User Timezone: ${timezone}
 - Current ISO Timestamp: "${currentTimeISO}"
 
+### SALITHA'S ACTIVE FOCUS PROJECT (STORYLINE SPINE):
+Current Active Focus Project: ${activeProjectInfo}
+- The project is the central storyline narrative spine of the Career Ledger.
+- All created tasks, timer work logs, and meeting entries must inherit this project storyline by default!
+- When Salitha says "Focus on [Project]", "Switch project to [Project]", or "Working on [Project] today", invoke 'switch_active_project' with the project name.
+
 ### SALITHA'S CURRENT TASK BOARD:
 ${runningTaskInfo}
 
@@ -1942,6 +2041,8 @@ ${projectsList}
    - Marking completed task as Done: call 'update_task' with status: 'done', trackedSeconds.
    - Pausing incomplete task when done for the day: call 'update_task' with isPaused: true, status: 'in_progress'.
    - Standalone user-requested tasks: call 'create_task' with status: 'todo' (or 'tasks' array if creating multiple tasks).
+   - Deleting a task: call 'delete_task' with taskId.
+   - Switching active focus project: call 'switch_active_project' with projectName.
    *CRITICAL: NEVER call 'create_task' for meeting action items! Meeting action items are bundled into create_journal_entry.*
 
 2. TIER 2: REVIEWABLE PROPOSALS (Draft via tools, NEVER auto-executed into DB, REQUIRES SALITHA'S APPROVAL):
@@ -1982,6 +2083,10 @@ ${projectsList}
 7. DELETING OR UPDATING TASKS:
    - When asked to delete a task: call 'delete_task' with taskId.
    - When asked to change priority, description, or title: call 'update_task' with taskId, and updated fields (e.g. priority: 'urgent', description).
+
+8. SWITCHING ACTIVE FOCUS PROJECT (e.g. "Focus on Reusable AI Prototype", "Switch to Reusable AI Prototype"):
+   - Call 'switch_active_project' with projectName.
+   - Confirm clearly that the active focus has switched and all upcoming tasks and logs will attach to this project storyline.
 
 ### GOOGLE XYZ FORMULA STANDARD (4-BADGE STRUCTURE):
 In the 'description' argument of create_journal_entry, ALWAYS generate the full 4 badges directly.
@@ -2939,7 +3044,7 @@ Deno.serve(async (req: Request) => {
     const isExplicitExplainOrQA = /\b(explain|what is|how does|why does|difference between|compare|tell me about)\b/i.test(message);
 
     const isQuickOperational = !isMeetingReport && !isWorkSessionOrJournal && !isExplicitExplainOrQA &&
-      /\b(pause|break|resume|start|stop timer|delete task|remove task|done for the break|take a break|back from break|add task|create task|schedule task|update task|change priority)\b/i.test(message);
+      /\b(pause|break|resume|start|stop timer|delete task|remove task|done for the break|take a break|back from break|add task|create task|schedule task|update task|change priority|switch project|focus on)\b/i.test(message);
 
     const providers: ProviderConfig[] = [];
 

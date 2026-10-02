@@ -116,6 +116,9 @@ interface TimelineState {
   // Primary event store keyed by date (YYYY-MM-DD) for O(1) calendar lookup
   eventsByDate: Record<string, TimelineEventFull[]>;
   projects: Project[];
+  activeProjectId: string | null;
+  setActiveProjectId: (id: string | null) => void;
+  getActiveProject: () => Project | null;
   isLoading: boolean;
   error: string | null;
 
@@ -178,6 +181,21 @@ interface TimelineState {
 export const useTimelineStore = create<TimelineState>((set, get) => ({
   eventsByDate: {},
   projects: [],
+  activeProjectId: typeof window !== 'undefined' ? localStorage.getItem('mindmap_active_project_id') || null : null,
+  setActiveProjectId: (id: string | null) => {
+    if (typeof window !== 'undefined') {
+      if (id) localStorage.setItem('mindmap_active_project_id', id);
+      else localStorage.removeItem('mindmap_active_project_id');
+    }
+    set({ activeProjectId: id });
+  },
+  getActiveProject: () => {
+    const { projects, activeProjectId } = get();
+    if (!activeProjectId) {
+      return projects.find((p) => p.status === 'active') || null;
+    }
+    return projects.find((p) => p.id === activeProjectId) || null;
+  },
   isLoading: false,
   error: null,
 
@@ -202,7 +220,19 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
-      set({ projects });
+
+      let currentActiveId = get().activeProjectId;
+      if (!currentActiveId && projects.length > 0) {
+        const defaultActive = projects.find((p) => p.status === 'active') || projects[0];
+        if (defaultActive) {
+          currentActiveId = defaultActive.id;
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('mindmap_active_project_id', currentActiveId);
+          }
+        }
+      }
+
+      set({ projects, activeProjectId: currentActiveId });
       return projects;
     } catch (err: unknown) {
       console.error('Failed to fetch projects:', err);

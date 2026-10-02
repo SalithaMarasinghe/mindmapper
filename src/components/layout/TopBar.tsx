@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { SegmentedTabs } from './SegmentedTabs';
+import { ActiveProjectSelector } from './ActiveProjectSelector';
 
 export interface TopBarProps {
   tabs: { id: string; label: string }[];
@@ -42,11 +43,14 @@ export function TopBar({
     <header className="fixed top-0 inset-x-0 h-12 bg-bg border-b border-border z-50 px-4">
       <div className="flex h-full items-center justify-between">
         
-        {/* Left: Logo */}
-        <div className="flex-1 flex justify-start">
-          <Link to="/dashboard" className="flex items-center gap-2 font-semibold text-accent text-lg tracking-tight">
+        {/* Left: Logo & Active Focus Project */}
+        <div className="flex-1 flex items-center justify-start gap-3">
+          <Link to="/dashboard" className="flex items-center gap-2 font-semibold text-accent text-lg tracking-tight shrink-0">
             <span>🧠</span> MindMap
           </Link>
+          <div className="hidden md:flex items-center">
+            <ActiveProjectSelector />
+          </div>
         </div>
 
         {/* Center: Tabs */}

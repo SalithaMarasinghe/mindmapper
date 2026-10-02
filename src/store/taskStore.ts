@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
+import { useTimelineStore } from './timelineStore';
 import type {
   WorkTask,
   TaskStatus,
@@ -25,6 +26,8 @@ interface RawTask {
   completed_at: string | null;
   is_paused: boolean;
   tracked_seconds: number;
+  project_id?: string | null;
+  project_tag?: string | null;
   order_index: number;
   created_at: string;
   updated_at: string;
@@ -67,6 +70,8 @@ function toWorkTask(row: RawTask, activeSegmentStartedAt?: string | null): WorkT
     isPaused: row.is_paused ?? false,
     trackedSeconds: row.tracked_seconds ?? 0,
     activeSegmentStartedAt: activeSegmentStartedAt ?? null,
+    projectId: row.project_id ?? null,
+    projectTag: row.project_tag ?? null,
     orderIndex: row.order_index,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -114,6 +119,8 @@ export interface CreateTaskPayload {
   description?: string;
   priority?: TaskPriority;
   plannedDate?: string;
+  projectId?: string | null;
+  projectTag?: string | null;
 }
 
 export interface UpdateTaskPayload {
@@ -124,6 +131,8 @@ export interface UpdateTaskPayload {
   startedAt?: string | null;
   completedAt?: string | null;
   isPaused?: boolean;
+  projectId?: string | null;
+  projectTag?: string | null;
 }
 
 interface TaskState {
@@ -352,6 +361,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const plannedDate = payload.plannedDate || selectedDate;
     const priority = payload.priority || 'medium';
 
+    const activeProject = useTimelineStore.getState().getActiveProject();
+    const projectId = payload.projectId !== undefined ? payload.projectId : (activeProject?.id || null);
+    const projectTag = payload.projectTag !== undefined ? payload.projectTag : (activeProject?.name || null);
+
     try {
       const todoTasks = tasks.filter((t) => t.status === 'todo');
       const nextOrder =
@@ -367,6 +380,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         order_index: nextOrder,
         is_paused: false,
         tracked_seconds: 0,
+        project_id: projectId,
+        project_tag: projectTag,
       };
 
       const { data, error } = await supabase
@@ -415,6 +430,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     if (payload.startedAt !== undefined) updateData.started_at = payload.startedAt;
     if (payload.completedAt !== undefined) updateData.completed_at = payload.completedAt;
     if (payload.isPaused !== undefined) updateData.is_paused = payload.isPaused;
+    if (payload.projectId !== undefined) updateData.project_id = payload.projectId;
+    if (payload.projectTag !== undefined) updateData.project_tag = payload.projectTag;
 
     try {
       const { data, error } = await supabase

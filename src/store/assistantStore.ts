@@ -359,9 +359,18 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       }
     }
 
+    const activeProject = timelineStore.getActiveProject();
     const contextSnapshot = {
       today,
       currentTimeLocal: formatTime(new Date().toISOString()),
+      activeProject: activeProject
+        ? {
+            id: activeProject.id,
+            name: activeProject.name,
+            status: activeProject.status,
+            description: activeProject.description,
+          }
+        : null,
       existingProjects: currentProjects.map((p) => ({
         id: p.id,
         name: p.name,
@@ -598,8 +607,18 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
               lastPausedTaskId: s.lastPausedTaskId === targetId ? null : s.lastPausedTaskId,
             }));
             useTaskStore.getState().fetchTasks().catch(console.error);
-          } else if (prop.type === 'update_task') {
+          } else if (prop.type === 'update_task' || prop.type === 'delete_task' || prop.type === 'create_tasks') {
             useTaskStore.getState().fetchTasks().catch(console.error);
+          } else if (prop.type === 'switch_active_project') {
+            const targetProjId = (prop.payload as any)?.projectId;
+            if (targetProjId) {
+              useTimelineStore.getState().setActiveProjectId(targetProjId);
+            } else if ((prop.payload as any)?.projectName) {
+              const matched = useTimelineStore.getState().projects.find(
+                (p) => p.name.toLowerCase() === (prop.payload as any).projectName.toLowerCase()
+              );
+              if (matched) useTimelineStore.getState().setActiveProjectId(matched.id);
+            }
           }
 
           continue;
@@ -1268,7 +1287,14 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
         case 'create_work_event': {
           const p = proposal as CreateWorkEventProposal;
-          const targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectTag);
+          let targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectTag);
+          if (!targetProjectId) {
+            const activeProj = timelineStore.getActiveProject();
+            if (activeProj) {
+              targetProjectId = activeProj.id;
+              if (!p.payload.projectTag) p.payload.projectTag = activeProj.name;
+            }
+          }
           p.payload.projectId = targetProjectId;
 
           const evId = await timelineStore.createWorkEvent({
@@ -1327,7 +1353,14 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
         case 'create_meeting_event': {
           const p = proposal as CreateMeetingEventProposal;
-          const targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectTag);
+          let targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectTag);
+          if (!targetProjectId) {
+            const activeProj = timelineStore.getActiveProject();
+            if (activeProj) {
+              targetProjectId = activeProj.id;
+              if (!p.payload.projectTag) p.payload.projectTag = activeProj.name;
+            }
+          }
           p.payload.projectId = targetProjectId;
 
           const meetingLinks = [...(p.payload.links || [])];
@@ -1406,6 +1439,8 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
                 description: `*Action item from meeting: "${p.payload.title}" (${p.payload.date})*`,
                 priority: item.priority || 'medium',
                 plannedDate,
+                projectId: targetProjectId,
+                projectTag: p.payload.projectTag,
               });
               if (created) createdIds.push(created.id);
             }
@@ -1554,6 +1589,28 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
             }
           }
           toast.success('Daily wrap-up completed! 🌙');
+          break;
+        }
+
+        case 'delete_task': {
+          const targetId = await resolveTaskId((proposal.payload as any).taskId, (proposal.payload as any).taskTitle);
+          if (targetId) {
+            await taskStore.deleteTask(targetId);
+            toast.success(`Deleted task "${(proposal.payload as any).taskTitle || targetId}". 🗑️`);
+          }
+          break;
+        }
+
+        case 'switch_active_project': {
+          const p = proposal as any;
+          const targetProjectId = await resolveProjectId(p.payload.projectId, p.payload.projectName);
+          if (targetProjectId) {
+            timelineStore.setActiveProjectId(targetProjectId);
+            const projName = p.payload.projectName || timelineStore.projects.find((pr) => pr.id === targetProjectId)?.name;
+            toast.success(`Active focus switched to "${projName}"! 🎯`);
+          } else {
+            toast.error('Could not find requested project to focus on.');
+          }
           break;
         }
       }

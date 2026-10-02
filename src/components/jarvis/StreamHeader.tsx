@@ -1,4 +1,5 @@
 import { Globe } from 'lucide-react';
+import { ActiveProjectSelector } from '../layout/ActiveProjectSelector';
 
 interface StreamHeaderProps {
   messageCount: number;
@@ -15,11 +16,16 @@ export function StreamHeader({
 }: StreamHeaderProps) {
   return (
     <header className="px-5 py-2.5 border-b border-border bg-bg shrink-0 flex items-center justify-between">
-      <div className="flex items-center">
-        <h2 className="text-sm font-medium text-text">Conversation</h2>
-        <span className="text-text-muted text-xs ml-2 bg-surface-2 px-1.5 py-0.5 rounded-full">
-          {messageCount}
-        </span>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center">
+          <h2 className="text-sm font-medium text-text">Conversation</h2>
+          <span className="text-text-muted text-xs ml-2 bg-surface-2 px-1.5 py-0.5 rounded-full">
+            {messageCount}
+          </span>
+        </div>
+        <div className="hidden sm:block">
+          <ActiveProjectSelector compact />
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <button

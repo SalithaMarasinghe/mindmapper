@@ -232,6 +232,8 @@ export interface WorkTask {
   isPaused: boolean; // true if status is in_progress but currently paused
   trackedSeconds: number; // cached sum of closed segments in seconds
   activeSegmentStartedAt?: string | null; // ISO timestamp if segment is currently running
+  projectId?: string | null;
+  projectTag?: string | null;
   orderIndex: number;
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
@@ -259,6 +261,8 @@ export type ProposalType =
   | 'pause_all'
   | 'resume_last_paused'
   | 'update_task'
+  | 'delete_task'
+  | 'switch_active_project'
   | 'attach_work_summary'
   | 'create_project'
   | 'update_project'
