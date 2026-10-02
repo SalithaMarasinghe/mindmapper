@@ -972,6 +972,37 @@ async function executeAgentTool(
       });
 
       if (matchedExisting) {
+        const uMsg = userMessage || '';
+        const isUserPausingOrWrappingUp =
+          /\b(done for the day|halfway|pause|take a break|tea break|heading out|wrapping up for today|wrapping up for the day|continue tomorrow|do.*tomorrow|tomorrow)\b/i.test(uMsg);
+
+        if (isUserPausingOrWrappingUp) {
+          try {
+            await supabase.rpc('rpc_pause_task', {
+              p_task_id: matchedExisting.id,
+              p_timestamp: currentTimeISO,
+              p_reason: 'paused',
+            });
+          } catch (_e) {}
+
+          await supabase.from('tasks').update({
+            status: 'in_progress',
+            is_paused: true,
+            updated_at: currentTimeISO,
+          }).eq('id', matchedExisting.id);
+
+          return {
+            result: { success: true, taskId: matchedExisting.id, taskTitle: matchedExisting.title, isPaused: true, status: 'in_progress', deduplicated: true },
+            proposal: {
+              id: crypto.randomUUID(),
+              type: 'pause_task',
+              summary: `Paused "${matchedExisting.title}"`,
+              status: 'auto_executed',
+              payload: { taskId: matchedExisting.id, taskTitle: matchedExisting.title, timestampISO: currentTimeISO },
+            },
+          };
+        }
+
         const updates: Record<string, unknown> = { updated_at: currentTimeISO };
         if (status) updates.status = status;
         if (trackedSeconds > 0) updates.tracked_seconds = trackedSeconds;
@@ -1092,6 +1123,13 @@ async function executeAgentTool(
 
     case 'update_task': {
       let taskId = String(args.taskId || '').trim();
+      const uMsg = userMessage || '';
+      const isUserPausingOrWrappingUp =
+        args.isPaused === true ||
+        String(args.isPaused).toLowerCase() === 'true' ||
+        args.isPaused === 'true' ||
+        /\b(done for the day|halfway|pause|take a break|tea break|heading out|wrapping up for today|wrapping up for the day|continue tomorrow|do.*tomorrow|tomorrow)\b/i.test(uMsg);
+
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
 
       // Robust ID resolution: If not a valid UUID, search by title or current active task
@@ -1107,7 +1145,7 @@ async function executeAgentTool(
           if (found && found.length > 0) matchedTask = found[0];
         }
 
-        if (!matchedTask && (args.isPaused === true || args.status === 'done')) {
+        if (!matchedTask && (isUserPausingOrWrappingUp || args.status === 'done')) {
           const { data: inProg } = await supabase
             .from('tasks')
             .select('*')
@@ -1116,6 +1154,10 @@ async function executeAgentTool(
             .order('updated_at', { ascending: false })
             .limit(1);
           if (inProg && inProg.length > 0) matchedTask = inProg[0];
+        }
+
+        if (!matchedTask && isUserPausingOrWrappingUp && context?.runningTask) {
+          matchedTask = context.runningTask;
         }
 
         if (!matchedTask && args.isPaused === false) {
@@ -1143,8 +1185,8 @@ async function executeAgentTool(
       if (args.trackedSeconds !== undefined) updates.tracked_seconds = Number(args.trackedSeconds);
       if (args.description !== undefined) updates.description = String(args.description);
 
-      // Handle Completed / Done
-      if (args.status === 'done') {
+      // Handle Completed / Done (MUST NOT trigger if user said done for the day / halfway / tomorrow!)
+      if (args.status === 'done' && !isUserPausingOrWrappingUp) {
         const { data: rpcData } = await supabase.rpc('rpc_complete_task', {
           p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
@@ -1186,7 +1228,7 @@ async function executeAgentTool(
       }
 
       // Handle Pause
-      if (args.isPaused === true) {
+      if (isUserPausingOrWrappingUp) {
         const { data: rpcData } = await supabase.rpc('rpc_pause_task', {
           p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
@@ -1195,6 +1237,7 @@ async function executeAgentTool(
 
         if (taskId) {
           await supabase.from('tasks').update({
+            status: 'in_progress',
             is_paused: true,
             updated_at: currentTimeISO,
           }).eq('id', taskId).eq('user_id', user.id);
@@ -1209,7 +1252,7 @@ async function executeAgentTool(
         }
 
         return {
-          result: { success: true, taskId, taskTitle, isPaused: true },
+          result: { success: true, taskId, taskTitle, isPaused: true, status: 'in_progress' },
           proposal: {
             id: crypto.randomUUID(),
             type: 'pause_task',
@@ -1225,7 +1268,7 @@ async function executeAgentTool(
       }
 
       // Handle Resume or Move to In Progress
-      if (args.status === 'in_progress' || args.isPaused === false) {
+      if ((args.status === 'in_progress' || args.isPaused === false) && !isUserPausingOrWrappingUp) {
         const { data: rpcData } = await supabase.rpc('rpc_start_or_resume_task', {
           p_task_id: taskId || null,
           p_timestamp: currentTimeISO,
@@ -1586,14 +1629,14 @@ Salitha requires a strict architectural boundary between auto-executed operation
    - CRITICAL GUARD: NEVER state in your reply text that you drafted a Work Journal entry unless you have ACTUALLY invoked 'create_journal_entry' via a tool call!
 
 5. WHEN DONE FOR THE DAY / HALFWAY DONE (e.g. "Done for the day regarding [task]", "Finished profiling X, will benchmark Y tomorrow"):
-   - The task is NOT finished! Do NOT move it to 'done'. Keep it in 'in_progress'.
+   - The task is NOT finished! Do NOT move it to 'done'. Keep it in 'in_progress' and PAUSE it!
    - MANDATORY MULTI-TOOL EXECUTION: You MUST execute BOTH 'update_task' AND 'create_journal_entry'.
-   - Step 1: Identify the running or referenced task. Call 'update_task' with taskId, isPaused: true (keeps it in 'in_progress' with paused timer).
+   - Step 1: Identify the running or referenced task. Call 'update_task' with: taskId: "[Task Title or UUID]", isPaused: true, status: "in_progress". This stops the active timer and keeps the task in In Progress.
    - Step 2: Call 'create_journal_entry' with:
-     * title: '[Initiative / Task Title]' (e.g. 'Vector Search Latency Optimization')
+     * title: '[Initiative / Task Title]'
      * type: 'work'
      * status: 'in_progress'
-     * description: strictly formatted according to the **Google XYZ formula** capturing what was finished today AND what will be done tomorrow.
+     * description: strictly formatted according to the **Google XYZ formula** capturing what was finished today AND what will be done tomorrow ("Planned next milestone: ...").
    - Step 3: In your reply text, confirm: "I have paused '[Task Title]' for today (leaving it in In Progress for tomorrow). Here is the Work Journal entry I drafted using the Google XYZ formula for your review. Please inspect and approve:"
    - CRITICAL GUARD: You MUST execute 'create_journal_entry' tool call in this turn! If you do not call 'create_journal_entry', NO review card will appear on Salitha's screen!
 
@@ -1636,28 +1679,37 @@ Every work summary in 'create_journal_entry' description must strictly follow th
 ### CONCRETE GOOGLE XYZ EXAMPLES:
 
 Example 1: Done for the day / Halfway (Test 5 scenario):
-User: "I am done for the day regarding the vector search latency optimization. I finished profiling the top-k retriever, but I will benchmark HNSW indexing tomorrow."
-'create_journal_entry' parameters:
-- title: "Vector Search Latency Optimization"
-- type: "work"
-- status: "in_progress"
-- description:
-* **Problem / Initiative**: Vector Search Latency Optimization
+User: "I am done for the day regarding evaluating the RAG implementation codebase. I'm halfway done — I finished reviewing the chunking strategy and vector retriever, but I will benchmark the reranker and generator tomorrow."
+Actions:
+- Step 1: Call 'update_task' to pause the active task:
+  * taskId: "Evaluate RAG Implementation Code Base"
+  * isPaused: true
+  * status: "in_progress"
+- Step 2: Call 'create_journal_entry':
+  * title: "Evaluate RAG Implementation Codebase"
+  * type: "work"
+  * status: "in_progress"
+  * description:
+* **Problem / Initiative**: Evaluate RAG Implementation Codebase
 * **My Contribution & Implementation**:
-  - Accomplished latency profiling of top-k retriever as measured by baseline query latency metrics, by inspecting query pipeline retrieval stages.
-  - Planned next milestone: benchmark HNSW indexing graph parameters to optimize nearest neighbor search throughput tomorrow.
+  - Accomplished review of chunking strategy and vector retriever as measured by baseline retrieval verification.
+  - Planned next milestone: benchmark the reranker and generator tomorrow.
 * **Engineering Judgment & Decisions**:
-  - Isolated retriever profiling from index parameters to evaluate baseline search overhead independently.
+  - Isolated retriever profiling from downstream generation to evaluate baseline search overhead independently.
 * **Impact & Results**:
-  - Established verified latency baseline for top-k retriever; unblocked targeted HNSW indexing benchmarks for next sprint session.
+  - Established verified retrieval baseline; unblocked targeted reranker and generator benchmarking for tomorrow.
 
 Example 2: Completed task (Test 4 scenario):
 User: "I have successfully evaluated rag implementation code base, including understanding everything. So my work regarding this is complete."
-'create_journal_entry' parameters:
-- title: "Evaluate RAG Implementation Codebase"
-- type: "work"
-- status: "done"
-- description:
+Actions:
+- Step 1: Call 'update_task' to complete the task:
+  * taskId: "Evaluate RAG Implementation Code Base"
+  * status: "done"
+- Step 2: Call 'create_journal_entry':
+  * title: "Evaluate RAG Implementation Codebase"
+  * type: "work"
+  * status: "done"
+  * description:
 * **Problem / Initiative**: Evaluate RAG Implementation Codebase
 * **My Contribution & Implementation**:
   - Accomplished comprehensive architectural audit of RAG retrieval and embedding pipeline as measured by 100% component trace verification, by analyzing vector store connectors and context chunking strategy.
@@ -3001,6 +3053,64 @@ Deno.serve(async (req: Request) => {
             projectTag: null,
           },
         });
+      }
+
+      // Safety net: If user said done for the day / halfway / pause / continue tomorrow, ensure task is paused!
+      const isUserPausingOrWrappingUp =
+        /\b(done for the day|halfway|pause|take a break|tea break|heading out|wrapping up for today|wrapping up for the day|continue tomorrow|do.*tomorrow|tomorrow)\b/i.test(message);
+
+      const hasPauseProposal = agentExecutedProposals.some(
+        (p) => p.type === 'pause_task' || p.type === 'pause_all'
+      );
+
+      if (isUserPausingOrWrappingUp && !hasPauseProposal) {
+        console.log('[ai-assistant-chat] Safety Net: User requested pause/done for day, pausing active task...');
+        let taskToPauseId = context.runningTask?.id;
+        let taskToPauseTitle = context.runningTask?.title || 'Current Task';
+
+        if (!taskToPauseId && context.todaysTasks) {
+          const inProg = context.todaysTasks.find((t) => t.status === 'in_progress');
+          if (inProg) {
+            taskToPauseId = inProg.id;
+            taskToPauseTitle = inProg.title;
+          }
+        }
+
+        if (taskToPauseId) {
+          try {
+            await supabase.rpc('rpc_pause_task', {
+              p_task_id: taskToPauseId,
+              p_timestamp: currentTimeISO,
+              p_reason: 'paused',
+            });
+          } catch (_e) {}
+
+          await supabase.from('tasks').update({
+            status: 'in_progress',
+            is_paused: true,
+            updated_at: currentTimeISO,
+          }).eq('id', taskToPauseId).eq('user_id', user.id);
+
+          // Replace any stray update_task proposal for this task
+          const filtered = agentExecutedProposals.filter((p) => {
+            const pId = p.payload?.taskId;
+            return !(p.type === 'update_task' && pId === taskToPauseId);
+          });
+          agentExecutedProposals.length = 0;
+          agentExecutedProposals.push(...filtered);
+
+          agentExecutedProposals.unshift({
+            id: crypto.randomUUID(),
+            type: 'pause_task',
+            summary: `Paused "${taskToPauseTitle}"`,
+            status: 'auto_executed',
+            payload: {
+              taskId: taskToPauseId,
+              taskTitle: taskToPauseTitle,
+              timestampISO: currentTimeISO,
+            },
+          });
+        }
       }
 
       // Deduplicate task proposals so only 1 card is displayed per task

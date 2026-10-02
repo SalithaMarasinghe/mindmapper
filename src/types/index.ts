@@ -258,6 +258,7 @@ export type ProposalType =
   | 'finish_task'
   | 'pause_all'
   | 'resume_last_paused'
+  | 'update_task'
   | 'attach_work_summary'
   | 'create_project'
   | 'update_project'
@@ -505,7 +506,21 @@ export interface CreateProjectProposal extends BaseProposal {
   };
 }
 
+export interface UpdateTaskProposal extends BaseProposal {
+  type: 'update_task';
+  payload: {
+    taskId?: string;
+    taskTitle?: string;
+    status?: string;
+    is_paused?: boolean;
+    isPaused?: boolean;
+    trackedSeconds?: number;
+    description?: string;
+  };
+}
+
 export type AssistantProposal =
+  | UpdateTaskProposal
   | CreateTasksProposal
   | StartTaskProposal
   | PauseTaskProposal

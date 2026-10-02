@@ -557,29 +557,49 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         }
       }
 
+      const isUserPausing = /\b(done for the day|halfway|pause|take a break|tea break|heading out|wrapping up for today|wrapping up for the day|continue tomorrow|do.*tomorrow|tomorrow)\b/i.test(trimmed);
+
       for (const prop of rawProposals) {
+        // If user explicitly expressed pausing intent and proposal was update_task, normalize it to pause_task!
+        if (isUserPausing && prop.type === 'update_task') {
+          (prop as any).type = 'pause_task';
+          const tTitle = (prop.payload as any)?.taskTitle || (prop.payload as any)?.title || 'Task';
+          prop.summary = `Paused "${tTitle}"`;
+          (prop.payload as any).is_paused = true;
+          (prop.payload as any).isPaused = true;
+        }
+
         // If already executed by the Sentient Agent runtime on the server, preserve directly!
         if (prop.status === 'auto_executed') {
           processedProposals.push(prop);
 
           // Keep local taskStore runningTaskId & paused state in instant sync
-          if (prop.type === 'pause_task' || prop.type === 'pause_all') {
+          if (
+            prop.type === 'pause_task' ||
+            prop.type === 'pause_all' ||
+            (prop.type === 'update_task' && ((prop.payload as any)?.is_paused === true || (prop.payload as any)?.isPaused === true))
+          ) {
             const pausedId = (prop.payload as any)?.taskId;
             useTaskStore.setState((s) => ({
               runningTaskId: null,
               lastPausedTaskId: pausedId && pausedId !== 'none' ? pausedId : s.runningTaskId || s.lastPausedTaskId,
             }));
+            useTaskStore.getState().fetchTasks().catch(console.error);
           } else if (prop.type === 'resume_task' || prop.type === 'start_task') {
             const targetId = (prop.payload as any)?.taskId;
             if (targetId) {
               useTaskStore.setState({ runningTaskId: targetId });
             }
+            useTaskStore.getState().fetchTasks().catch(console.error);
           } else if (prop.type === 'finish_task') {
             const targetId = (prop.payload as any)?.taskId;
             useTaskStore.setState((s) => ({
               runningTaskId: s.runningTaskId === targetId ? null : s.runningTaskId,
               lastPausedTaskId: s.lastPausedTaskId === targetId ? null : s.lastPausedTaskId,
             }));
+            useTaskStore.getState().fetchTasks().catch(console.error);
+          } else if (prop.type === 'update_task') {
+            useTaskStore.getState().fetchTasks().catch(console.error);
           }
 
           continue;
