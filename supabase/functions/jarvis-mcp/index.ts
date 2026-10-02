@@ -16,8 +16,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-// Default fallback user ID for API-Key authorized requests (Salitha Marasinghe)
-const DEFAULT_USER_ID = Deno.env.get('JARVIS_USER_ID') || '2b356ae7-8c5d-47fc-90f1-a7aa53c094ae';
+// Default fallback user ID for API-Key authorized requests (Salitha Marasinghe - marasinghe3u@gmail.com)
+const DEFAULT_USER_ID = Deno.env.get('JARVIS_USER_ID') || '3e9e3dd3-a59b-4b02-968a-ee95e7317583';
 
 // ─── TOOL DEFINITIONS (MCP Standard Schema) ──────────────────────────────────
 
