@@ -50,19 +50,19 @@ const JARVIS_TOOLS = [
         },
         technicalExecution: {
           type: 'string',
-          description: '🛠️ Technical Execution [Doing Z]: Specific technical steps, modules touched, algorithms, chunking parameters, or refactorings.',
+          description: '🛠️ Technical Execution [Doing Z]: Specific technical steps as point-wise bullet items (e.g. "- Step 1\\n- Step 2").',
         },
         keyAccomplishments: {
           type: 'string',
-          description: '🏆 Key Accomplishments [Accomplished X]: Concrete deliverables, completed features, or verified architectures.',
+          description: '🏆 Key Accomplishments [Accomplished X]: Concrete deliverables and milestones as point-wise bullet items (e.g. "- Deliverable 1\\n- Deliverable 2").',
         },
         measuredImpact: {
           type: 'string',
-          description: '📊 Measured Impact & Metrics [Measured by Y]: Empirical numbers, benchmarks (e.g. "38ms p95 latency", "512-token chunks", "100% tests passing").',
+          description: '📊 Measured Impact & Metrics [Measured by Y]: Empirical numbers, benchmarks as point-wise bullet items (e.g. "- 38ms latency\\n- 100% tests passing").',
         },
         nextMilestone: {
           type: 'string',
-          description: 'Planned next milestone or tomorrow\'s deliverable (e.g. "Planned next milestone (Tomorrow): implement cache eviction").',
+          description: 'Planned next milestone or tomorrow\'s deliverable (e.g. "implement cache eviction").',
         },
         implementationNotes: {
           type: 'string',
@@ -271,6 +271,25 @@ async function resolveTaskId(supabase: any, userId: string, identifier: string):
   return data?.[0] || null;
 }
 
+function toBulletPoints(text: string): string {
+  if (!text) return '';
+  const trimmed = text.trim();
+  // If already formatted with markdown bullets, return as-is
+  if (/^[-*•]\s+/m.test(trimmed)) {
+    return trimmed;
+  }
+  // Split by newlines or semicolons if multiple statements
+  const lines = trimmed
+    .split(/(?:\r?\n|;\s*)/)
+    .map((l) => l.trim().replace(/^[-*•\d.)]\s*/, ''))
+    .filter(Boolean);
+
+  if (lines.length > 1) {
+    return lines.map((l) => `- ${l}`).join('\n');
+  }
+  return `- ${trimmed}`;
+}
+
 async function executeTool(name: string, args: Record<string, any>, supabase: any, userId: string) {
   const now = new Date();
   const todayISO = now.toISOString().slice(0, 10);
@@ -411,12 +430,13 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
       // Assemble strict 4-badge Google XYZ narrative
       const descriptionParts = [
         `🎯 Objective & Context\n${args.objective.trim()}`,
-        `🛠️ Technical Execution [Doing Z]\n${args.technicalExecution.trim()}`,
-        `🏆 Key Accomplishments [Accomplished X]\n${args.keyAccomplishments.trim()}`,
-        `📊 Measured Impact & Metrics [Measured by Y]\n${args.measuredImpact.trim()}`,
+        `🛠️ Technical Execution [Doing Z]\n${toBulletPoints(args.technicalExecution)}`,
+        `🏆 Key Accomplishments [Accomplished X]\n${toBulletPoints(args.keyAccomplishments)}`,
+        `📊 Measured Impact & Metrics [Measured by Y]\n${toBulletPoints(args.measuredImpact)}`,
       ];
       if (args.nextMilestone) {
-        descriptionParts.push(`\nPlanned next milestone (Tomorrow): ${args.nextMilestone.trim()}`);
+        const cleanMilestone = args.nextMilestone.trim().replace(/^[-*•]\s*/, '').replace(/^Planned next milestone \(Tomorrow\):\s*/i, '');
+        descriptionParts[2] += `\n- Planned next milestone (Tomorrow): ${cleanMilestone}`;
       }
       const fullDescription = descriptionParts.join('\n\n');
 
