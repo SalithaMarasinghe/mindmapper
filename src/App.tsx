@@ -12,6 +12,7 @@ import { MindmapPage } from './pages/MindmapPage';
 import { NodePage } from './pages/NodePage';
 import { SharedMapPage } from './pages/SharedMapPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MobileJarvisPage } from './pages/MobileJarvisPage';
 
 import { useEmailStore } from './store/emailStore';
 
@@ -41,6 +42,7 @@ export default function App() {
       <Route path="/share/:token" element={<SharedMapPage />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/mobile" element={<MobileJarvisPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/map/:mapId" element={<MindmapPage />} />
         <Route path="/map/:mapId/node/:nodeId" element={<NodePage />} />

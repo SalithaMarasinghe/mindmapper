@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Unlock, Settings, LogOut, ChevronDown, FileText, FolderGit2 } from 'lucide-react';
+import { Lock, Unlock, Settings, LogOut, ChevronDown, FileText, FolderGit2, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { NotificationBell } from '../notifications/NotificationBell';
@@ -79,6 +79,15 @@ export function TopBar({
           >
             <FileText className="h-4 w-4" />
           </button>
+
+          {/* Jarvis Mobile Companion Link */}
+          <Link
+            to="/mobile"
+            className="flex items-center gap-1.5 text-text-muted hover:text-accent px-2 py-1.5 rounded-[8px] hover:bg-surface transition-colors"
+            title="Jarvis Mobile Companion View"
+          >
+            <Smartphone className="h-4 w-4" />
+          </Link>
 
           {/* Notification Bell */}
           <NotificationBell />

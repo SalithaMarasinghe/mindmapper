@@ -523,8 +523,26 @@ export interface UpdateTaskProposal extends BaseProposal {
   };
 }
 
+export interface DeleteTaskProposal extends BaseProposal {
+  type: 'delete_task';
+  payload: {
+    taskId: string;
+    taskTitle?: string;
+  };
+}
+
+export interface SwitchActiveProjectProposal extends BaseProposal {
+  type: 'switch_active_project';
+  payload: {
+    projectId?: string | null;
+    projectName?: string;
+  };
+}
+
 export type AssistantProposal =
   | UpdateTaskProposal
+  | DeleteTaskProposal
+  | SwitchActiveProjectProposal
   | CreateTasksProposal
   | StartTaskProposal
   | PauseTaskProposal

@@ -1,10 +1,10 @@
 {
-  "name": "MindMap Study Tool",
-  "short_name": "MindMap",
-  "start_url": "/",
+  "name": "MindMap · Jarvis AI",
+  "short_name": "Jarvis",
+  "start_url": "/mobile",
   "display": "standalone",
-  "background_color": "#f7f6f2",
-  "theme_color": "#0f766e",
+  "background_color": "#0B0B0C",
+  "theme_color": "#0B0B0C",
   "icons": [
     {
       "src": "/favicon.svg",
