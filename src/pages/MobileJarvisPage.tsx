@@ -432,8 +432,8 @@ export function MobileJarvisPage() {
       </div>
 
       {/* ── Fixed Bottom Composer Dock (Touch & Thumb Optimized) ─────── */}
-      <footer className="bg-panel border-t border-border px-3 py-1.5 shrink-0 z-30">
-        <div className="bg-surface rounded-[20px] border border-border flex items-end px-2.5 py-1.5 gap-2 focus-within:border-accent/50 transition-colors">
+      <footer className="bg-panel border-t border-border px-2 py-0.5 shrink-0 z-30">
+        <div className="bg-surface rounded-2xl border border-border flex items-end px-2 py-1 gap-1.5 focus-within:border-accent/50 transition-colors">
           
           {/* Large Mic Toggle Button */}
           <button
