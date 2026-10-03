@@ -9,6 +9,7 @@ import { SystemStatusRow } from './SystemStatusRow';
 import { EmptySuggestions } from './EmptySuggestions';
 import { Composer } from './Composer';
 import { JarvisProposalRenderer } from './JarvisProposalRenderer';
+import { JarvisVoiceMode } from './JarvisVoiceMode';
 
 export function ConversationStream() {
   const {
@@ -209,6 +210,9 @@ export function ConversationStream() {
         placeholder="Ask Jarvis..."
         onAttach={handleAttachFile}
       />
+
+      {/* ── Full-Screen Voice Mode Overlay ── */}
+      <JarvisVoiceMode />
     </div>
   );
 }

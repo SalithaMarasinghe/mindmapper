@@ -201,6 +201,7 @@ interface JarvisState {
   // Voice Mode state
   voiceModeOpen: boolean;
   micMuted: boolean;
+  lastSpokenText: string;
   openVoiceMode: () => void;
   closeVoiceMode: () => void;
   toggleVoiceMode: () => void;
@@ -241,8 +242,15 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       };
       requestAnimationFrame(pollSpeakingAudio);
     } else if (orbState === 'idle') {
-      // Automatically re-arm wake word detection once speech playback is done
-      if (get().isHandsFree && !get().isRecording && !get().isTranscribing && !get().isSubmitting) {
+      // If Voice Mode is active and mic is not muted, seamlessly resume listening for continuous dialogue!
+      if (get().voiceModeOpen && !get().micMuted && !get().isRecording && !get().isTranscribing && !get().isSubmitting) {
+        setTimeout(() => {
+          if (get().voiceModeOpen && !get().micMuted && !get().isRecording && !get().isTranscribing && !get().isSubmitting && !get().isSpeaking) {
+            void get().toggleRecording();
+          }
+        }, 350);
+      } else if (get().isHandsFree && !get().isRecording && !get().isTranscribing && !get().isSubmitting) {
+        // Automatically re-arm wake word detection once speech playback is done
         void wakeWordService.resume();
         set({ statusMessage: "Hands-Free active · Say 'Hey Jarvis'" });
       }
@@ -284,6 +292,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     // Voice Mode overlay state
     voiceModeOpen: false,
     micMuted: false,
+    lastSpokenText: '',
     openVoiceMode: () => {
       set({ voiceModeOpen: true });
       if (!get().isRecording && !get().isSpeaking && !get().isSubmitting) {
@@ -849,12 +858,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
             execVoice = `Marked "${title}" as completed.`;
           }
-          set({ isSubmitting: false, orbState: 'success', statusMessage: execVoice });
+          set({ isSubmitting: false, orbState: 'success', statusMessage: execVoice, lastSpokenText: execVoice });
           if (!get().isMuted) jarvisVoice.speak(execVoice);
         } else {
           if (!get().isMuted && lastMsg.content) {
             set({ isSubmitting: false, orbState: 'speaking', statusMessage: 'Answer ready' });
             const speechToSpeak = lastMsg.speechText || distillSpeechFromMarkdown(lastMsg.content);
+            set({ lastSpokenText: speechToSpeak });
             jarvisVoice.speak(speechToSpeak);
           } else {
             set({ isSubmitting: false, orbState: 'idle', statusMessage: 'Answer ready' });

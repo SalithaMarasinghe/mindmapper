@@ -23,6 +23,7 @@ import { SystemStatusRow } from '../components/jarvis/SystemStatusRow';
 import { JarvisProposalRenderer } from '../components/jarvis/JarvisProposalRenderer';
 import { ActiveProjectSelector } from '../components/layout/ActiveProjectSelector';
 import { Composer } from '../components/jarvis/Composer';
+import { JarvisVoiceMode } from '../components/jarvis/JarvisVoiceMode';
 
 export function MobileJarvisPage() {
   const {
@@ -459,6 +460,9 @@ export function MobileJarvisPage() {
         placeholder="Ask Jarvis..."
         onAttach={handleAttachFile}
       />
+
+      {/* ── Full-Screen Voice Mode Overlay ── */}
+      <JarvisVoiceMode />
     </div>
   );
 }
