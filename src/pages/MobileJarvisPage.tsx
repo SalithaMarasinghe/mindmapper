@@ -10,7 +10,9 @@ import {
   VolumeX,
   Sparkles,
   Settings,
-  LogOut
+  LogOut,
+  Headphones,
+  Loader2,
 } from 'lucide-react';
 import { useJarvisStore } from '../store/jarvisStore';
 import { useAssistantStore } from '../store/assistantStore';
@@ -33,12 +35,15 @@ export function MobileJarvisPage() {
     isSpeaking,
     isRecording,
     isTranscribing,
+    isHandsFree,
+    isWakeWordLoading,
     transcript,
     orbState,
     audioLevel,
     statusMessage,
     stopSpeaking,
     toggleRecording,
+    toggleHandsFree,
     toggleWebSearch,
     approveProposal,
     rejectProposal,
@@ -157,6 +162,35 @@ export function MobileJarvisPage() {
         </div>
 
         <div className="flex items-center gap-1.5">
+          {/* Hands-Free Wake-Word Toggle Pill */}
+          <button
+            onClick={() => void toggleHandsFree()}
+            disabled={isWakeWordLoading}
+            aria-label="Toggle Hands-Free wake-word detection"
+            className={`px-2 py-1 rounded-full text-[11px] border transition-all flex items-center gap-1 cursor-pointer ${
+              isHandsFree
+                ? 'bg-accent/15 text-accent border-accent/50 font-medium shadow-sm ring-1 ring-accent/30'
+                : 'bg-surface text-text-muted border-border hover:text-text-secondary'
+            }`}
+            title={
+              isHandsFree
+                ? "Hands-Free listening is ON. Say 'Hey Jarvis' anytime!"
+                : "Turn on hands-free wake word ('Hey Jarvis')"
+            }
+          >
+            {isWakeWordLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin text-accent" />
+            ) : (
+              <Headphones className={`w-3 h-3 ${isHandsFree ? 'text-accent animate-pulse' : ''}`} />
+            )}
+            <span className="hidden xs:inline">
+              {isWakeWordLoading ? 'Loading...' : isHandsFree ? 'Hey Jarvis' : 'Hands-Free'}
+            </span>
+            {isHandsFree && (
+              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
+            )}
+          </button>
+
           {/* Web Search Toggle Pill */}
           <button
             onClick={toggleWebSearch}
@@ -254,6 +288,10 @@ export function MobileJarvisPage() {
                   </span>
                 ) : isSystemBusy ? (
                   <span className="text-text-secondary">Jarvis is thinking...</span>
+                ) : isHandsFree ? (
+                  <span className="text-accent flex items-center gap-1 font-medium">
+                    <Headphones className="w-3 h-3 animate-pulse" /> Hands-Free · Say "Hey Jarvis"
+                  </span>
                 ) : (
                   <span className="text-text-secondary">Jarvis Active · Tap orb to speak</span>
                 )}
@@ -317,11 +355,19 @@ export function MobileJarvisPage() {
               </div>
 
               <div className="mt-3">
-                <span className={`text-sm font-medium ${isRecording ? 'text-accent animate-pulse' : 'text-text'}`}>
-                  {isRecording ? 'Listening to voice...' : isSpeaking ? 'Jarvis speaking (tap to mute)' : statusMessage || 'Tap orb or mic to speak'}
+                <span className={`text-sm font-medium ${isRecording ? 'text-accent animate-pulse' : isHandsFree ? 'text-accent' : 'text-text'}`}>
+                  {isRecording
+                    ? 'Listening to voice...'
+                    : isSpeaking
+                    ? 'Jarvis speaking (tap to mute)'
+                    : isHandsFree
+                    ? '🎧 Hands-Free Active · Say "Hey Jarvis"'
+                    : statusMessage || 'Tap orb or mic to speak'}
                 </span>
                 <p className="text-xs text-text-muted mt-1">
-                  Log WhatsApp calls, review action items, or ask questions
+                  {isHandsFree
+                    ? '100% on-device private listening in WebAssembly'
+                    : 'Log WhatsApp calls, review action items, or ask questions'}
                 </p>
               </div>
             </div>

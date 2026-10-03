@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Globe,
   ExternalLink,
+  Headphones,
 } from 'lucide-react';
 import { useJarvisStore } from '../../store/jarvisStore';
 import { useAssistantStore } from '../../store/assistantStore';
@@ -27,6 +28,8 @@ export function JarvisCockpit() {
   const {
     isRecording,
     isTranscribing,
+    isHandsFree,
+    isWakeWordLoading,
     orbState,
     audioLevel,
     transcript,
@@ -45,6 +48,7 @@ export function JarvisCockpit() {
     clearPrompt,
     toggleMute,
     toggleRecording,
+    toggleHandsFree,
     toggleWebSearch,
     submitCommand,
     approveProposal,
@@ -216,6 +220,61 @@ export function JarvisCockpit() {
                     ? 'INTERRUPT & SPEAK (MIC)'
                     : 'SPEAK TO JARVIS (MIC)'}
                 </span>
+              </button>
+            </div>
+
+            {/* Hands-Free Wake-Word Toggle Card */}
+            <div
+              className={`mt-3 w-full p-3 rounded-2xl border transition-all flex items-center justify-between ${
+                isHandsFree
+                  ? 'bg-cyan-950/30 border-cyan-500/50 shadow-lg shadow-cyan-950/40 ring-1 ring-cyan-500/20'
+                  : 'bg-[#080808] border-[#1a1a1a] hover:border-slate-800'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={`p-2 rounded-xl shrink-0 ${
+                    isHandsFree ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-900 text-slate-400'
+                  }`}
+                >
+                  {isWakeWordLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                  ) : (
+                    <Headphones className={`w-4 h-4 ${isHandsFree ? 'text-cyan-400 animate-pulse' : ''}`} />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-200 font-mono truncate">
+                      Hands-Free ("Hey Jarvis")
+                    </span>
+                    {isHandsFree && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 animate-pulse shrink-0">
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                    {isWakeWordLoading
+                      ? 'Loading WebAssembly model...'
+                      : isHandsFree
+                      ? '100% on-device · Say "Hey Jarvis" anytime'
+                      : 'Listen ambiently without touching mouse'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void toggleHandsFree()}
+                disabled={isWakeWordLoading}
+                className={`ml-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shadow-sm cursor-pointer shrink-0 ${
+                  isHandsFree
+                    ? 'bg-cyan-500 text-black hover:bg-cyan-400'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                }`}
+              >
+                {isWakeWordLoading ? '...' : isHandsFree ? 'ON' : 'OFF'}
               </button>
             </div>
           </div>

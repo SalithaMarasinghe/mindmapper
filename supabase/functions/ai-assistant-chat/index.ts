@@ -2719,6 +2719,7 @@ ${pastUnfinishedList}
 You MUST respond with a single JSON object matching this structure:
 {
   "replyText": "Markdown formatted conversational response to the user. When creating proposals or answering questions, provide a natural 1-2 sentence conversational summary acknowledging the specific items created and answering any technical questions asked (e.g. 'I have set up tasks for the Redis caching integration and p95 latency benchmarks for your review. Regarding RLS subqueries: ...'). DO NOT dump raw JSON or repeat full duplicate card markdown blocks in this text, as the user has the interactive proposal card below.",
+  "speechText": "Natural, conversational 1-2 sentence spoken summary for Jarvis to speak out loud. MUST BE written for the EAR, NOT the eye: no markdown symbols, no bullet points, no asterisks, no tables, no raw timestamps. Speak like a sentient, articulate British chief-of-staff (e.g. 'It is currently overcast and 29 degrees in Colombo, sir. Feels closer to 36 with the humidity, but no rain expected.').",
   "engineeredPrompt": "Markdown formatted context-engineered prompt string if Category C, otherwise null or omitted.",
   "proposals": [ ...array of proposals if any action is needed, otherwise empty array... ],
   "suggestedFollowups": ["Short quick-action phrase 1", "Short phrase 2"]
@@ -3003,6 +3004,54 @@ You MUST respond with a single JSON object matching this structure:
     }
 
 For read-only questions like "what did I do today?", "how much time have I tracked?", or "what's still open?", answer accurately in replyText from the snapshot data and set proposals to [].`;
+}
+
+// Sentient speech synthesizer helper: ensures speechText is always punchy, natural and spoken-ready
+function distillSpeech(text: string): string {
+  if (!text) return '';
+  let clean = text.replace(/```[\s\S]*?```/g, '');
+  clean = clean.replace(/`([^`]+)`/g, '$1');
+  clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  clean = clean.replace(/https?:\/\/\S+/g, '');
+  clean = clean.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+
+  const conditionMatch = clean.match(/(?:Condition|Current condition):\s*\*?\*?\s*([^\n\r]+)/i);
+  const tempMatch = clean.match(/(?:Temperature):\s*\*?\*?\s*([^\n\r]+)/i);
+  const feelsLikeMatch = clean.match(/(?:Feels like):\s*\*?\*?\s*([^\n\r]+)/i);
+  const rainMatch = clean.match(/(?:Precipitation):\s*\*?\*?\s*([^\n\r]+)/i);
+
+  if (conditionMatch || tempMatch) {
+    const cond = conditionMatch ? conditionMatch[1].replace(/[*_~`—–-].*$/, '').trim() : '';
+    const temp = tempMatch ? tempMatch[1].replace(/\([^)]*\)/g, '').replace(/[*_~`]/g, '').trim() : '';
+    const feels = feelsLikeMatch ? feelsLikeMatch[1].replace(/\([^)]*\)/g, '').replace(/[*_~`]/g, '').trim() : '';
+    const rain = rainMatch ? rainMatch[1].replace(/\([^)]*\)/g, '').replace(/[*_~`]/g, '').trim() : '';
+
+    let summary = `It's currently ${cond.toLowerCase() || 'clear'} and around ${temp || 'warm'} in Colombo, sir.`;
+    if (feels) summary += ` With humidity it feels closer to ${feels}.`;
+    if (rain && (rain.includes('0') || rain.toLowerCase().includes('no rain') || rain.toLowerCase().includes('mist') || rain.toLowerCase().includes('drizzle'))) {
+      if (rain.toLowerCase().includes('drizzle') || rain.toLowerCase().includes('mist')) {
+        summary += ` Expect a light drizzle right now.`;
+      } else {
+        summary += ` No rain expected right now.`;
+      }
+    }
+    return summary;
+  }
+
+  clean = clean.replace(/\([^)]*?(?:observed|local time|\d{4}-\d{2}-\d{2}|≈|approx)[^)]*?\)/gi, '');
+  clean = clean.replace(/^[ \t]*[-*+]\s+/gm, '');
+  clean = clean.replace(/[*_#~>]/g, '');
+  clean = clean.replace(/\s+/g, ' ').trim();
+
+  const sentences = clean.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length > 0) {
+    let speech = sentences[0].trim();
+    if (sentences[1] && (speech + ' ' + sentences[1].trim()).length <= 220) {
+      speech += ' ' + sentences[1].trim();
+    }
+    return speech;
+  }
+  return clean.slice(0, 200).trim();
 }
 
 Deno.serve(async (req: Request) => {
@@ -3605,11 +3654,13 @@ Deno.serve(async (req: Request) => {
 
     let parsedResult: {
       replyText: string;
+      speechText?: string | null;
       engineeredPrompt?: string | null;
       proposals: unknown[];
       suggestedFollowups: string[];
     } = {
       replyText: '',
+      speechText: null,
       engineeredPrompt: null,
       proposals: [],
       suggestedFollowups: [],
@@ -3750,8 +3801,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Defensive mapping: check alternative keys like prompt or engineered_prompt
+    // Defensive mapping: check alternative keys like prompt, engineered_prompt, or speechText
     const rawObj = parsedResult as Record<string, unknown>;
+    if (!parsedResult.speechText) {
+      if (typeof rawObj.speechText === 'string' && rawObj.speechText.trim()) {
+        parsedResult.speechText = rawObj.speechText.trim();
+      } else if (typeof rawObj.speech_text === 'string' && rawObj.speech_text.trim()) {
+        parsedResult.speechText = rawObj.speech_text.trim();
+      } else if (typeof rawObj.speech === 'string' && rawObj.speech.trim()) {
+        parsedResult.speechText = rawObj.speech.trim();
+      }
+    }
+
     if (!parsedResult.engineeredPrompt) {
       if (typeof rawObj.prompt === 'string' && rawObj.prompt.trim()) {
         parsedResult.engineeredPrompt = rawObj.prompt.trim();
@@ -3782,6 +3843,11 @@ Deno.serve(async (req: Request) => {
       } else {
         parsedResult.replyText = "I have processed your request and updated your workspace.";
       }
+    }
+
+    // Ensure speechText is populated with a natural spoken summary for voice
+    if (!parsedResult.speechText || parsedResult.speechText.trim() === '') {
+      parsedResult.speechText = distillSpeech(parsedResult.replyText);
     }
 
     // Only wipe proposals if it's explicitly a prompt engineering request or engineeredPrompt is present
@@ -3999,6 +4065,7 @@ Deno.serve(async (req: Request) => {
         conversationId,
         messageId: assistantMsg.id,
         replyText: parsedResult.replyText,
+        speechText: parsedResult.speechText || null,
         engineeredPrompt: parsedResult.engineeredPrompt || null,
         proposals,
         suggestedFollowups: parsedResult.suggestedFollowups || [],

@@ -1,7 +1,20 @@
 // Jarvis Voice & Audio Engine
-// STT: MediaRecorder → Groq Whisper (via Supabase edge function)
-// TTS: Web Speech Synthesis API
+// STT: MediaRecorder → Groq Whisper (via Supabase edge function jarvis-transcribe)
+// TTS: Google Cloud Text-to-Speech (Neural2 via Supabase edge function jarvis-tts)
+// Fallback: Patched Web Speech API with GC & 15-second cutoff fixes
 // Visualizer: Web Audio API frequency analyser
+
+import { supabase } from '../lib/supabase';
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
 
 export class JarvisVoiceService {
   private audioContext: AudioContext | null = null;
@@ -12,91 +25,69 @@ export class JarvisVoiceService {
     | ((state: 'idle' | 'listening' | 'thinking' | 'speaking' | 'success') => void)
     | null = null;
 
+  // ── Neural TTS state (Google Cloud Neural2) ─────────────────────────────
+  private activeAudioSource: AudioBufferSourceNode | null = null;
+  private ttsAbortController: AbortController | null = null;
+
+  // ── Browser TTS fallback state ──────────────────────────────────────────
+  private activeUtterance: SpeechSynthesisUtterance | null = null;
+  private keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+
   // ── MediaRecorder state ─────────────────────────────────────────────────
   private mediaRecorder: MediaRecorder | null = null;
   private recordingChunks: Blob[] = [];
   private recordingStream: MediaStream | null = null;
+  private micSourceNode: MediaStreamAudioSourceNode | null = null;
   isRecording = false;
 
   constructor() {
     this.initVoices();
   }
 
-  // ── TTS Voice Selection ─────────────────────────────────────────────────
-  private initVoices() {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    const scoreVoice = (v: SpeechSynthesisVoice): number => {
-      let score = 0;
-      const name = v.name.toLowerCase();
-      const lang = v.lang.toLowerCase();
-
-      // Only English voices
-      if (!lang.startsWith('en')) return -100;
-
-      // Microsoft / Google Online Natural voices are state-of-the-art
-      if (name.includes('natural') || name.includes('neural') || name.includes('online')) {
-        score += 60;
+  // ── Web Audio Analyser (for orb visualizer) ─────────────────────────────
+  private ensureAudioContext(): AudioContext | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      if (!this.audioContext) {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          this.audioContext = new AudioCtx();
+        }
       }
-
-      // British English gives that iconic Jarvis tone
-      if (lang.includes('en-gb') || lang.includes('en_gb')) {
-        score += 30;
+      if (this.audioContext && !this.analyser) {
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 64;
+        this.analyser.smoothingTimeConstant = 0.8;
       }
-
-      // Calm / polished male voices
-      if (/ryan|george|daniel|oliver|guy|christopher|eric|arthur|brian|william/i.test(name)) {
-        score += 25;
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        void this.audioContext.resume();
       }
-
-      // Male voice indicator
-      if (/male/i.test(name) && !/female/i.test(name)) {
-        score += 15;
-      }
-
-      // Prefer Google high-quality voices if natural not found
-      if (name.includes('google')) {
-        score += 10;
-      }
-
-      // Avoid legacy robotic Windows desktop voices (e.g. David, Mark, Hazel)
-      if (name.includes('desktop')) {
-        score -= 25;
-      }
-
-      return score;
-    };
-
-    const findVoice = () => {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) return;
-
-      const scored = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
-      this.selectedVoice = scored[0] || voices[0] || null;
-    };
-
-    findVoice();
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = findVoice;
+      return this.audioContext;
+    } catch (err) {
+      console.warn('[JarvisVoice] AudioContext init failed:', err);
+      return null;
     }
   }
 
-  // ── Web Audio Analyser (for orb visualizer) ─────────────────────────────
   async initAudioAnalyzer(stream?: MediaStream): Promise<boolean> {
     if (typeof window === 'undefined') return false;
-    if (this.analyser) return true;
+    const ctx = this.ensureAudioContext();
+    if (!ctx || !this.analyser) return false;
 
     try {
       const s = stream || (await navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.audioContext = new AudioCtx();
-      const source = this.audioContext.createMediaStreamSource(s);
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 64;
-      this.analyser.smoothingTimeConstant = 0.8;
-      source.connect(this.analyser);
+      if (this.micSourceNode) {
+        try {
+          this.micSourceNode.disconnect();
+        } catch {
+          // ignore
+        }
+        this.micSourceNode = null;
+      }
+      this.micSourceNode = ctx.createMediaStreamSource(s);
+      this.micSourceNode.connect(this.analyser);
       return true;
     } catch (err) {
       console.warn('[JarvisVoice] Microphone analyser init failed:', err);
@@ -142,7 +133,7 @@ export class JarvisVoiceService {
       this.mediaRecorder.start(100); // collect chunks every 100ms
       this.isRecording = true;
 
-      // Wire analyser to this stream so the orb reacts
+      // Wire analyser to this stream so the orb reacts to user voice
       void this.initAudioAnalyzer(stream);
 
       return true;
@@ -172,8 +163,14 @@ export class JarvisVoiceService {
         this.recordingStream = null;
         this.mediaRecorder = null;
 
-        // Reset analyser so it doesn't hold a dead stream
-        this.analyser = null;
+        if (this.micSourceNode) {
+          try {
+            this.micSourceNode.disconnect();
+          } catch {
+            // ignore
+          }
+          this.micSourceNode = null;
+        }
 
         resolve(blob);
       };
@@ -216,14 +213,199 @@ export class JarvisVoiceService {
     return json.text?.trim() ?? '';
   }
 
-  // ── TTS: Speak with Jarvis persona ──────────────────────────────────────
-  speak(text: string, onEnd?: () => void) {
+  // ── Neural TTS: Google Cloud Text-to-Speech (Neural2) ───────────────────
+  private async speakNeural(text: string, onEnd?: () => void): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    if (!supabaseUrl) return false;
+
+    this.ttsAbortController = new AbortController();
+    const signal = this.ttsAbortController.signal;
+
+    let accessToken = anonKey;
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        accessToken = session.access_token;
+      }
+    } catch {
+      // Proceed with anon key if no active session
+    }
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/jarvis-tts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify({
+        text,
+        voice: 'daniel', // Refined male assistant voice
+        languageCode: 'en',
+        speakingRate: 1.0,
+        pitch: -0.5,
+      }),
+      signal,
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn(`[JarvisVoice] Neural TTS edge function returned status ${res.status}:`, err);
+      return false;
+    }
+
+    const data = (await res.json()) as { audioContent?: string };
+    if (!data.audioContent) {
+      console.warn('[JarvisVoice] Neural TTS response missing audioContent.');
+      return false;
+    }
+
+    if (signal.aborted) return true;
+
+    const ctx = this.ensureAudioContext();
+    if (!ctx) return false;
+
+    const audioData = base64ToArrayBuffer(data.audioContent);
+    const audioBuffer = await ctx.decodeAudioData(audioData);
+
+    if (signal.aborted) return true;
+
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+
+    // Connect source to analyser so the orb visualizer reacts to speech
+    if (this.analyser) {
+      source.connect(this.analyser);
+      this.analyser.connect(ctx.destination);
+    } else {
+      source.connect(ctx.destination);
+    }
+
+    this.activeAudioSource = source;
+    this.isSpeaking = true;
+    this.onOrbStateCallback?.('speaking');
+
+    source.onended = () => {
+      if (this.activeAudioSource === source) {
+        this.activeAudioSource = null;
+        this.isSpeaking = false;
+        this.onOrbStateCallback?.('idle');
+        onEnd?.();
+      }
+    };
+
+    source.start(0);
+    return true;
+  }
+
+  // ── Browser TTS Fallback (Patched for GC and 15s timeout) ────────────────
+  private initVoices() {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const scoreVoice = (v: SpeechSynthesisVoice): number => {
+      let score = 0;
+      const name = v.name.toLowerCase();
+      const lang = v.lang.toLowerCase();
+
+      if (!lang.startsWith('en')) return -100;
+      if (name.includes('natural') || name.includes('neural') || name.includes('online')) score += 60;
+      if (lang.includes('en-gb') || lang.includes('en_gb')) score += 30;
+      if (/ryan|george|daniel|oliver|guy|christopher|eric|arthur|brian|william/i.test(name)) score += 25;
+      if (/male/i.test(name) && !/female/i.test(name)) score += 15;
+      if (name.includes('google')) score += 10;
+      if (name.includes('desktop')) score -= 25;
+
+      return score;
+    };
+
+    const findVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) return;
+      const scored = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+      this.selectedVoice = scored[0] || voices[0] || null;
+    };
+
+    findVoice();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = findVoice;
+    }
+  }
+
+  private cleanupBrowserSpeech() {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+    this.activeUtterance = null;
+  }
+
+  private stopBrowserSpeech() {
+    if (this.activeUtterance && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    } else if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    this.cleanupBrowserSpeech();
+  }
+
+  getActiveUtterance(): SpeechSynthesisUtterance | null {
+    return this.activeUtterance;
+  }
+
+  private speakBrowser(cleanedText: string, onEnd?: () => void) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       onEnd?.();
       return;
     }
 
-    window.speechSynthesis.cancel();
+    this.stopBrowserSpeech();
+
+    const utterance = new SpeechSynthesisUtterance(cleanedText);
+    if (this.selectedVoice) utterance.voice = this.selectedVoice;
+    utterance.rate = 1.0;
+    utterance.pitch = 0.95;
+
+    // Retain strong reference on class instance to fix Chromium GC cutoff bug
+    this.activeUtterance = utterance;
+
+    utterance.onstart = () => {
+      this.isSpeaking = true;
+      this.onOrbStateCallback?.('speaking');
+
+      // Fix Chromium 15-second speech freeze bug by pinging pause/resume
+      if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = setInterval(() => {
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 10000);
+    };
+
+    const handleEnd = () => {
+      this.cleanupBrowserSpeech();
+      this.isSpeaking = false;
+      this.onOrbStateCallback?.('idle');
+      onEnd?.();
+    };
+
+    utterance.onend = handleEnd;
+    utterance.onerror = (e) => {
+      console.warn('[JarvisVoice] Browser fallback TTS error:', e);
+      handleEnd();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // ── Unified Speak API ───────────────────────────────────────────────────
+  speak(text: string, onEnd?: () => void) {
+    this.stopSpeaking();
 
     const cleanedText = text
       .replace(/[*_#`~>[\]]/g, '')
@@ -235,30 +417,18 @@ export class JarvisVoiceService {
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(cleanedText);
-    if (this.selectedVoice) utterance.voice = this.selectedVoice;
-    utterance.rate = 1.0;
-    utterance.pitch = 0.95;
-
-    utterance.onstart = () => {
-      this.isSpeaking = true;
-      this.onOrbStateCallback?.('speaking');
-    };
-
-    utterance.onend = () => {
-      this.isSpeaking = false;
-      this.onOrbStateCallback?.('idle');
-      onEnd?.();
-    };
-
-    utterance.onerror = (e) => {
-      console.warn('[JarvisVoice] TTS error:', e);
-      this.isSpeaking = false;
-      this.onOrbStateCallback?.('idle');
-      onEnd?.();
-    };
-
-    window.speechSynthesis.speak(utterance);
+    // Try Google Cloud Neural2 TTS first
+    this.speakNeural(cleanedText, onEnd)
+      .then((success) => {
+        if (!success) {
+          // Gracefully fall back to patched browser speech if Neural TTS key is not set or network fails
+          this.speakBrowser(cleanedText, onEnd);
+        }
+      })
+      .catch((err) => {
+        console.warn('[JarvisVoice] Neural TTS threw error, using browser fallback:', err);
+        this.speakBrowser(cleanedText, onEnd);
+      });
   }
 
   setOrbStateCallback(
@@ -272,9 +442,26 @@ export class JarvisVoiceService {
   }
 
   stopSpeaking() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    // 1. Abort any active Neural TTS fetch request
+    if (this.ttsAbortController) {
+      this.ttsAbortController.abort();
+      this.ttsAbortController = null;
     }
+
+    // 2. Stop and disconnect active audio buffer playback
+    if (this.activeAudioSource) {
+      try {
+        this.activeAudioSource.stop();
+        this.activeAudioSource.disconnect();
+      } catch {
+        // Node might already be stopped
+      }
+      this.activeAudioSource = null;
+    }
+
+    // 3. Stop browser fallback speech
+    this.stopBrowserSpeech();
+
     this.isSpeaking = false;
     this.onOrbStateCallback?.('idle');
   }
@@ -286,6 +473,7 @@ export class JarvisVoiceService {
       void this.audioContext.close();
       this.audioContext = null;
     }
+    this.analyser = null;
   }
 }
 

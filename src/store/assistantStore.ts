@@ -471,7 +471,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to call assistant.');
 
-      const { conversationId, messageId, replyText, engineeredPrompt, proposals, searchSources } = json;
+      const { conversationId, messageId, replyText, speechText, engineeredPrompt, proposals, searchSources } = json;
 
       const isPromptRequest =
         options?.mode === 'prompt_engineer' ||
@@ -1041,6 +1041,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         userId: user.id,
         role: 'assistant',
         content: replyText,
+        speechText: speechText || undefined,
         proposals: processedProposals,
         createdAt: new Date().toISOString(),
         engineeredPrompt: resolvedEngineeredPrompt || undefined,

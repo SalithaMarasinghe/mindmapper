@@ -581,6 +581,7 @@ export interface AssistantMessage {
   userId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  speechText?: string;
   proposals: AssistantProposal[];
   createdAt: string;
   engineeredPrompt?: string;

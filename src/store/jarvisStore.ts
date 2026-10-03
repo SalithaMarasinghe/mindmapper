@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { jarvisVoice } from '../services/jarvisVoice';
+import { wakeWordService } from '../services/wakeWordService';
 import { useAssistantStore } from './assistantStore';
 import { supabase } from '../lib/supabase';
 import type { AssistantProposal, SearchSource } from '../types';
@@ -40,6 +41,60 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+// Sentient speech sanitizer: converts raw written markdown into natural spoken speech
+export function distillSpeechFromMarkdown(text: string): string {
+  if (!text) return '';
+
+  // 1. Remove code blocks and inline code
+  let clean = text.replace(/```[\s\S]*?```/g, '');
+  clean = clean.replace(/`([^`]+)`/g, '$1');
+
+  // 2. Remove URLs, links, images
+  clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  clean = clean.replace(/https?:\/\/\S+/g, '');
+  clean = clean.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+
+  // 3. Detect structured weather bullet points
+  const conditionMatch = clean.match(/-\s*\*\*Condition:\*\*\s*([^\n\r]+)/i);
+  const tempMatch = clean.match(/-\s*\*\*Temperature:\*\*\s*([^\n\r]+)/i);
+  const feelsLikeMatch = clean.match(/-\s*\*\*Feels Like:\*\*\s*([^\n\r]+)/i);
+  const rainMatch = clean.match(/-\s*\*\*Precipitation:\*\*\s*([^\n\r]+)/i);
+
+  if (conditionMatch || tempMatch) {
+    const cond = conditionMatch ? conditionMatch[1].replace(/[—–-].*$/, '').trim() : '';
+    const temp = tempMatch ? tempMatch[1].replace(/\([^)]*\)/g, '').trim() : '';
+    const feels = feelsLikeMatch ? feelsLikeMatch[1].replace(/\([^)]*\)/g, '').trim() : '';
+    const rain = rainMatch ? rainMatch[1].replace(/\([^)]*\)/g, '').trim() : '';
+
+    let summary = `It's currently ${cond.toLowerCase() || 'clear'} and around ${temp || 'warm'} in Colombo, sir.`;
+    if (feels) summary += ` With humidity it feels closer to ${feels}.`;
+    if (rain && (rain.includes('0') || rain.toLowerCase().includes('no rain'))) {
+      summary += ` No rain expected right now.`;
+    }
+    return summary;
+  }
+
+  // 4. Remove parentheticals with timestamps, dates, or approx signs
+  clean = clean.replace(/\([^)]*?(?:observed|local time|\d{4}-\d{2}-\d{2}|≈|approx)[^)]*?\)/gi, '');
+
+  // 5. Strip list bullets, asterisks, hashtags, quotes
+  clean = clean.replace(/^[ \t]*[-*+]\s+/gm, '');
+  clean = clean.replace(/[*_#~>]/g, '');
+  clean = clean.replace(/\s+/g, ' ').trim();
+
+  // 6. Extract first 1-2 complete sentences
+  const sentences = clean.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length > 0) {
+    let speech = sentences[0].trim();
+    if (sentences[1] && (speech + ' ' + sentences[1].trim()).length <= 220) {
+      speech += ' ' + sentences[1].trim();
+    }
+    return speech;
+  }
+
+  return clean.slice(0, 200).trim();
+}
+
 interface JarvisState {
   isOpen: boolean;
   isRecording: boolean;
@@ -65,6 +120,12 @@ interface JarvisState {
   isWebSearchEnabled: boolean;
   lastSearchSources: SearchSource[];
 
+  // Hands-Free openWakeWord state
+  isHandsFree: boolean;
+  isWakeWordLoading: boolean;
+  wakeWordError: string | null;
+  toggleHandsFree: () => Promise<void>;
+
   openHUD: (greet?: boolean) => void;
   closeHUD: () => void;
   setTranscript: (text: string) => void;
@@ -84,9 +145,44 @@ interface JarvisState {
 }
 
 export const useJarvisStore = create<JarvisState>((set, get) => {
-  // Sync TTS orb state callback
+  // Sync TTS orb state callback and pulse visualizer during speech
   jarvisVoice.setOrbStateCallback((orbState) => {
     set({ orbState, isSpeaking: orbState === 'speaking' });
+    if (orbState === 'speaking') {
+      const pollSpeakingAudio = () => {
+        if (get().orbState !== 'speaking') {
+          set({ audioLevel: 0 });
+          return;
+        }
+        const level = jarvisVoice.getLiveAudioLevel();
+        set({ audioLevel: level });
+        requestAnimationFrame(pollSpeakingAudio);
+      };
+      requestAnimationFrame(pollSpeakingAudio);
+    } else if (orbState === 'idle') {
+      // Automatically re-arm wake word detection once speech playback is done
+      if (get().isHandsFree && !get().isRecording && !get().isTranscribing && !get().isSubmitting) {
+        void wakeWordService.resume();
+        set({ statusMessage: "Hands-Free active · Say 'Hey Jarvis'" });
+      }
+    }
+  });
+
+  // Hook openWakeWord listener to start hands-free voice command capture
+  wakeWordService.addListener({
+    onDetected: (keyword, score) => {
+      console.log(`[JarvisStore] 🎯 Wake word triggered (${keyword}, score: ${score.toFixed(3)})`);
+      const state = get();
+      if (state.isRecording || state.isTranscribing || state.isSubmitting) {
+        console.log('[JarvisStore] Ignoring wake word because system is active.');
+        return;
+      }
+      // Trigger recording immediately
+      void get().toggleRecording();
+    },
+    onStateChange: ({ isLoading, error }) => {
+      set({ isWakeWordLoading: isLoading, wakeWordError: error });
+    },
   });
 
   return {
@@ -104,12 +200,46 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     isMuted: false,
     isSubmitting: false,
 
+    // Hands-Free openWakeWord state
+    isHandsFree: false,
+    isWakeWordLoading: false,
+    wakeWordError: null,
+
     activePromptDocument: null,
     promptHistory: [],
     mode: 'cockpit',
     lastCopiedAt: null,
     isWebSearchEnabled: false,
     lastSearchSources: [],
+
+    toggleHandsFree: async () => {
+      const current = get().isHandsFree;
+      if (current) {
+        await wakeWordService.stopListening();
+        set({
+          isHandsFree: false,
+          statusMessage: 'Hands-Free disabled · Press mic to speak',
+        });
+        toast('Hands-Free mode turned off');
+      } else {
+        set({ isWakeWordLoading: true, statusMessage: 'Loading wake-word engine...' });
+        const ok = await wakeWordService.startListening();
+        set({ isWakeWordLoading: false });
+        if (ok) {
+          set({
+            isHandsFree: true,
+            statusMessage: "Hands-Free active · Say 'Hey Jarvis'",
+          });
+          toast.success("Hands-Free active! Say 'Hey Jarvis' anytime 🎧");
+        } else {
+          set({
+            isHandsFree: false,
+            statusMessage: 'Could not access microphone for hands-free',
+          });
+          toast.error('Could not activate hands-free mode. Check mic permission.');
+        }
+      }
+    },
 
     toggleWebSearch: () => set((s) => ({ isWebSearchEnabled: !s.isWebSearchEnabled })),
     setWebSearch: (enabled: boolean) => set({ isWebSearchEnabled: enabled }),
@@ -195,6 +325,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
         if (!blob || blob.size < 1000) {
           set({ isTranscribing: false, orbState: 'idle', statusMessage: 'Recording too short — try again' });
+          if (get().isHandsFree) void wakeWordService.resume();
           return;
         }
 
@@ -213,6 +344,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
           if (!text) {
             set({ isTranscribing: false, orbState: 'idle', statusMessage: 'Could not hear anything — try again' });
+            if (get().isHandsFree) void wakeWordService.resume();
             return;
           }
 
@@ -230,27 +362,79 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           console.error('[Jarvis] Transcription error:', err);
           toast.error(msg);
           set({ isTranscribing: false, orbState: 'idle', statusMessage: 'Transcription failed — try again' });
+          if (get().isHandsFree) void wakeWordService.resume();
         }
       } else {
         // ── START recording ────────────────────────────────────────────
         // Immediately interrupt and kill any active speech narration!
         jarvisVoice.stopSpeaking();
-        set({ isSpeaking: false, transcript: '', statusMessage: 'Listening...' });
+        wakeWordService.pause();
+        set({
+          isSpeaking: false,
+          transcript: '',
+          statusMessage: get().isHandsFree ? 'Listening... say your command' : 'Listening...',
+        });
 
         const ok = await jarvisVoice.startRecording();
         if (!ok) {
           toast.error('Microphone access denied. Please allow mic permissions.');
           set({ statusMessage: 'Microphone access denied' });
+          if (get().isHandsFree) void wakeWordService.resume();
           return;
         }
 
-        set({ isRecording: true, orbState: 'listening', statusMessage: 'Listening... press mic again to stop' });
+        set({
+          isRecording: true,
+          orbState: 'listening',
+          statusMessage: get().isHandsFree
+            ? 'Listening... pause when done speaking'
+            : 'Listening... press mic again to stop',
+        });
 
-        // Poll audio level for orb visualizer while recording
+        // Hands-free silence monitor state
+        let speechDetected = false;
+        let silenceStart = 0;
+        const SILENCE_TIMEOUT_MS = 1800; // 1.8s of quiet after speech indicates user finished talking
+        const INITIAL_WAIT_MS = 8000;    // 8s to start speaking before timeout
+        const startedAt = Date.now();
+
+        // Poll audio level for orb visualizer and hands-free silence detection
         const pollAudio = () => {
           if (!get().isRecording) return;
           const level = jarvisVoice.getLiveAudioLevel();
           set({ audioLevel: level });
+
+          // If hands-free is active, automatically detect end of speech
+          if (get().isHandsFree) {
+            const now = Date.now();
+            if (level > 0.05) {
+              speechDetected = true;
+              silenceStart = 0;
+            } else if (speechDetected) {
+              if (silenceStart === 0) {
+                silenceStart = now;
+              } else if (now - silenceStart >= SILENCE_TIMEOUT_MS) {
+                console.log('[Jarvis] Hands-free silence detected, automatically stopping recording...');
+                void get().toggleRecording();
+                return;
+              }
+            } else {
+              if (now - startedAt >= INITIAL_WAIT_MS) {
+                console.log('[Jarvis] Hands-free wait timeout (no speech detected)');
+                void jarvisVoice.stopRecording();
+                set({
+                  isRecording: false,
+                  orbState: 'idle',
+                  statusMessage: "Didn't hear anything. Say 'Hey Jarvis' when ready.",
+                });
+                if (get().isHandsFree) {
+                  void wakeWordService.resume();
+                }
+                return;
+              }
+            }
+          }
+
           requestAnimationFrame(pollAudio);
         };
         requestAnimationFrame(pollAudio);
@@ -366,8 +550,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               !rawContent.toLowerCase().startsWith("i've drafted") &&
               rawContent.length > 30
             ) {
-              const cleanText = rawContent.replace(/[#*`_~]/g, '').slice(0, 260).trim();
-              jarvisVoice.speak(`${cleanText}... I've prepared the details below for your review.`);
+              const cleanSpeech = lastMsg.speechText || distillSpeechFromMarkdown(rawContent);
+              jarvisVoice.speak(`${cleanSpeech}... I've prepared the details below for your review.`);
             } else {
               let voiceMsg = "I've drafted the details for your review.";
               if (targetProp?.type === 'create_work_event') {
@@ -410,9 +594,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           set({ isSubmitting: false, orbState: 'success', statusMessage: execVoice });
           if (!get().isMuted) jarvisVoice.speak(execVoice);
         } else {
-          set({ isSubmitting: false, orbState: 'speaking', statusMessage: 'Answer ready' });
           if (!get().isMuted && lastMsg.content) {
-            jarvisVoice.speak(lastMsg.content.slice(0, 300));
+            set({ isSubmitting: false, orbState: 'speaking', statusMessage: 'Answer ready' });
+            const speechToSpeak = lastMsg.speechText || distillSpeechFromMarkdown(lastMsg.content);
+            jarvisVoice.speak(speechToSpeak);
+          } else {
+            set({ isSubmitting: false, orbState: 'idle', statusMessage: 'Answer ready' });
+            if (get().isHandsFree) void wakeWordService.resume();
           }
         }
       } catch (err: unknown) {
@@ -420,7 +608,11 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         console.error('[Jarvis] Submit error:', err);
         toast.error(msg);
         set({ isSubmitting: false, orbState: 'idle', statusMessage: 'An error occurred, sir.' });
-        if (!get().isMuted) jarvisVoice.speak('I encountered an issue processing that request, sir.');
+        if (!get().isMuted) {
+          jarvisVoice.speak('I encountered an issue processing that request, sir.');
+        } else if (get().isHandsFree) {
+          void wakeWordService.resume();
+        }
       }
     },
 
