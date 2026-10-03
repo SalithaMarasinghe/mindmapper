@@ -266,6 +266,12 @@ function startBargeInListener() {
 export function distillSpeechFromMarkdown(text: string): string {
   if (!text) return '';
 
+  // 0. Check for explicit spoken summary tag
+  const tagMatch = text.match(/<!--\s*SPOKEN_SUMMARY:\s*([\s\S]*?)\s*-->/i);
+  if (tagMatch && tagMatch[1].trim()) {
+    return tagMatch[1].trim();
+  }
+
   // 1. Remove code blocks and inline code
   let clean = text.replace(/```[\s\S]*?```/g, '');
   clean = clean.replace(/`([^`]+)`/g, '$1');
@@ -303,8 +309,20 @@ export function distillSpeechFromMarkdown(text: string): string {
     return summary;
   }
 
-  // 5. CRITICAL: Completely strip all markdown headings (# Heading, ## Subheading, etc.) so they are never read out loud!
-  clean = clean.replace(/^#{1,6}\s+[^\r\n]*/gm, '');
+  // 5. Prioritize dedicated Summary, Conclusion, Recommendation, or Timeline sections
+  const summarySectionMatch = text.match(
+    /#{1,6}\s*(?:Summary|Key Takeaways?|Bottom Line|Conclusion|Recommendation|Estimated Timeline|Time Required|Verdict|Overview)[\s\S]*?(?=\n#{1,6}\s+|$)/i
+  );
+  if (summarySectionMatch && summarySectionMatch[0].trim().length > 40) {
+    clean = summarySectionMatch[0]
+      .replace(/^#{1,6}\s+[^\r\n]*/gm, '')
+      .replace(/[*_#`~>]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } else {
+    // Strip all markdown headings
+    clean = clean.replace(/^#{1,6}\s+[^\r\n]*/gm, '');
+  }
 
   // 6. Strip blockquotes
   clean = clean.replace(/^>\s+[^\r\n]*/gm, '');
@@ -332,27 +350,28 @@ export function distillSpeechFromMarkdown(text: string): string {
     return 'Hey there, Salitha! All systems are online and ready. What would you like to work on today?';
   }
 
-  // 12. Extract complete sentences for fluid, conversational audio playback (2-4 sentences, up to ~480 chars)
+  // 12. Extract complete sentences for fluid, conversational audio playback
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
+    // If text is long (> 250 chars), scan for sentences with concrete answers / estimates / conclusions
+    const highValueRegex = /\b(take|weeks?|months?|hours?|timeline|plan for|recommend|overall|depends on|expect|prior experience|in short|in summary|verdict)\b/i;
+    const prioritized = sentences.filter((s) => highValueRegex.test(s));
+    const sentencePool = prioritized.length >= 2 ? prioritized : sentences;
+
     let speech = '';
     let count = 0;
-    for (const s of sentences) {
+    for (const s of sentencePool) {
       const trimmed = s.trim();
-      if (!trimmed) continue;
-      // Skip bullet-like fragments or table remnants that don't look like sentences
-      if (trimmed.length < 15 && count > 0) continue;
-      if (count >= 4) break;
-      if (speech && (speech + ' ' + trimmed).length > 480) break;
+      if (!trimmed || trimmed.length < 15) continue;
+      if (count >= 3) break;
+      if (speech && (speech + ' ' + trimmed).length > 380) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
       count++;
     }
 
     if (speech) {
-      // If the response is a deep technical or conceptual explanation (> 250 chars),
-      // conclude with an invitation to view the screen unless already mentioned.
       const hasScreenPointer = /\b(on your screen|details below|breakdown below|take a look|for your review|proposal below|screen)\b/i.test(speech);
-      if (text.length > 250 && !hasScreenPointer && speech.length <= 420) {
+      if (text.length > 200 && !hasScreenPointer && speech.length <= 420) {
         speech += " I've placed the full breakdown on your screen, sir.";
       }
       return speech;

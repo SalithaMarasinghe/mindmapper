@@ -2252,8 +2252,16 @@ Meeting Journal Format:
 
 ### CONVERSATIONAL STYLE & DUAL-CHANNEL VOCAL EXCELLENCE:
 - Speak like a world-class senior engineering assistant and chief-of-staff: articulate, crisp, knowledgeable, and natural.
-- When answering conceptual, technical, or architecture questions (e.g. "What is monolithic architecture?"):
+- When answering conceptual, technical, or architecture questions (e.g. "What is monolithic architecture?", "How long to prepare for DB-700?"):
   Provide a comprehensive, senior-level architectural breakdown for the screen with headings, clear bullet points, mental models, and trade-offs.
+- CRITICAL FOR REAL-TIME VOICE MODE (SPOKEN SUMMARY TAG):
+  Salitha frequently listens to your answers in Voice Mode. Whenever your response is an in-depth breakdown, study guide, technical explanation, or recommendation (> 2-3 sentences), you MUST conclude your response with a dedicated spoken summary for Salitha's ear using this exact tag at the very end:
+  <!-- SPOKEN_SUMMARY: [Articulate, high-density 2-3 sentence executive spoken summary (35-65 words) answering Salitha's core question directly for the ear, ending with: 'I have placed the full breakdown on your screen, sir.'] -->
+  *Rules for SPOKEN_SUMMARY:*
+  1. Directly synthesize the bottom-line conclusion, specific timeline estimate, or core takeaway. NEVER start with generic preamble like "Preparing for this exam requires...".
+  2. Example for "How long do I need to prepare for DB-700?":
+     <!-- SPOKEN_SUMMARY: If you have prior experience with Microsoft Fabric and data engineering, expect about one month studying 10 to 12 hours a week, with one to two weeks to cover foundational gaps; without prior experience, plan for two to three months. I have placed the full domain breakdown on your screen, sir. -->
+  3. Tailored specifically for the ear: No markdown formatting, no bullet points, no asterisks, no tables, no raw timestamps.
 - When greeting or checking in (e.g. "What's up?", "How are you?"):
   Provide a warm, complete, proactive check-in (2-3 complete sentences). Mention that systems are active, the current focus project or task status, and ask what Salitha would like to focus on today. NEVER stop at a single disjointed fragment like "Hey there, I am all set."`;
 }
@@ -3060,9 +3068,23 @@ You MUST respond with a single JSON object matching this structure:
 For read-only questions like "what did I do today?", "how much time have I tracked?", or "what's still open?", answer accurately in replyText from the snapshot data and set proposals to [].`;
 }
 
+interface ProviderConfig {
+  label: string;
+  url: string;
+  key: string;
+  model: string;
+  headers?: Record<string, string>;
+}
+
 // Sentient dual-channel speech synthesizer: transforms written markdown into fluid, articulate spoken voice (for the ear)
 function distillSpeech(text: string): string {
   if (!text) return '';
+
+  // 0. Check for explicit spoken summary tag
+  const tagMatch = text.match(/<!--\s*SPOKEN_SUMMARY:\s*([\s\S]*?)\s*-->/i);
+  if (tagMatch && tagMatch[1].trim()) {
+    return tagMatch[1].trim();
+  }
 
   // 1. Remove code blocks and inline code
   let clean = text.replace(/```[\s\S]*?```/g, '');
@@ -3101,8 +3123,20 @@ function distillSpeech(text: string): string {
     return summary;
   }
 
-  // 5. CRITICAL: Completely strip all markdown headings (# Heading, ## Subheading, etc.) so they are never read out loud!
-  clean = clean.replace(/^#{1,6}\s+[^\r\n]*/gm, '');
+  // 5. Prioritize dedicated Summary, Conclusion, Recommendation, or Timeline sections
+  const summarySectionMatch = text.match(
+    /#{1,6}\s*(?:Summary|Key Takeaways?|Bottom Line|Conclusion|Recommendation|Estimated Timeline|Time Required|Verdict|Overview)[\s\S]*?(?=\n#{1,6}\s+|$)/i
+  );
+  if (summarySectionMatch && summarySectionMatch[0].trim().length > 40) {
+    clean = summarySectionMatch[0]
+      .replace(/^#{1,6}\s+[^\r\n]*/gm, '')
+      .replace(/[*_#`~>]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  } else {
+    // Strip all markdown headings
+    clean = clean.replace(/^#{1,6}\s+[^\r\n]*/gm, '');
+  }
 
   // 6. Strip blockquotes
   clean = clean.replace(/^>\s+[^\r\n]*/gm, '');
@@ -3130,27 +3164,28 @@ function distillSpeech(text: string): string {
     return 'Hey there, Salitha! All systems are online and ready. What would you like to work on today?';
   }
 
-  // 12. Extract complete sentences for fluid, conversational audio playback (2-4 sentences, up to ~480 chars)
+  // 12. Extract complete sentences for fluid, conversational audio playback
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
+    // If text is long (> 250 chars), scan for sentences with concrete answers / estimates / conclusions
+    const highValueRegex = /\b(take|weeks?|months?|hours?|timeline|plan for|recommend|overall|depends on|expect|prior experience|in short|in summary|verdict)\b/i;
+    const prioritized = sentences.filter((s) => highValueRegex.test(s));
+    const sentencePool = prioritized.length >= 2 ? prioritized : sentences;
+
     let speech = '';
     let count = 0;
-    for (const s of sentences) {
+    for (const s of sentencePool) {
       const trimmed = s.trim();
-      if (!trimmed) continue;
-      // Skip bullet-like fragments or table remnants that don't look like sentences
-      if (trimmed.length < 15 && count > 0) continue;
-      if (count >= 4) break;
-      if (speech && (speech + ' ' + trimmed).length > 480) break;
+      if (!trimmed || trimmed.length < 15) continue;
+      if (count >= 3) break;
+      if (speech && (speech + ' ' + trimmed).length > 380) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
       count++;
     }
 
     if (speech) {
-      // If the response is a deep technical or conceptual explanation (> 250 chars),
-      // conclude with an invitation to view the screen unless already mentioned.
       const hasScreenPointer = /\b(on your screen|details below|breakdown below|take a look|for your review|proposal below|screen)\b/i.test(speech);
-      if (text.length > 250 && !hasScreenPointer && speech.length <= 420) {
+      if (text.length > 200 && !hasScreenPointer && speech.length <= 420) {
         speech += " I've placed the full breakdown on your screen, sir.";
       }
       return speech;
@@ -3158,6 +3193,60 @@ function distillSpeech(text: string): string {
   }
 
   return clean.slice(0, 350).trim();
+}
+
+async function synthesizeVoiceSummary(
+  replyText: string,
+  userPrompt: string,
+  provider?: ProviderConfig
+): Promise<string | null> {
+  if (!provider) return null;
+  try {
+    const systemInstruction = `You are Jarvis, personal AI assistant for Salitha Marasinghe. Salitha asked: "${userPrompt.slice(0, 220)}".
+You have already prepared a full detailed breakdown for his screen.
+Now synthesize a concise, high-impact 2-3 sentence verbal summary (35-65 words) for his EAR.
+Directly answer the question: provide the core conclusion, timeline/estimate, or key numbers.
+Conclude by stating: "I have placed the full breakdown on your screen, sir."
+Rules:
+- Speak directly to Salitha in natural spoken English.
+- No markdown formatting, no bullet points, no asterisks, no headers, no code.
+- Return ONLY the spoken summary text.`;
+
+    const res = await fetch(provider.url, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + provider.key,
+        'Content-Type': 'application/json',
+        ...(provider.headers || {}),
+      },
+      body: JSON.stringify({
+        model: provider.model,
+        messages: [
+          { role: 'system', content: systemInstruction },
+          { role: 'user', content: `Synthesize this detailed breakdown for voice narration:\n\n${replyText.slice(0, 1600)}` },
+        ],
+        temperature: 0.2,
+        max_tokens: 120,
+      }),
+      signal: AbortSignal.timeout(3000),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content?.trim();
+    if (!content) return null;
+
+    const cleaned = content
+      .replace(/^["']|["']$/g, '')
+      .replace(/[*_#`~>[\]]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return cleaned || null;
+  } catch (err) {
+    console.debug('[ai-assistant-chat] synthesizeVoiceSummary notice:', err);
+    return null;
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -3267,14 +3356,6 @@ Deno.serve(async (req: Request) => {
     const codecraftKey = Deno.env.get('CODECRAFT_API_KEY');
     const groqKey = Deno.env.get('GROQ_API_KEY');
     const groqPaidKey = Deno.env.get('GROQ_PAID_API_KEY');
-
-    interface ProviderConfig {
-      label: string;
-      url: string;
-      key: string;
-      model: string;
-      headers?: Record<string, string>;
-    }
 
     const isExplicitTaskOnly = /\b(don'?t (?:create|log|make).*(?:meeting|look)|not a meeting|just (?:add|create|make).*(?:task|to ?do)|only (?:add|create|make).*(?:task|to ?do)|can you make a (?:to ?do )?task|add (?:a|this) task|create (?:a|this) task)\b/i.test(message);
     const isMeetingReport = !isExplicitTaskOnly && /\b(meeting|sync|standup|1-on-1|just finished.*sync)\b/i.test(message);
@@ -3797,6 +3878,14 @@ Deno.serve(async (req: Request) => {
     if (agentFinalReply !== null) {
       let cleanReply = agentFinalReply.trim();
       let extractedSpeechText: string | null = null;
+
+      // Extract <!-- SPOKEN_SUMMARY: ... --> tag if provided by ReAct agent
+      const spokenSummaryMatch = cleanReply.match(/<!--\s*SPOKEN_SUMMARY:\s*([\s\S]*?)\s*-->/i);
+      if (spokenSummaryMatch) {
+        extractedSpeechText = spokenSummaryMatch[1].trim();
+        cleanReply = cleanReply.replace(/<!--\s*SPOKEN_SUMMARY:\s*[\s\S]*?\s*-->/i, '').trim();
+      }
+
       if (cleanReply.startsWith('{') && cleanReply.endsWith('}')) {
         try {
           const parsed = JSON.parse(cleanReply);
@@ -3978,9 +4067,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Ensure speechText is populated with a natural spoken summary for voice
+    // Ensure speechText is populated with a natural, synthesized spoken summary for voice
     if (!parsedResult.speechText || parsedResult.speechText.trim() === '') {
-      parsedResult.speechText = distillSpeech(parsedResult.replyText);
+      if (parsedResult.replyText.length > 200 && providers.length > 0) {
+        try {
+          const synth = await synthesizeVoiceSummary(parsedResult.replyText, message, providers[0]);
+          if (synth) {
+            parsedResult.speechText = synth;
+          }
+        } catch (synthErr) {
+          console.warn('[ai-assistant-chat] Spoken synthesis fallback error:', synthErr);
+        }
+      }
+      if (!parsedResult.speechText || parsedResult.speechText.trim() === '') {
+        parsedResult.speechText = distillSpeech(parsedResult.replyText);
+      }
     }
 
     // Only wipe proposals if it's explicitly a prompt engineering request or engineeredPrompt is present
