@@ -65,6 +65,135 @@ function stopActiveInterimRecognizer() {
   }
 }
 
+// ── Live Barge-In / Speech Interruption Engine ──────────────────────────────
+// Allows the user to interrupt Jarvis at any moment during spoken answers.
+let bargeInRecognizer: any = null;
+let bargeInGraceTimer: ReturnType<typeof setTimeout> | null = null;
+let isBargeInActive = false;
+
+function stopBargeInListener() {
+  isBargeInActive = false;
+  if (bargeInGraceTimer) {
+    clearTimeout(bargeInGraceTimer);
+    bargeInGraceTimer = null;
+  }
+  if (bargeInRecognizer) {
+    try {
+      bargeInRecognizer.abort();
+    } catch {
+      // ignore
+    }
+    bargeInRecognizer = null;
+  }
+}
+
+function isLikelySpeakerEcho(detectedText: string, spokenText: string): boolean {
+  if (!detectedText || !spokenText) return false;
+  const detectedNorm = detectedText.toLowerCase().trim();
+  const spokenNorm = spokenText.toLowerCase().trim();
+
+  // If detected words are a direct substring of what Jarvis is vocalizing, it's speaker echo
+  if (spokenNorm.includes(detectedNorm)) {
+    return true;
+  }
+
+  // Token-level check: if sequential words match the vocalized text
+  const detectedWords = detectedNorm.split(/\s+/).filter(Boolean);
+  if (detectedWords.length >= 2 && spokenNorm.includes(detectedWords.join(' '))) {
+    return true;
+  }
+
+  return false;
+}
+
+function startBargeInListener() {
+  stopBargeInListener();
+
+  const state = useJarvisStore.getState();
+  // Enable natural voice barge-in when in Voice Mode OR Hands-Free mode
+  if (!state.voiceModeOpen && !state.isHandsFree) return;
+  if (state.micMuted) return;
+
+  isBargeInActive = true;
+  let canInterrupt = false;
+
+  // 350ms grace window so initial audio playback onset does not trigger false interruption
+  bargeInGraceTimer = setTimeout(() => {
+    canInterrupt = true;
+  }, 350);
+
+  const SpeechRec =
+    typeof window !== 'undefined'
+      ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      : null;
+
+  if (SpeechRec) {
+    try {
+      const rec = new SpeechRec();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onresult = (e: any) => {
+        if (!isBargeInActive || !canInterrupt) return;
+        const current = useJarvisStore.getState();
+        if (!current.isSpeaking && current.orbState !== 'speaking') return;
+
+        let detected = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          detected += (e.results[i][0]?.transcript || '') + ' ';
+        }
+        const trimmed = detected.trim();
+        if (!trimmed) return;
+
+        // Filter out speaker echo if the device speaker leaked into the mic
+        if (isLikelySpeakerEcho(trimmed, current.lastSpokenText)) {
+          console.debug('[JarvisStore] Ignoring detected speech (likely speaker echo):', trimmed);
+          return;
+        }
+
+        console.log('[JarvisStore] 🛑 Natural user speech interrupted Jarvis (Barge-In):', trimmed);
+        stopBargeInListener();
+        jarvisVoice.stopSpeaking();
+
+        // Seed with what the user just spoke so no initial words are lost
+        latestInterimTranscript = trimmed;
+        useJarvisStore.setState({
+          isSpeaking: false,
+          transcript: trimmed,
+          orbState: 'listening',
+          statusMessage: 'Listening to you...',
+        });
+
+        // Immediately begin full recording of the user's new question
+        void current.toggleRecording();
+      };
+
+      rec.onerror = (err: any) => {
+        if (err.error !== 'no-speech' && err.error !== 'aborted') {
+          console.debug('[JarvisStore] Barge-in recognizer notice:', err.error);
+        }
+      };
+
+      rec.onend = () => {
+        // If TTS playback is still active and barge-in hasn't triggered, restart recognizer
+        if (isBargeInActive && useJarvisStore.getState().isSpeaking) {
+          try {
+            rec.start();
+          } catch {
+            // ignore
+          }
+        }
+      };
+
+      rec.start();
+      bargeInRecognizer = rec;
+    } catch (err) {
+      console.warn('[JarvisStore] Could not start SpeechRecognition for barge-in:', err);
+    }
+  }
+}
+
 // Sentient speech sanitizer: converts raw written markdown into natural spoken speech
 export function distillSpeechFromMarkdown(text: string): string {
   if (!text) return '';
@@ -231,6 +360,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
   jarvisVoice.setOrbStateCallback((orbState) => {
     set({ orbState, isSpeaking: orbState === 'speaking' });
     if (orbState === 'speaking') {
+      startBargeInListener();
       const pollSpeakingAudio = () => {
         if (get().orbState !== 'speaking') {
           set({ audioLevel: 0 });
@@ -242,6 +372,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       };
       requestAnimationFrame(pollSpeakingAudio);
     } else if (orbState === 'idle') {
+      stopBargeInListener();
       // If Voice Mode is active and mic is not muted, seamlessly resume listening for continuous dialogue!
       if (get().voiceModeOpen && !get().micMuted && !get().isRecording && !get().isTranscribing && !get().isSubmitting) {
         setTimeout(() => {
@@ -265,6 +396,10 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       if (state.isRecording || state.isTranscribing || state.isSubmitting) {
         console.log('[JarvisStore] Ignoring wake word because system is active.');
         return;
+      }
+      if (state.isSpeaking) {
+        stopBargeInListener();
+        jarvisVoice.stopSpeaking();
       }
       // Trigger recording immediately
       void get().toggleRecording();
@@ -294,12 +429,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     micMuted: false,
     lastSpokenText: '',
     openVoiceMode: () => {
-      set({ voiceModeOpen: true });
+      set({ voiceModeOpen: true, transcript: '' });
       if (!get().isRecording && !get().isSpeaking && !get().isSubmitting) {
         void get().toggleRecording();
       }
     },
     closeVoiceMode: () => {
+      stopBargeInListener();
       set({ voiceModeOpen: false });
       if (get().isRecording) {
         void get().toggleRecording();
@@ -317,8 +453,11 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     },
     setMicMuted: (muted: boolean) => {
       set({ micMuted: muted });
-      if (muted && get().isRecording) {
-        void get().toggleRecording();
+      if (muted) {
+        stopBargeInListener();
+        if (get().isRecording) {
+          void get().toggleRecording();
+        }
       } else if (!muted && !get().isRecording && get().voiceModeOpen) {
         void get().toggleRecording();
       }
@@ -447,6 +586,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     },
 
     stopSpeaking: () => {
+      stopBargeInListener();
       jarvisVoice.stopSpeaking();
       set({ isSpeaking: false, orbState: 'idle', statusMessage: 'Narration paused' });
     },
@@ -529,16 +669,18 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         }
       } else {
         // ── START recording ────────────────────────────────────────────
-        // Immediately interrupt and kill any active speech narration!
+        // Immediately interrupt and kill any active speech narration & barge-in listener!
+        stopBargeInListener();
         jarvisVoice.stopSpeaking();
         wakeWordService.pause();
         stopActiveInterimRecognizer();
-        latestInterimTranscript = '';
+
+        const initialSeed = latestInterimTranscript.trim();
         isTrailingThoughtIncomplete = false;
 
         set({
           isSpeaking: false,
-          transcript: '',
+          transcript: initialSeed,
           statusMessage: get().isHandsFree
             ? 'Listening... say your command'
             : 'Listening... press mic or pause when done',
@@ -564,11 +706,15 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               }
               const trimmed = accumulated.trim();
               if (trimmed) {
-                latestInterimTranscript = trimmed;
-                set({ transcript: trimmed });
+                const fullText =
+                  initialSeed && !trimmed.toLowerCase().includes(initialSeed.toLowerCase())
+                    ? `${initialSeed} ${trimmed}`
+                    : trimmed;
+                latestInterimTranscript = fullText;
+                set({ transcript: fullText });
 
                 // Semantic turn-completion check:
-                const tokens = trimmed.toLowerCase().replace(/[.,!?;:]/g, ' ').trim().split(/\s+/);
+                const tokens = fullText.toLowerCase().replace(/[.,!?;:]/g, ' ').trim().split(/\s+/);
                 const lastWord = tokens[tokens.length - 1];
                 isTrailingThoughtIncomplete = Boolean(lastWord && INCOMPLETE_CONNECTORS.has(lastWord));
               }
@@ -796,6 +942,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             activeMessageId: lastMsg.id,
             orbState: 'idle',
             statusMessage: 'Ready for your review',
+            transcript: '',
           });
           if (!get().isMuted) {
             const rawContent = (lastMsg.content || '').trim();
@@ -858,16 +1005,32 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
             execVoice = `Marked "${title}" as completed.`;
           }
-          set({ isSubmitting: false, orbState: 'success', statusMessage: execVoice, lastSpokenText: execVoice });
+          set({
+            isSubmitting: false,
+            orbState: 'success',
+            statusMessage: execVoice,
+            lastSpokenText: execVoice,
+            transcript: '',
+          });
           if (!get().isMuted) jarvisVoice.speak(execVoice);
         } else {
           if (!get().isMuted && lastMsg.content) {
-            set({ isSubmitting: false, orbState: 'speaking', statusMessage: 'Answer ready' });
             const speechToSpeak = lastMsg.speechText || distillSpeechFromMarkdown(lastMsg.content);
-            set({ lastSpokenText: speechToSpeak });
+            set({
+              isSubmitting: false,
+              orbState: 'speaking',
+              statusMessage: 'Answer ready',
+              lastSpokenText: speechToSpeak,
+              transcript: '',
+            });
             jarvisVoice.speak(speechToSpeak);
           } else {
-            set({ isSubmitting: false, orbState: 'idle', statusMessage: 'Answer ready' });
+            set({
+              isSubmitting: false,
+              orbState: 'idle',
+              statusMessage: 'Answer ready',
+              transcript: '',
+            });
             if (get().isHandsFree) void wakeWordService.resume();
           }
         }

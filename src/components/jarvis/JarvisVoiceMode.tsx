@@ -10,7 +10,6 @@ export function JarvisVoiceMode() {
     orbState,
     audioLevel,
     transcript,
-    lastSpokenText,
     isSubmitting,
     isTranscribing,
     isSpeaking,
@@ -40,11 +39,11 @@ export function JarvisVoiceMode() {
     if (micMuted) return 'Mic muted';
     if (orbState === 'listening') return 'Listening';
     if (orbState === 'thinking' || isSubmitting || isTranscribing) return 'Thinking';
-    if (orbState === 'speaking' || isSpeaking) return 'Speaking';
+    if (orbState === 'speaking' || isSpeaking) return 'Speaking · Speak to interrupt';
     return 'Listening';
   }, [micMuted, orbState, isSubmitting, isTranscribing, isSpeaking]);
 
-  // Derived live caption in larger text
+  // Derived live caption in larger text (Clean & voice-only: never mixes in long assistant paragraphs)
   const captionText = useMemo(() => {
     if (micMuted) {
       return 'Microphone is muted. Tap the mic button to speak.';
@@ -53,18 +52,19 @@ export function JarvisVoiceMode() {
       return transcript || 'Listening to you...';
     }
     if (orbState === 'thinking' || isSubmitting || isTranscribing) {
-      return transcript || 'Thinking...';
+      return 'Thinking...';
     }
     if (orbState === 'speaking' || isSpeaking) {
-      return lastSpokenText || 'Speaking...';
+      return 'Jarvis is answering...';
     }
     return transcript || 'How can I assist you?';
-  }, [micMuted, orbState, isSubmitting, isTranscribing, isSpeaking, transcript, lastSpokenText]);
+  }, [micMuted, orbState, isSubmitting, isTranscribing, isSpeaking, transcript]);
 
-  // Tap orb interaction
+  // Tap orb interaction (Interrupts speech and starts listening immediately)
   const handleOrbClick = () => {
     if (isSpeaking) {
       stopSpeaking();
+      void toggleRecording();
     } else {
       void toggleRecording();
     }
