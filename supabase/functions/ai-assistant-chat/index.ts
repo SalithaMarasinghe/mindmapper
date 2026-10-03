@@ -3230,11 +3230,13 @@ function distillSpeech(text: string): string {
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
     let speech = '';
+    // Take only the first 2-3 sentences to avoid rambling if this is a fallback
     for (const s of sentences) {
       const trimmed = s.trim();
       if (!trimmed || trimmed.length < 10) continue;
-      // Allow conversational speech up to ~1500 chars (~200-240 words)
-      if (speech && (speech + ' ' + trimmed).length > 1500) break;
+      // If we already have a solid sentence, and adding this makes it too long, stop.
+      // Limit fallback speech to ~300 chars (~45 words) max to ensure concise delivery.
+      if (speech && (speech + ' ' + trimmed).length > 300) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
     }
 
@@ -3247,7 +3249,7 @@ function distillSpeech(text: string): string {
     }
   }
 
-  return clean.slice(0, 1500).trim();
+  return clean.slice(0, 300).trim();
 }
 
 async function synthesizeVoiceSummary(
@@ -3286,7 +3288,7 @@ Rules:
         temperature: 0.3,
         max_tokens: 350,
       }),
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!res.ok) return null;
