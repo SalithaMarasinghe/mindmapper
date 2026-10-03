@@ -32,7 +32,6 @@ export function JarvisCockpit() {
     isWakeWordLoading,
     orbState,
     audioLevel,
-    transcript,
     pastedText,
     statusMessage,
     activeProposal,
@@ -62,10 +61,6 @@ export function JarvisCockpit() {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Sync transcription into inputVal
-  useEffect(() => {
-    if (transcript) setInputVal(transcript);
-  }, [transcript]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {

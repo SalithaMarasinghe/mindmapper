@@ -69,12 +69,6 @@ export function MobileJarvisPage() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Sync speech transcript into inputVal
-  useEffect(() => {
-    if (transcript) {
-      setInputVal((prev) => (prev ? `${prev} ${transcript}` : transcript));
-    }
-  }, [transcript]);
 
   // Auto-scroll to bottom of conversation
   useEffect(() => {
