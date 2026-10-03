@@ -1,4 +1,4 @@
-import { Volume2, VolumeX, Headphones, Loader2 } from 'lucide-react';
+import { Volume2, VolumeX, Headphones, Loader2, Zap, ShieldCheck } from 'lucide-react';
 import { useJarvisStore } from '../../store/jarvisStore';
 
 export function VoiceDeckHeader() {
@@ -6,6 +6,8 @@ export function VoiceDeckHeader() {
   const toggleMute = useJarvisStore((s) => s.toggleMute);
   const isHandsFree = useJarvisStore((s) => s.isHandsFree);
   const isWakeWordLoading = useJarvisStore((s) => s.isWakeWordLoading);
+  const wakeWordEngine = useJarvisStore((s) => s.wakeWordEngine);
+  const setWakeWordEngine = useJarvisStore((s) => s.setWakeWordEngine);
   const toggleHandsFree = useJarvisStore((s) => s.toggleHandsFree);
 
   return (
@@ -13,9 +15,27 @@ export function VoiceDeckHeader() {
       <div className="flex items-center gap-1.5">
         <span className="text-sm font-medium text-text-secondary">Voice deck</span>
         {isHandsFree && (
-          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono font-semibold bg-accent/20 text-accent border border-accent/40 animate-pulse">
-            LIVE
-          </span>
+          <button
+            onClick={() => void setWakeWordEngine(wakeWordEngine === 'browser' ? 'wasm' : 'browser')}
+            title={
+              wakeWordEngine === 'browser'
+                ? "Mode: Browser Speech (Instant, detects 'Javis' & accents). Click to switch to 100% Local Neural WASM."
+                : "Mode: Local Neural WASM (100% Private). Click to switch to Instant Browser Speech."
+            }
+            className="px-1.5 py-0.5 rounded text-[10px] font-mono border transition-all cursor-pointer flex items-center gap-1 bg-panel hover:bg-hover border-border text-text-secondary"
+          >
+            {wakeWordEngine === 'browser' ? (
+              <>
+                <Zap className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                <span>Speech</span>
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
+                <span>WASM</span>
+              </>
+            )}
+          </button>
         )}
       </div>
 

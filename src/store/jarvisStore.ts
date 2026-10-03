@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { jarvisVoice } from '../services/jarvisVoice';
-import { wakeWordService } from '../services/wakeWordService';
+import { wakeWordService, type WakeWordEngineType } from '../services/wakeWordService';
 import { useAssistantStore } from './assistantStore';
 import { supabase } from '../lib/supabase';
 import type { AssistantProposal, SearchSource } from '../types';
@@ -120,10 +120,12 @@ interface JarvisState {
   isWebSearchEnabled: boolean;
   lastSearchSources: SearchSource[];
 
-  // Hands-Free openWakeWord state
+  // Hands-Free wake-word state
   isHandsFree: boolean;
   isWakeWordLoading: boolean;
   wakeWordError: string | null;
+  wakeWordEngine: WakeWordEngineType;
+  setWakeWordEngine: (engine: WakeWordEngineType) => Promise<void>;
   toggleHandsFree: () => Promise<void>;
 
   openHUD: (greet?: boolean) => void;
@@ -180,8 +182,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       // Trigger recording immediately
       void get().toggleRecording();
     },
-    onStateChange: ({ isLoading, error }) => {
-      set({ isWakeWordLoading: isLoading, wakeWordError: error });
+    onStateChange: ({ isLoading, error, engineType }) => {
+      set({ isWakeWordLoading: isLoading, wakeWordError: error, wakeWordEngine: engineType });
     },
   });
 
@@ -200,10 +202,21 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     isMuted: false,
     isSubmitting: false,
 
-    // Hands-Free openWakeWord state
+    // Hands-Free wake-word state
     isHandsFree: false,
     isWakeWordLoading: false,
     wakeWordError: null,
+    wakeWordEngine: wakeWordService.getEngineType(),
+
+    setWakeWordEngine: async (engine: WakeWordEngineType) => {
+      await wakeWordService.setEngineType(engine);
+      set({ wakeWordEngine: engine });
+      toast.success(
+        engine === 'browser'
+          ? 'Switched to Browser Speech (Instant, detects any accent) ⚡'
+          : 'Switched to Local Neural Model (100% Private, On-Device) 🔒'
+      );
+    },
 
     activePromptDocument: null,
     promptHistory: [],
