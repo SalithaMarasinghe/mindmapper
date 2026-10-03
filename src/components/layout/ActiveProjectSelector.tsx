@@ -4,9 +4,10 @@ import { useTimelineStore } from '../../store/timelineStore';
 
 interface ActiveProjectSelectorProps {
   compact?: boolean;
+  variant?: 'pill' | 'minimal';
 }
 
-export function ActiveProjectSelector({ compact = false }: ActiveProjectSelectorProps) {
+export function ActiveProjectSelector({ compact = false, variant = 'pill' }: ActiveProjectSelectorProps) {
   const { projects, activeProjectId, setActiveProjectId, getActiveProject, fetchProjects } = useTimelineStore();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,31 +36,37 @@ export function ActiveProjectSelector({ compact = false }: ActiveProjectSelector
     <div className="relative inline-flex items-center" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 cursor-pointer ${
-          activeProject
-            ? 'bg-surface hover:bg-surface-2 border-border hover:border-accent/40 text-text'
-            : 'bg-surface/50 hover:bg-surface border-border text-text-muted hover:text-text-secondary'
-        } ${compact ? 'text-xs h-7' : 'text-xs h-7.5'}`}
+        className={
+          variant === 'minimal'
+            ? 'flex items-center gap-1.5 py-1 text-xs text-text-secondary hover:text-text cursor-pointer transition-colors group'
+            : `flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 cursor-pointer ${
+                activeProject
+                  ? 'bg-surface hover:bg-surface-2 border-border hover:border-accent/40 text-text'
+                  : 'bg-surface/50 hover:bg-surface border-border text-text-muted hover:text-text-secondary'
+              } ${compact ? 'text-xs h-7' : 'text-xs h-7.5'}`
+        }
         title="Active Focus Project (Narrative Spine)"
         aria-label="Active Focus Project"
       >
-        <span className="relative flex h-2 w-2">
-          {activeProject && (
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-60"></span>
-          )}
-          <span
-            className={`relative inline-flex rounded-full h-2 w-2 ${
-              activeProject ? 'bg-accent' : 'bg-text-muted'
-            }`}
-          ></span>
-        </span>
+        {variant !== 'minimal' && (
+          <span className="relative flex h-2 w-2">
+            {activeProject && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-60"></span>
+            )}
+            <span
+              className={`relative inline-flex rounded-full h-2 w-2 ${
+                activeProject ? 'bg-accent' : 'bg-text-muted'
+              }`}
+            ></span>
+          </span>
+        )}
 
-        <span className="font-medium text-text-secondary truncate max-w-[105px] xs:max-w-[130px] sm:max-w-[160px]">
+        <span className="font-medium text-text-secondary group-hover:text-text truncate max-w-[105px] xs:max-w-[130px] sm:max-w-[160px]">
           {activeProject ? activeProject.name : 'Select Project'}
         </span>
 
         <ChevronDown
-          className={`w-3 h-3 text-text-muted transition-transform duration-200 ${
+          className={`w-3 h-3 text-text-muted group-hover:text-text transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />

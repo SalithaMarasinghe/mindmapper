@@ -30,7 +30,9 @@
   --warning:        #FBBF24;
   --error:          #F87171;
 
-  /* ── Radial Waveform Orb ── */
+  /* ── Radial Waveform & Sphere Orb ── */
+  --orb-color:      #EDEDED;
+  --orb-color-pink: #EC4899;
   --orb-idle:       #EDEDED;
   --orb-active:     #5EEAD4;
   --orb-muted:      #8B8B92;
@@ -66,4 +68,96 @@
 @keyframes waveform-idle {
   0%, 100% { transform: scaleY(0.15); }
   50%      { transform: scaleY(0.35); }
+}
+
+/* ── Jarvis Radial Gradient Orb Keyframes ── */
+@keyframes orb-breathe {
+  0%, 100% {
+    transform: scale(0.96);
+    filter: drop-shadow(0 0 12px color-mix(in srgb, var(--orb-color, #ededed) 35%, transparent));
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 20px color-mix(in srgb, var(--orb-color, #ededed) 55%, transparent));
+  }
+}
+
+@keyframes orb-listen-pulse {
+  0%, 100% {
+    transform: scale(0.97);
+    filter: drop-shadow(0 0 16px color-mix(in srgb, var(--orb-color, #ededed) 50%, transparent));
+  }
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 28px color-mix(in srgb, var(--orb-color, #ededed) 80%, transparent));
+  }
+}
+
+@keyframes orb-drift-slow {
+  0% {
+    transform: rotate(0deg) translate(2%, 2%) rotate(0deg);
+  }
+  50% {
+    transform: rotate(180deg) translate(-2%, -2%) rotate(-180deg);
+  }
+  100% {
+    transform: rotate(360deg) translate(2%, 2%) rotate(-360deg);
+  }
+}
+
+@keyframes orb-thinking-swirl {
+  0% {
+    transform: rotate(0deg) scale(0.97);
+    filter: drop-shadow(0 0 14px color-mix(in srgb, var(--orb-color, #ededed) 40%, transparent));
+  }
+  50% {
+    transform: rotate(180deg) scale(1.06);
+    filter: drop-shadow(0 0 24px color-mix(in srgb, var(--orb-color, #ededed) 70%, transparent));
+  }
+  100% {
+    transform: rotate(360deg) scale(0.97);
+    filter: drop-shadow(0 0 14px color-mix(in srgb, var(--orb-color, #ededed) 40%, transparent));
+  }
+}
+
+@keyframes orb-speaking-rhythm {
+  0%, 100% {
+    transform: scale(0.96);
+    filter: drop-shadow(0 0 15px color-mix(in srgb, var(--orb-color, #ededed) 45%, transparent));
+  }
+  25% {
+    transform: scale(1.07);
+    filter: drop-shadow(0 0 26px color-mix(in srgb, var(--orb-color, #ededed) 75%, transparent));
+  }
+  50% {
+    transform: scale(1.01);
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--orb-color, #ededed) 50%, transparent));
+  }
+  75% {
+    transform: scale(1.10);
+    filter: drop-shadow(0 0 30px color-mix(in srgb, var(--orb-color, #ededed) 85%, transparent));
+  }
+}
+
+@keyframes orb-halo-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-anim-idle,
+  .orb-anim-listening,
+  .orb-anim-thinking,
+  .orb-anim-speaking,
+  .orb-anim-drift,
+  .orb-anim-halo {
+    animation: none !important;
+    transform: none !important;
+  }
 }

@@ -198,6 +198,15 @@ interface JarvisState {
   setWakeWordEngine: (engine: WakeWordEngineType) => Promise<void>;
   toggleHandsFree: () => Promise<void>;
 
+  // Voice Mode state
+  voiceModeOpen: boolean;
+  micMuted: boolean;
+  openVoiceMode: () => void;
+  closeVoiceMode: () => void;
+  toggleVoiceMode: () => void;
+  setMicMuted: (muted: boolean) => void;
+  toggleMicMute: () => void;
+
   openHUD: (greet?: boolean) => void;
   closeHUD: () => void;
   setTranscript: (text: string) => void;
@@ -271,6 +280,43 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     activeMessageId: null,
     isMuted: false,
     isSubmitting: false,
+
+    // Voice Mode overlay state
+    voiceModeOpen: false,
+    micMuted: false,
+    openVoiceMode: () => {
+      set({ voiceModeOpen: true });
+      if (!get().isRecording && !get().isSpeaking && !get().isSubmitting) {
+        void get().toggleRecording();
+      }
+    },
+    closeVoiceMode: () => {
+      set({ voiceModeOpen: false });
+      if (get().isRecording) {
+        void get().toggleRecording();
+      }
+      if (get().isSpeaking) {
+        get().stopSpeaking();
+      }
+    },
+    toggleVoiceMode: () => {
+      if (get().voiceModeOpen) {
+        get().closeVoiceMode();
+      } else {
+        get().openVoiceMode();
+      }
+    },
+    setMicMuted: (muted: boolean) => {
+      set({ micMuted: muted });
+      if (muted && get().isRecording) {
+        void get().toggleRecording();
+      } else if (!muted && !get().isRecording && get().voiceModeOpen) {
+        void get().toggleRecording();
+      }
+    },
+    toggleMicMute: () => {
+      get().setMicMuted(!get().micMuted);
+    },
 
     // Hands-Free wake-word state
     isHandsFree: false,

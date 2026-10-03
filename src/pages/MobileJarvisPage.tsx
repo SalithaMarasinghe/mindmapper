@@ -50,6 +50,7 @@ export function MobileJarvisPage() {
     submitCommand,
     copyPromptToClipboard,
     lastCopiedAt,
+    toggleVoiceMode,
   } = useJarvisStore();
 
   const {
@@ -59,7 +60,7 @@ export function MobileJarvisPage() {
     fetchConversations,
   } = useAssistantStore();
 
-  const { profile, user, signOut } = useAuthStore();
+  const { user, signOut } = useAuthStore();
 
   const [inputVal, setInputVal] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
@@ -119,7 +120,6 @@ export function MobileJarvisPage() {
   };
 
   const isSystemBusy = isSending || isSubmitting;
-  const initial = profile?.displayName?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U';
 
   const quickPrompts = [
     {
@@ -143,186 +143,150 @@ export function MobileJarvisPage() {
   return (
     <div className="h-full w-full flex flex-col bg-bg text-text overflow-hidden select-none">
       
-      {/* ── Top Mobile Bar ────────────────────────────────────────────── */}
-      <header className="pt-[max(env(safe-area-inset-top,0px),12px)] pb-2.5 px-3 border-b border-border bg-panel shrink-0 flex items-center justify-between z-30">
-        <div className="flex items-center gap-2">
+      {/* ── Slim Minimal Header ────────────────────────────────────────── */}
+      <header className="pt-[max(env(safe-area-inset-top,0px),8px)] pb-2 px-4 border-b border-border/20 bg-bg/85 backdrop-blur-md shrink-0 flex items-center justify-between z-30">
+        {/* Left: Jarvis Wordmark + Minimal Project Selector */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <Link
             to="/dashboard"
             onClick={() => sessionStorage.setItem('prefer_desktop', 'true')}
-            className="flex items-center gap-1.5 font-bold text-accent text-base tracking-tight shrink-0"
+            className="font-semibold text-text text-sm tracking-tight shrink-0 hover:opacity-80 transition-opacity"
             title="Switch to Desktop View"
           >
-            <span>🧠</span> Jarvis
+            Jarvis
           </Link>
-
-          {/* Active Focus Project Selector (Compact Pill) */}
-          <div className="ml-1">
-            <ActiveProjectSelector compact />
-          </div>
+          <span className="text-text-muted/30 text-xs select-none">/</span>
+          <ActiveProjectSelector compact variant="minimal" />
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Hands-Free Wake-Word Toggle Pill */}
+        {/* Center: Small Orb (42px) */}
+        <div className="flex items-center justify-center shrink-0">
+          <JarvisOrb
+            size={42}
+            state={orbState}
+            audioLevel={audioLevel}
+            onClick={toggleVoiceMode}
+          />
+        </div>
+
+        {/* Right: Single Settings Icon Button & Relocated Controls */}
+        <div className="relative flex items-center justify-end flex-1 min-w-0">
           <button
-            onClick={() => void toggleHandsFree()}
-            disabled={isWakeWordLoading}
-            aria-label="Toggle Hands-Free wake-word detection"
-            className={`px-2 py-1 rounded-full text-[11px] border transition-all flex items-center gap-1 cursor-pointer ${
-              isHandsFree
-                ? 'bg-accent/15 text-accent border-accent/50 font-medium shadow-sm ring-1 ring-accent/30'
-                : 'bg-surface text-text-muted border-border hover:text-text-secondary'
+            onClick={() => setProfileOpen(!profileOpen)}
+            aria-label="Settings and actions"
+            className={`p-2 rounded-full transition-colors cursor-pointer ${
+              profileOpen
+                ? 'bg-surface-2 text-text'
+                : 'text-text-muted hover:text-text hover:bg-surface-2'
             }`}
-            title={
-              isHandsFree
-                ? "Hands-Free listening is ON. Say 'Hey Jarvis' anytime!"
-                : "Turn on hands-free wake word ('Hey Jarvis')"
-            }
           >
-            {isWakeWordLoading ? (
-              <Loader2 className="w-3 h-3 animate-spin text-accent" />
-            ) : (
-              <Headphones className={`w-3 h-3 ${isHandsFree ? 'text-accent animate-pulse' : ''}`} />
-            )}
-            <span className="hidden xs:inline">
-              {isWakeWordLoading ? 'Loading...' : isHandsFree ? 'Hey Jarvis' : 'Hands-Free'}
-            </span>
-            {isHandsFree && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
-            )}
+            <Settings className="w-4 h-4" />
           </button>
 
-          {/* Web Search Toggle Pill */}
-          <button
-            onClick={toggleWebSearch}
-            aria-label="Toggle web search"
-            className={`px-2 py-1 rounded-full text-[11px] border transition-colors flex items-center gap-1 ${
-              isWebSearchEnabled
-                ? 'bg-surface-2 text-accent border-accent/40 font-medium'
-                : 'bg-surface text-text-muted border-border hover:text-text-secondary'
-            }`}
-            title="Toggle Live Web Search"
-          >
-            <Globe className="w-3 h-3" />
-            <span className="hidden xs:inline">Search</span>
-          </button>
+          {/* Settings Popover Dropdown */}
+          {profileOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 w-64 bg-surface border border-border/80 rounded-[12px] shadow-2xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+                {/* User email & Hands-free indicator */}
+                <div className="px-3 py-2 border-b border-border/40 text-text-muted truncate flex items-center justify-between">
+                  <span className="truncate">{user?.email || 'Logged In'}</span>
+                  {isHandsFree && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-accent bg-accent/10 px-1.5 py-0.5 rounded-full font-medium">
+                      <Headphones className="w-2.5 h-2.5" /> Hands-Free
+                    </span>
+                  )}
+                </div>
 
-          {/* New Session Button */}
-          {messages.length > 0 && (
-            <button
-              onClick={startNewConversation}
-              className="p-1.5 rounded-[8px] text-text-muted hover:text-text hover:bg-surface transition-colors"
-              title="New Conversation Session"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Desktop Dashboard Switch Link */}
-          <Link
-            to="/dashboard"
-            onClick={() => sessionStorage.setItem('prefer_desktop', 'true')}
-            className="p-1.5 rounded-[8px] text-text-muted hover:text-text hover:bg-surface transition-colors"
-            title="Desktop Dashboard"
-          >
-            <Monitor className="w-4 h-4" />
-          </Link>
-
-          {/* Avatar Profile Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center p-0.5 rounded-full hover:bg-surface transition-colors"
-            >
-              <div className="h-6 w-6 rounded-full bg-accent text-bg font-semibold text-xs flex items-center justify-center">
-                {initial}
-              </div>
-            </button>
-
-            {profileOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
-                <div className="absolute right-0 mt-2 w-44 bg-panel rounded-[10px] shadow-2xl border border-border py-1.5 z-50 text-xs">
-                  <div className="px-3 py-1.5 border-b border-border/50 text-text-muted truncate">
-                    {user?.email}
-                  </div>
-                  <Link
-                    to="/settings"
-                    onClick={() => setProfileOpen(false)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface hover:text-text transition-colors"
+                {/* Relocated actions */}
+                <div className="py-1.5 space-y-1">
+                  {/* Hands-Free Wake-Word Toggle */}
+                  <button
+                    onClick={() => void toggleHandsFree()}
+                    disabled={isWakeWordLoading}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-[8px] hover:bg-surface-2 transition-colors cursor-pointer text-text-secondary hover:text-text"
                   >
-                    <Settings className="h-3.5 w-3.5 text-text-muted" /> Settings
-                  </Link>
+                    <div className="flex items-center gap-2">
+                      {isWakeWordLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />
+                      ) : (
+                        <Headphones className={`w-3.5 h-3.5 ${isHandsFree ? 'text-accent' : 'text-text-muted'}`} />
+                      )}
+                      <span>Hands-Free ('Hey Jarvis')</span>
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isHandsFree ? 'bg-accent/20 text-accent font-medium' : 'text-text-muted'}`}>
+                      {isWakeWordLoading ? '...' : isHandsFree ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+
+                  {/* Web Search Toggle */}
+                  <button
+                    onClick={toggleWebSearch}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-[8px] hover:bg-surface-2 transition-colors cursor-pointer text-text-secondary hover:text-text"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Globe className={`w-3.5 h-3.5 ${isWebSearchEnabled ? 'text-accent' : 'text-text-muted'}`} />
+                      <span>Live Web Search</span>
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isWebSearchEnabled ? 'bg-accent/20 text-accent font-medium' : 'text-text-muted'}`}>
+                      {isWebSearchEnabled ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+
+                  {/* New Conversation Session */}
                   <button
                     onClick={() => {
                       setProfileOpen(false);
-                      signOut();
+                      startNewConversation();
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-text-secondary hover:bg-surface hover:text-text transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-surface-2 transition-colors cursor-pointer text-text-secondary hover:text-text"
                   >
-                    <LogOut className="h-3.5 w-3.5 text-text-muted" /> Sign out
+                    <Plus className="w-3.5 h-3.5 text-text-muted" />
+                    <span>New Session</span>
                   </button>
+
+                  {/* Switch to Desktop Dashboard */}
+                  <Link
+                    to="/dashboard"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      sessionStorage.setItem('prefer_desktop', 'true');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-surface-2 transition-colors cursor-pointer text-text-secondary hover:text-text"
+                  >
+                    <Monitor className="w-3.5 h-3.5 text-text-muted" />
+                    <span>Desktop Dashboard</span>
+                  </Link>
+
+                  {/* Settings Page */}
+                  <Link
+                    to="/settings"
+                    onClick={() => setProfileOpen(false)}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-surface-2 transition-colors cursor-pointer text-text-secondary hover:text-text"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-text-muted" />
+                    <span>Settings</span>
+                  </Link>
+
+                  {/* Sign Out */}
+                  <div className="pt-1 border-t border-border/40">
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false);
+                        signOut();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-rose-500/10 text-text-muted hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </header>
-
-      {/* ── Active Compact Voice Banner (When Messages Exist) ─────────── */}
-      {messages.length > 0 && (
-        <div className="border-b border-border bg-panel/60 px-3 py-2 shrink-0 flex items-center justify-between gap-3">
-          <div
-            onClick={handleMicClick}
-            className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
-          >
-            <div className="shrink-0 relative">
-              <JarvisOrb size={44} state={orbState} audioLevel={audioLevel} glow={false} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-text truncate flex items-center gap-1.5">
-                {isRecording ? (
-                  <span className="text-accent animate-pulse">● Listening to you...</span>
-                ) : isSpeaking ? (
-                  <span className="text-accent flex items-center gap-1">
-                    <VolumeX className="w-3 h-3" /> Speaking (tap to mute)
-                  </span>
-                ) : isSystemBusy ? (
-                  <span className="text-text-secondary">Jarvis is thinking...</span>
-                ) : isHandsFree ? (
-                  <span className="text-accent flex items-center gap-1 font-medium">
-                    <Headphones className="w-3 h-3 animate-pulse" /> Hands-Free · Say "Hey Jarvis"
-                  </span>
-                ) : (
-                  <span className="text-text-secondary">Jarvis Active · Tap orb to speak</span>
-                )}
-              </div>
-              <div className="h-4 flex items-center mt-0.5">
-                <Waveform
-                  barCount={20}
-                  isActive={isRecording}
-                  isThinking={isSystemBusy || isTranscribing}
-                  analyserNode={null}
-                  audioLevel={audioLevel}
-                />
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleMicClick}
-            className={`p-2 rounded-full shrink-0 transition-all ${
-              isRecording
-                ? 'bg-accent text-bg scale-105'
-                : isSpeaking
-                ? 'bg-surface-2 text-text border border-border'
-                : 'bg-surface text-text-muted hover:text-text'
-            }`}
-            aria-label="Voice input"
-          >
-            {isRecording ? <MicOff className="w-4 h-4" /> : isSpeaking ? <VolumeX className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </button>
-        </div>
-      )}
 
       {/* ── Interim Speech Transcript Banner ──────────────────────────── */}
       {transcript && isRecording && (
