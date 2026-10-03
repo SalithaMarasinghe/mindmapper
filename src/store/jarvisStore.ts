@@ -81,6 +81,7 @@ function stopAudioPoll() {
 // Concurrency mutex and transition guard
 let isTogglingRecording = false;
 let isBargeInTransitioning = false;
+let wasSpeakingPriorToIdle = false;
 
 // ── Live Barge-In / Speech Interruption Engine ──────────────────────────────
 // Allows the user to interrupt Jarvis at any moment during spoken answers.
@@ -104,19 +105,47 @@ function stopBargeInListener() {
   }
 }
 
-function isLikelySpeakerEcho(detectedText: string, spokenText: string): boolean {
-  if (!detectedText || !spokenText) return false;
-  const detectedNorm = detectedText.toLowerCase().trim();
-  const spokenNorm = spokenText.toLowerCase().trim();
+// Explicit conversational interrupt trigger words
+const EXPLICIT_INTERRUPT_WORDS = new Set([
+  'stop', 'wait', 'cancel', 'pause', 'quiet', 'hush', 'listen',
+  'jarvis', 'hold', 'enough'
+]);
 
-  // If detected words are a direct substring of what Jarvis is vocalizing, it's speaker echo
-  if (spokenNorm.includes(detectedNorm)) {
+function isLikelySpeakerEcho(detectedText: string, spokenText: string): boolean {
+  if (!detectedText) return true;
+  if (!spokenText) return false;
+
+  const cleanText = (t: string) =>
+    t.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const detectedClean = cleanText(detectedText);
+  const spokenClean = cleanText(spokenText);
+
+  if (!detectedClean) return true;
+
+  // Direct substring check
+  if (spokenClean.includes(detectedClean)) {
     return true;
   }
 
-  // Token-level check: if sequential words match the vocalized text
-  const detectedWords = detectedNorm.split(/\s+/).filter(Boolean);
-  if (detectedWords.length >= 2 && spokenNorm.includes(detectedWords.join(' '))) {
+  // Token-level overlap check:
+  // If a significant percentage of detected words are found in what Jarvis spoke,
+  // it is acoustic leakage/bleed from the device's speakers into the microphone.
+  const spokenWords = new Set(spokenClean.split(' ').filter((w) => w.length > 1));
+  const detectedWords = detectedClean.split(' ').filter((w) => w.length > 1);
+
+  if (detectedWords.length === 0) return true;
+
+  let matchedWords = 0;
+  for (const w of detectedWords) {
+    if (spokenWords.has(w)) {
+      matchedWords++;
+    }
+  }
+
+  const overlapRatio = matchedWords / detectedWords.length;
+  // If 40% or more of the detected words match what Jarvis is speaking, it's speaker echo
+  if (overlapRatio >= 0.4) {
     return true;
   }
 
@@ -134,10 +163,11 @@ function startBargeInListener() {
   isBargeInActive = true;
   let canInterrupt = false;
 
-  // 350ms grace window so initial audio playback onset does not trigger false interruption
+  // 1200ms grace window so speech playback starts and speaker levels stabilize
+  // before listening for user interruption
   bargeInGraceTimer = setTimeout(() => {
     canInterrupt = true;
-  }, 350);
+  }, 1200);
 
   const SpeechRec =
     typeof window !== 'undefined'
@@ -163,6 +193,23 @@ function startBargeInListener() {
         const trimmed = detected.trim();
         if (!trimmed) return;
 
+        const words = trimmed
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, '')
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (words.length === 0) return;
+
+        // Check if user spoke an explicit interrupt keyword ('stop', 'wait', 'pause', etc.)
+        const hasExplicitInterrupt = words.some((w) => EXPLICIT_INTERRUPT_WORDS.has(w));
+
+        // For non-explicit words, require at least 2 distinct words and 8 chars
+        // to prevent ambient room noises, breaths, or phone notifications from triggering barge-in
+        if (!hasExplicitInterrupt && (words.length < 2 || trimmed.length < 8)) {
+          return;
+        }
+
         // Filter out speaker echo if the device speaker leaked into the mic
         if (isLikelySpeakerEcho(trimmed, current.lastSpokenText)) {
           console.debug('[JarvisStore] Ignoring detected speech (likely speaker echo):', trimmed);
@@ -171,6 +218,7 @@ function startBargeInListener() {
 
         console.log('[JarvisStore] 🛑 Natural user speech interrupted Jarvis (Barge-In):', trimmed);
         stopBargeInListener();
+        wasSpeakingPriorToIdle = false;
         isBargeInTransitioning = true;
         jarvisVoice.stopSpeaking();
 
@@ -380,6 +428,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
   jarvisVoice.setOrbStateCallback((orbState) => {
     set({ orbState, isSpeaking: orbState === 'speaking' });
     if (orbState === 'speaking') {
+      wasSpeakingPriorToIdle = true;
       startBargeInListener();
       const pollSpeakingAudio = () => {
         if (get().orbState !== 'speaking') {
@@ -393,16 +442,20 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       requestAnimationFrame(pollSpeakingAudio);
     } else if (orbState === 'idle') {
       stopBargeInListener();
-      // If Voice Mode is active and mic is not muted, seamlessly resume listening for continuous dialogue!
-      // (Unless in the middle of a barge-in transition or already toggling)
+      const shouldAutoResumeInVoiceMode = wasSpeakingPriorToIdle && !isBargeInTransitioning;
+      wasSpeakingPriorToIdle = false;
+
+      // If Voice Mode is active and mic is not muted, seamlessly resume listening for continuous dialogue
+      // ONLY when speech was actually active and has naturally finished playing!
       if (
-        !isBargeInTransitioning &&
+        shouldAutoResumeInVoiceMode &&
         !isTogglingRecording &&
         get().voiceModeOpen &&
         !get().micMuted &&
         !get().isRecording &&
         !get().isTranscribing &&
-        !get().isSubmitting
+        !get().isSubmitting &&
+        !get().isSpeaking
       ) {
         setTimeout(() => {
           if (
@@ -417,8 +470,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           ) {
             void get().toggleRecording();
           }
-        }, 350);
-      } else if (get().isHandsFree && !get().isRecording && !get().isTranscribing && !get().isSubmitting) {
+        }, 400);
+      } else if (get().isHandsFree && !get().isRecording && !get().isTranscribing && !get().isSubmitting && !get().isSpeaking) {
         // Automatically re-arm wake word detection once speech playback is done
         void wakeWordService.resume();
         set({ statusMessage: "Hands-Free active · Say 'Hey Jarvis'" });
@@ -473,6 +526,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       }
     },
     closeVoiceMode: () => {
+      wasSpeakingPriorToIdle = false;
       stopBargeInListener();
       set({ voiceModeOpen: false });
       if (get().isRecording) {
@@ -492,6 +546,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     setMicMuted: (muted: boolean) => {
       set({ micMuted: muted });
       if (muted) {
+        wasSpeakingPriorToIdle = false;
         stopBargeInListener();
         if (get().isRecording) {
           void get().toggleRecording();
@@ -624,6 +679,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     },
 
     stopSpeaking: () => {
+      wasSpeakingPriorToIdle = false;
       stopBargeInListener();
       jarvisVoice.stopSpeaking();
       set({ isSpeaking: false, orbState: 'idle', statusMessage: 'Narration paused' });
@@ -995,58 +1051,57 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
         if (hasPending) {
           const targetProp = proposals.find((p) => p.status === 'pending') || null;
+          const rawContent = (lastMsg.content || '').trim();
+          const payload = (targetProp?.payload || {}) as Record<string, unknown>;
+
+          let voiceMsg = "I've drafted the details for your review.";
+          const finishedProp = autoExecuted.find((p) => p.type === 'finish_task');
+          if (finishedProp) {
+            const fPayload = (finishedProp.payload || {}) as Record<string, unknown>;
+            const fTitle = typeof fPayload.taskTitle === 'string' ? fPayload.taskTitle : 'Task';
+            voiceMsg = `I've marked "${fTitle}" as completed and moved it to Done. I've also drafted the work journal entry below for your review.`;
+          } else if (
+            rawContent &&
+            !rawContent.toLowerCase().startsWith('i have drafted') &&
+            !rawContent.toLowerCase().startsWith("i've drafted") &&
+            rawContent.length > 30
+          ) {
+            const cleanSpeech = lastMsg.speechText || distillSpeechFromMarkdown(rawContent);
+            const alreadyMentionsReview = /\b(for your review|details below|on your screen|proposal below|screen)\b/i.test(cleanSpeech);
+            voiceMsg = alreadyMentionsReview ? cleanSpeech : `${cleanSpeech} I've prepared the details below for your review.`;
+          } else {
+            if (targetProp?.type === 'create_work_event') {
+              const title = typeof payload.title === 'string' ? payload.title : '';
+              voiceMsg = title
+                ? `I've drafted the work journal entry for "${title}". Take a quick look.`
+                : "I've drafted the work journal entry for your review.";
+            } else if (targetProp?.type === 'create_tasks') {
+              const tasks = (payload.tasks as Array<{ title?: string }>) || [];
+              voiceMsg =
+                tasks.length > 1
+                  ? `I've prepared ${tasks.length} new tasks for your To Do board. Please take a look.`
+                  : "I've prepared the task for your To Do board. Please take a look.";
+            } else if (targetProp?.type === 'create_meeting_event') {
+              const title = typeof payload.title === 'string' ? payload.title : 'meeting';
+              voiceMsg = `I've drafted the summary and action items for the ${title}. Ready when you are.`;
+            } else if (targetProp?.type === 'update_project') {
+              const name = typeof payload.projectName === 'string' ? payload.projectName : 'project';
+              voiceMsg = `I've prepared the status update for ${name}. Please review.`;
+            }
+          }
+
           set({
             isSubmitting: false,
             activeProposal: targetProp,
             activeMessageId: lastMsg.id,
-            orbState: 'idle',
+            orbState: !get().isMuted ? 'speaking' : 'idle',
             statusMessage: 'Ready for your review',
+            lastSpokenText: !get().isMuted ? voiceMsg : '',
             transcript: '',
           });
-          if (!get().isMuted) {
-            const rawContent = (lastMsg.content || '').trim();
-            const payload = (targetProp?.payload || {}) as Record<string, unknown>;
 
-            const finishedProp = autoExecuted.find((p) => p.type === 'finish_task');
-            if (finishedProp) {
-              const fPayload = (finishedProp.payload || {}) as Record<string, unknown>;
-              const fTitle = typeof fPayload.taskTitle === 'string' ? fPayload.taskTitle : 'Task';
-              jarvisVoice.speak(
-                `I've marked "${fTitle}" as completed and moved it to Done. I've also drafted the work journal entry below for your review.`
-              );
-            } else if (
-              rawContent &&
-              !rawContent.toLowerCase().startsWith('i have drafted') &&
-              !rawContent.toLowerCase().startsWith("i've drafted") &&
-              rawContent.length > 30
-            ) {
-              const cleanSpeech = lastMsg.speechText || distillSpeechFromMarkdown(rawContent);
-              const alreadyMentionsReview = /\b(for your review|details below|on your screen|proposal below|screen)\b/i.test(cleanSpeech);
-              jarvisVoice.speak(
-                alreadyMentionsReview ? cleanSpeech : `${cleanSpeech} I've prepared the details below for your review.`
-              );
-            } else {
-              let voiceMsg = "I've drafted the details for your review.";
-              if (targetProp?.type === 'create_work_event') {
-                const title = typeof payload.title === 'string' ? payload.title : '';
-                voiceMsg = title
-                  ? `I've drafted the work journal entry for "${title}". Take a quick look.`
-                  : "I've drafted the work journal entry for your review.";
-              } else if (targetProp?.type === 'create_tasks') {
-                const tasks = (payload.tasks as Array<{ title?: string }>) || [];
-                voiceMsg =
-                  tasks.length > 1
-                    ? `I've prepared ${tasks.length} new tasks for your To Do board. Please take a look.`
-                    : "I've prepared the task for your To Do board. Please take a look.";
-              } else if (targetProp?.type === 'create_meeting_event') {
-                const title = typeof payload.title === 'string' ? payload.title : 'meeting';
-                voiceMsg = `I've drafted the summary and action items for the ${title}. Ready when you are.`;
-              } else if (targetProp?.type === 'update_project') {
-                const name = typeof payload.projectName === 'string' ? payload.projectName : 'project';
-                voiceMsg = `I've prepared the status update for ${name}. Please review.`;
-              }
-              jarvisVoice.speak(voiceMsg);
-            }
+          if (!get().isMuted) {
+            jarvisVoice.speak(voiceMsg);
           }
         } else if (autoExecuted.length > 0) {
           const firstExec = autoExecuted[0];

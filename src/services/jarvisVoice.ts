@@ -328,6 +328,14 @@ export class JarvisVoiceService {
 
     if (signal.aborted) return true;
 
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {
+        // ignore
+      }
+    }
+
     const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
 
@@ -463,7 +471,8 @@ export class JarvisVoiceService {
 
   // ── Unified Speak API ───────────────────────────────────────────────────
   speak(text: string, onEnd?: () => void) {
-    this.stopSpeaking();
+    // Reset previous audio silently without broadcasting idle
+    this.stopSpeaking(false);
 
     const cleanedText = text
       .replace(/[*_#`~>[\]]/g, '')
@@ -471,9 +480,15 @@ export class JarvisVoiceService {
       .trim();
 
     if (!cleanedText) {
+      this.isSpeaking = false;
+      this.onOrbStateCallback?.('idle');
       onEnd?.();
       return;
     }
+
+    // Immediately flag as speaking so store and visualizer stay in speaking mode
+    this.isSpeaking = true;
+    this.onOrbStateCallback?.('speaking');
 
     // Try Google Cloud Neural2 TTS first
     this.speakNeural(cleanedText, onEnd)
@@ -483,12 +498,17 @@ export class JarvisVoiceService {
           // But do NOT fall back if playback was aborted by user interruption
           if (!this.ttsAbortController?.signal.aborted) {
             this.speakBrowser(cleanedText, onEnd);
+          } else {
+            this.isSpeaking = false;
+            this.onOrbStateCallback?.('idle');
           }
         }
       })
       .catch((err) => {
         // If aborted, do NOT start browser fallback!
         if (err?.name === 'AbortError' || this.ttsAbortController?.signal.aborted) {
+          this.isSpeaking = false;
+          this.onOrbStateCallback?.('idle');
           return;
         }
         console.warn('[JarvisVoice] Neural TTS threw error, using browser fallback:', err);
@@ -506,7 +526,7 @@ export class JarvisVoiceService {
     return this.isSpeaking;
   }
 
-  stopSpeaking() {
+  stopSpeaking(notify = true) {
     // 1. Abort any active Neural TTS fetch request
     if (this.ttsAbortController) {
       this.ttsAbortController.abort();
@@ -537,7 +557,9 @@ export class JarvisVoiceService {
     }
 
     this.isSpeaking = false;
-    this.onOrbStateCallback?.('idle');
+    if (notify) {
+      this.onOrbStateCallback?.('idle');
+    }
   }
 
   cleanup() {
