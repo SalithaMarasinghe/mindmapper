@@ -36,6 +36,8 @@ Deno.serve(async (req: Request) => {
     groqForm.append('model', 'whisper-large-v3-turbo');
     groqForm.append('response_format', 'json');
     groqForm.append('language', 'en');
+    groqForm.append('temperature', '0.0');
+    groqForm.append('prompt', 'Voice command for Jarvis AI assistant.');
 
     const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
@@ -49,9 +51,35 @@ Deno.serve(async (req: Request) => {
     }
 
     const result = await groqRes.json() as { text: string };
+    let rawText = result.text?.trim() ?? '';
+
+    // Filter out notorious Whisper silence/cutoff hallucinations (e.g. "Thank you.", "Thanks for watching.")
+    const cleanLower = rawText.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    const isHallucination =
+      !cleanLower ||
+      cleanLower === 'thank you' ||
+      cleanLower === 'thank you very much' ||
+      cleanLower === 'thanks for watching' ||
+      cleanLower === 'thanks for listening' ||
+      cleanLower === 'thank you for watching' ||
+      cleanLower === 'thank you for your time' ||
+      cleanLower === 'you' ||
+      cleanLower === 'bye' ||
+      cleanLower === 'bye bye' ||
+      cleanLower === 'goodbye' ||
+      cleanLower === 'so' ||
+      cleanLower === 'okay' ||
+      cleanLower === 'ok' ||
+      cleanLower.startsWith('subtitles by') ||
+      cleanLower.includes('amara org');
+
+    if (isHallucination) {
+      console.log(`[jarvis-transcribe] Filtered Whisper silence hallucination: "${rawText}"`);
+      rawText = '';
+    }
 
     return new Response(
-      JSON.stringify({ text: result.text?.trim() ?? '' }),
+      JSON.stringify({ text: rawText }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: unknown) {
