@@ -61,8 +61,8 @@ export function JarvisVoiceMode() {
     if (micMuted) return 'Mic muted';
     if (orbState === 'listening') return 'Listening';
     if (orbState === 'thinking' || isSubmitting || isTranscribing) return 'Thinking';
-    if (orbState === 'speaking' || isSpeaking) return 'Speaking · Speak to interrupt';
-    return 'Listening';
+    if (orbState === 'speaking' || isSpeaking) return 'Speaking · Tap to interrupt';
+    return 'Ready · Tap to speak';
   }, [micMuted, orbState, isSubmitting, isTranscribing, isSpeaking]);
 
   // Derived live caption in larger text (Clean & voice-only: never mixes in long assistant paragraphs)
@@ -79,7 +79,7 @@ export function JarvisVoiceMode() {
     if (orbState === 'speaking' || isSpeaking) {
       return 'Jarvis is answering...';
     }
-    return transcript || 'How can I assist you?';
+    return transcript || 'Tap the orb to speak';
   }, [micMuted, orbState, isSubmitting, isTranscribing, isSpeaking, transcript]);
 
   // Tap orb interaction (Interrupts speech and starts listening immediately)

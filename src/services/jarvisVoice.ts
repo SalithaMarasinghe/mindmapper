@@ -79,6 +79,14 @@ export class JarvisVoiceService {
     const ctx = this.ensureAudioContext();
     if (!ctx || !this.analyser) return false;
 
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {
+        // ignore
+      }
+    }
+
     try {
       const s =
         stream ||
