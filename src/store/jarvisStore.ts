@@ -1020,6 +1020,32 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         return;
       }
 
+      // Check if an active proposal is awaiting user review and the user spoke an approval or rejection intent
+      const activeProp = get().activeProposal;
+      if (activeProp && !pasted) {
+        const lower = text.toLowerCase().trim();
+        const isApproval =
+          /^(approve|approve it|approve that|yes approve|looks good|confirm|go ahead|proceed|accept|yes please|log it|save it|create it)\b/i.test(lower) ||
+          lower === 'yes' ||
+          lower === 'yeah' ||
+          lower === 'yep' ||
+          lower === 'sure' ||
+          lower === 'sounds good';
+        const isRejection = /^(reject|cancel|discard|don't|no|dismiss|ignore)\b/i.test(lower);
+
+        if (isApproval) {
+          console.log('[JarvisStore] 🎙️ Conversational voice approval detected:', text);
+          await get().approveProposal();
+          return;
+        }
+
+        if (isRejection) {
+          console.log('[JarvisStore] 🎙️ Conversational voice rejection detected:', text);
+          get().rejectProposal();
+          return;
+        }
+      }
+
       set({
         isSubmitting: true,
         orbState: 'thinking',

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Mic, MicOff, X } from 'lucide-react';
 import { useJarvisStore } from '../../store/jarvisStore';
 import { JarvisOrb } from './JarvisOrb';
+import { JarvisProposalRenderer } from './JarvisProposalRenderer';
 
 export function JarvisVoiceMode() {
   const {
@@ -13,6 +14,9 @@ export function JarvisVoiceMode() {
     isSubmitting,
     isTranscribing,
     isSpeaking,
+    activeProposal,
+    approveProposal,
+    rejectProposal,
     closeVoiceMode,
     toggleMicMute,
     stopSpeaking,
@@ -77,10 +81,10 @@ export function JarvisVoiceMode() {
       role="dialog"
       aria-modal="true"
       aria-label="Jarvis Voice Mode"
-      className="fixed inset-0 z-50 bg-[#0B0B0C] flex flex-col justify-between p-6 select-none animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-[#0B0B0C] flex flex-col justify-between p-4 sm:p-6 select-none animate-in fade-in duration-200"
     >
-      {/* ── Top Bar with Title and Close (X) Button ─────────────────── */}
-      <header className="pt-[max(env(safe-area-inset-top,0px),8px)] w-full flex items-center justify-between max-w-lg mx-auto">
+      {/* ── Top Bar with Title, Review Badge and Close (X) Button ────── */}
+      <header className="pt-[max(env(safe-area-inset-top,0px),8px)] w-full flex items-center justify-between max-w-lg mx-auto shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-widest font-semibold text-text-muted/60">
             Jarvis Voice
@@ -88,6 +92,11 @@ export function JarvisVoiceMode() {
           {micMuted && (
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">
               Muted
+            </span>
+          )}
+          {activeProposal && (
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 font-medium animate-pulse">
+              Action Review
             </span>
           )}
         </div>
@@ -102,42 +111,62 @@ export function JarvisVoiceMode() {
         </button>
       </header>
 
-      {/* ── Center Stage: Large Orb + Status + Live Caption ──────────── */}
-      <main className="my-auto flex flex-col items-center justify-center text-center max-w-lg mx-auto w-full px-4 space-y-7">
-        {/* Large Centered Orb (Max ~190-200px) */}
-        <div className="relative py-2">
+      {/* ── Center Stage: Dynamic Orb + Proposal Card / Live Caption ─── */}
+      <main
+        className={`flex flex-col items-center text-center max-w-lg mx-auto w-full px-2 transition-all duration-300 ease-out ${
+          activeProposal ? 'flex-1 min-h-0 my-1 justify-start' : 'my-auto py-2 space-y-7 justify-center'
+        }`}
+      >
+        {/* Dynamic Orb: 68px at the top when a proposal card is active, 190px when standalone */}
+        <div className="relative py-1 shrink-0 transition-all duration-300 ease-out">
           <JarvisOrb
-            size={190}
+            size={activeProposal ? 68 : 190}
             state={micMuted ? 'idle' : orbState}
             audioLevel={micMuted ? 0 : audioLevel}
             onClick={handleOrbClick}
-            className="cursor-pointer"
+            className="cursor-pointer transition-transform duration-300"
           />
         </div>
 
         {/* Quiet Status Label */}
-        <div className="text-xs uppercase tracking-[0.2em] font-medium text-text-muted transition-colors duration-200">
-          {statusLabel}
+        <div className="text-xs uppercase tracking-[0.2em] font-medium text-text-muted shrink-0 transition-colors duration-200">
+          {activeProposal ? 'Review Action Before Execution' : statusLabel}
         </div>
 
-        {/* Live Caption in Larger Text */}
-        <div className="min-h-[80px] flex items-center justify-center w-full px-2">
-          <p
-            className={`text-lg sm:text-xl font-normal leading-relaxed max-w-md transition-opacity duration-200 ${
-              micMuted
-                ? 'text-text-muted'
-                : orbState === 'listening' && !transcript
-                ? 'text-text-muted/60 animate-pulse'
-                : 'text-text/90'
-            }`}
-          >
-            {captionText}
-          </p>
-        </div>
+        {/* Active Proposal Card (Interactive Multimodal Voice Canvas) */}
+        {activeProposal ? (
+          <div className="w-full flex-1 min-h-0 overflow-y-auto px-1 py-1 my-1 text-left select-text animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-300">
+            <JarvisProposalRenderer
+              proposal={activeProposal}
+              onApprove={approveProposal}
+              onReject={rejectProposal}
+              isSubmitting={isSubmitting}
+            />
+          </div>
+        ) : (
+          /* Live Caption in Larger Text */
+          <div className="min-h-[80px] flex items-center justify-center w-full px-2">
+            <p
+              className={`text-lg sm:text-xl font-normal leading-relaxed max-w-md transition-opacity duration-200 ${
+                micMuted
+                  ? 'text-text-muted'
+                  : orbState === 'listening' && !transcript
+                  ? 'text-text-muted/60 animate-pulse'
+                  : 'text-text/90'
+              }`}
+            >
+              {captionText}
+            </p>
+          </div>
+        )}
       </main>
 
       {/* ── Bottom Controls: Mute & Close Buttons ────────────────────── */}
-      <footer className="pb-[max(env(safe-area-inset-bottom,0px),24px)] flex items-center justify-center gap-6 max-w-lg mx-auto w-full">
+      <footer
+        className={`pb-[max(env(safe-area-inset-bottom,0px),20px)] flex items-center justify-center gap-6 max-w-lg mx-auto w-full shrink-0 ${
+          activeProposal ? 'pt-1' : ''
+        }`}
+      >
         {/* Mute-Mic Button */}
         <button
           onClick={toggleMicMute}

@@ -405,6 +405,20 @@ The `direction` column on `nodes` was added after the initial schema was deploye
 
 ---
 
+### Session 17 — Multimodal Voice Canvas & In-Voice Interactive Approval
+- **Interactive Proposal Rendering in Voice Mode (`src/components/jarvis/JarvisVoiceMode.tsx`)**:
+  - Integrated `JarvisProposalRenderer` directly into the full-screen Voice Mode canvas.
+  - Dynamic layout adaptation: When an `activeProposal` is pending review, the large centered orb shrinks from 190px to 68px and smoothly glides to the top of the screen.
+  - Renders the interactive review card (Work Journal with 4 Google XYZ badges, Task proposal, Meeting Log) in a scrollable center viewport.
+  - Header displays a pulsing "Action Review" pill.
+- **Dual Approval Modalities (Touch & Voice) (`src/store/jarvisStore.ts`)**:
+  - **Touch**: Tapping the glowing "Approve" button triggers `approveProposal()`, commits changes to Supabase, updates Kanban board, and triggers audio confirmation.
+  - **Voice**: Conversational voice approval recognized in `submitCommand()` via natural phrases ("Approve", "Looks good", "Confirm", "Yes", "Proceed", "Cancel", "Discard").
+- **Seamless State Restitution**:
+  - Upon approval or rejection, `activeProposal` clears, the card dismisses, the orb expands back to 190px and returns to dead-center, and Jarvis confirms execution vocally without the user ever leaving Voice Mode.
+
+---
+
 ### Session 9 — Sharing System
 - Deployed `share_link_setup.sql` RLS policies to production Supabase
 - Built `SharedMapPage` with read-only canvas rendering
