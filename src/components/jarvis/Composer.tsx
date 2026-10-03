@@ -57,7 +57,7 @@ export function Composer({
   const hasText = Boolean(value.trim());
 
   return (
-    <div className="fixed inset-x-0 bottom-0 pointer-events-none z-30 flex flex-col justify-end pb-[max(env(safe-area-inset-bottom,0px),16px)] pt-10 bg-gradient-to-t from-bg via-bg/85 to-transparent">
+    <div className="absolute inset-x-0 bottom-0 pointer-events-none z-30 flex flex-col justify-end pb-[max(env(safe-area-inset-bottom,0px),16px)] pt-10 bg-gradient-to-t from-bg via-bg/85 to-transparent transition-all duration-300 ease-in-out">
       <div className="max-w-[720px] mx-auto w-full px-4 flex items-end gap-2.5 pointer-events-auto">
         {/* Hidden file input for + attach */}
         <input
