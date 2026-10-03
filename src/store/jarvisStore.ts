@@ -354,12 +354,14 @@ export function distillSpeechFromMarkdown(text: string): string {
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
     let speech = '';
+    let sentenceCount = 0;
     for (const s of sentences) {
       const trimmed = s.trim();
       if (!trimmed || trimmed.length < 10) continue;
-      // Allow conversational speech up to ~1500 chars (~200-240 words)
-      if (speech && (speech + ' ' + trimmed).length > 1500) break;
+      // Provide a general, good-enough conversational response: 3-4 sentences, max ~480 chars (~70-90 words)
+      if (sentenceCount >= 4 || (speech && (speech + ' ' + trimmed).length > 480)) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
+      sentenceCount++;
     }
 
     if (speech) {
@@ -371,7 +373,7 @@ export function distillSpeechFromMarkdown(text: string): string {
     }
   }
 
-  return clean.slice(0, 1500).trim();
+  return clean.slice(0, 450).trim();
 }
 
 interface JarvisState {

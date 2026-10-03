@@ -467,9 +467,24 @@ function buildCleanSearchQuery(msg: string, isWeather: boolean, tz?: string): st
     return `${cleanMsg} weather forecast`;
   }
 
-  return msg
-    .replace(/^(can you please |please |search for |search web for |search online for |google |lookup |look up )/i, '')
+  // Remove conversational preamble, fillers, and framing
+  let clean = msg
+    .replace(/^(?:so\s+i\s+have\s+(?:a\s+few\s+|\d+\s+)?questions?\.?\s*(?:right\s+now\s+i\s+ask\s+it,?\s*)?)+/i, '')
+    .replace(/^(?:so\s+|hey\s+(?:jarvis\s+)?|jarvis\s+|ok\s+|okay\s+|well\s+|tell me\s+|can you please\s+|can you\s+|could you please\s+|could you\s+|please\s+|i want to\s+|i need to\s+|i'd like to\s+|i would like to\s+|let's\s+|search for\s+|search web for\s+|search online for\s+|google\s+|lookup\s+|look up\s+)+/i, '')
+    .replace(/\?+$/, '')
     .trim();
+
+  // If query mentions an exam or certification like DP-700, DP-600, etc., extract the core subject
+  const examMatch = clean.match(/\b(?:microsoft\s+)?(dp-\d+|az-\d+|ai-\d+|sc-\d+|pl-\d+|ms-\d+|aws\s+[a-z\s]+|gcp\s+[a-z\s]+)\b/i);
+  if (examMatch) {
+    const examCode = examMatch[0].toUpperCase();
+    if (/\b(?:study|prepare|prep|time|long|hours|pass|duration)\b/i.test(clean)) {
+      return `${examCode} exam study preparation time requirements`;
+    }
+    return `${examCode} exam guide syllabus`;
+  }
+
+  return clean;
 }
 
 function buildSentientCompanionSystemPrompt(
@@ -2154,6 +2169,11 @@ ${tasksList}
 Active Projects:
 ${projectsList}
 
+### STRICT CONTEXTUAL RELEVANCE & TOPIC QUARANTINE:
+- Salitha's Active Project, Kanban tasks, and work logs are STRICTLY for managing internal task execution, timer tracking, and work journal logs.
+- NEVER mention, reference, or ramble about Salitha's active project, running tasks, or past work when Salitha asks a general technical, external, conceptual, study, or certification question (such as "How long to study for DP-700 exam?", "What is Kubernetes?", "Explain monolithic architecture").
+- For general and educational questions: Answer the question directly, cleanly, and objectively. Do NOT drag in Salitha's work board or ongoing tasks unless Salitha explicitly asks how to connect or balance it with their current project!
+
 ### STRICT TWO-TIER APPROVAL BOUNDARY:
 1. TIER 1: AUTO-EXECUTED ACTIONS (Apply directly to DB via tools, no approval card needed):
    - Starting an EXISTING task on the board: call 'update_task' with status: 'in_progress', isPaused: false.
@@ -2262,15 +2282,15 @@ You are equipped with the 'web_search' tool.
   1. SCREEN CHANNEL (Markdown in reply): For conceptual, technical, or exam questions (e.g., DP-700 / DB-700 Fabric exam, monolithic architecture), provide a structured, in-depth breakdown for the screen with headings, clear domain areas, timelines, mental models, and trade-offs.
   2. SPOKEN CHANNEL (Voice for the ear):
      Salitha frequently listens to your answers in Voice Mode. Whenever your answer is a technical explanation, study guide, architecture breakdown, or recommendation, you MUST conclude your response with a dedicated conversational spoken answer using this tag at the very end:
-     <!-- SPOKEN_SUMMARY: [Articulate, intuitive, conversational spoken dialogue (~120-220 words / 1-2 fluid spoken paragraphs) that answers Salitha's question thoroughly like ChatGPT Advanced Voice Mode, ending with a natural conversational follow-up question.] -->
+     <!-- SPOKEN_SUMMARY: [Natural, conversational spoken response (~65-95 words / 3-4 fluid sentences) giving a general, good-enough answer for the ear like ChatGPT Voice Mode, ending with a natural follow-up question.] -->
 
      *Rules for SPOKEN_SUMMARY:*
-     - MIMIC CHATGPT ADVANCED VOICE MODE: Speak fluently, warmly, and intuitively as if in a live podcast or one-on-one mentorship conversation.
-     - DO NOT summarize down to a dry 2-sentence robotic bullet point.
-     - NEVER say "I have placed the full breakdown on your screen, sir", "as seen below", or "see the screen". That sounds robotic and breaks the conversational immersion!
-     - Directly explain the core nuances with concrete context, timelines, study hours, and practical tips.
+     - MIMIC CHATGPT VOICE MODE: Speak fluently, warmly, and naturally like an experienced human mentor in a live conversation.
+     - Give a general, good-enough natural answer: Provide the bottom-line estimate, realistic study timeline, or core insight right away.
+     - DO NOT ramble through long lists of syllabus domains, and NEVER mention Salitha's internal work projects or Kanban tasks.
+     - NEVER say "I have placed the full breakdown on your screen, sir", "as seen below", or "see the screen". That sounds robotic and breaks conversational immersion!
      - Example for "How long do I need to prepare for DB-700 / DP-700 exam?":
-       "If you already have a solid background in data engineering and Microsoft Fabric, you can generally get ready in about one month if you put in around 10 to 12 hours each week. In that case, the first couple of weeks are mostly about bridging specific Fabric architecture nuances—like Delta Lake, OneLake shortcuts, and Lakehouse versus Warehouse design—with the remaining time spent on hands-on labs and practice exams. If Fabric and Azure data services are brand new to you, I'd recommend planning for two to three months so you have plenty of runway to build end-to-end pipelines and work through notebook transformations comfortably. Do you already have hands-on experience with tools like Azure Data Factory or Synapse, or are you starting from the ground up?"
+       "Generally, if you already have experience with Microsoft Fabric and data engineering, you can get ready in about one month studying around 10 to 12 hours a week. If Microsoft Fabric or Azure data services are new to you, plan for about two to three months so you have time for hands-on practice with pipelines and lakehouse architecture. The exam really emphasizes real-world implementation over theory. Do you already have experience with tools like Azure Data Factory or Synapse?"
      - Tailored specifically for the ear: No markdown headers, no asterisks, no bullets, no tables, no raw timestamps. Pure, fluid spoken English.
 - When greeting or checking in (e.g. "What's up?", "How are you?"):
   Provide a warm, complete, proactive check-in (2-3 complete sentences). Mention that systems are active, the current focus project or task status, and ask what Salitha would like to focus on today. NEVER stop at a single disjointed fragment like "Hey there, I am all set."`;
@@ -2781,6 +2801,11 @@ ${recentMeetingsList}
 - Unfinished Tasks From Prior Days:
 ${pastUnfinishedList}
 
+### STRICT CONTEXTUAL RELEVANCE & TOPIC QUARANTINE:
+- Salitha's Active Project, Kanban tasks, and work logs are STRICTLY for managing internal task execution, timer tracking, and work journal logs.
+- NEVER mention, reference, or ramble about Salitha's active project, running tasks, or past work when Salitha asks a general technical, external, conceptual, study, or certification question (such as "How long to study for DP-700 exam?", "What is Kubernetes?", "Explain monolithic architecture").
+- For general and educational questions: Answer the question directly, cleanly, and objectively. Do NOT drag in Salitha's work board or ongoing tasks unless Salitha explicitly asks how to connect or balance it with their current project!
+
 ### AUTONOMOUS REAL-TIME WEB SEARCH DIRECTIVE:
 You are equipped with the 'web_search' tool.
 - Whenever Salitha asks a question requiring real-time facts, current events, latest documentation, library updates, weather, prices, sports scores, release notes, or anything you cannot verify or explain with certainty, ALWAYS invoke the 'web_search' tool immediately.
@@ -2791,7 +2816,7 @@ You are equipped with the 'web_search' tool.
 You MUST respond with a single JSON object matching this structure:
 {
   "replyText": "Comprehensive markdown formatted response to the user. For technical questions, provide deep, structured explanations with headers, bullet points, mental models, trade-offs, and code snippets. For proposals, provide a natural conversational summary acknowledging the specific items created without dumping raw JSON or repeating duplicate proposal card bodies.",
-  "speechText": "Natural, articulate conversational spoken response (~120-220 words / 1-2 fluid spoken paragraphs) for Jarvis to speak out loud, mimicking ChatGPT Advanced Voice Mode. Tailored specifically for the EAR: no markdown headings, no bullet points, no asterisks, no tables, no raw timestamps. Answer the question intuitively, thoroughly, and conversationally like an experienced human mentor—explaining key timelines, trade-offs, and practical advice, and ending with an organic conversational follow-up question. Never say 'I have placed the breakdown on your screen' or 'as shown below'—speak directly as if in a live voice conversation.",
+  "speechText": "Natural, conversational spoken response (~65-95 words / 3-4 fluid sentences) for Jarvis to speak out loud, mimicking ChatGPT Voice Mode. Tailored specifically for the EAR: no markdown headings, no bullet points, no asterisks, no tables, no raw timestamps. Give a general, good-enough natural answer answering the core question directly with timelines or key takeaways, without rambling or referencing internal work board tasks, and ending with an organic conversational follow-up question. Never say 'I have placed the breakdown on your screen' or 'as shown below'—speak directly as in a live conversation.",
   "engineeredPrompt": "Markdown formatted context-engineered prompt string if Category C, otherwise null or omitted.",
   "proposals": [ ...array of proposals if any action is needed, otherwise empty array... ],
   "suggestedFollowups": ["Short quick-action phrase 1", "Short phrase 2"]
@@ -3178,12 +3203,14 @@ function distillSpeech(text: string): string {
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
     let speech = '';
+    let sentenceCount = 0;
     for (const s of sentences) {
       const trimmed = s.trim();
       if (!trimmed || trimmed.length < 10) continue;
-      // Allow conversational speech up to ~1500 chars (~200-240 words)
-      if (speech && (speech + ' ' + trimmed).length > 1500) break;
+      // Provide a general, good-enough conversational response: 3-4 sentences, max ~480 chars (~70-90 words)
+      if (sentenceCount >= 4 || (speech && (speech + ' ' + trimmed).length > 480)) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
+      sentenceCount++;
     }
 
     if (speech) {
@@ -3195,7 +3222,7 @@ function distillSpeech(text: string): string {
     }
   }
 
-  return clean.slice(0, 1500).trim();
+  return clean.slice(0, 450).trim();
 }
 
 async function synthesizeVoiceSummary(
@@ -3205,14 +3232,15 @@ async function synthesizeVoiceSummary(
 ): Promise<string | null> {
   if (!provider) return null;
   try {
-    const systemInstruction = `You are Jarvis, personal AI assistant for Salitha Marasinghe, operating in advanced conversational voice mode (replicating ChatGPT Advanced Voice Mode).
+    const systemInstruction = `You are Jarvis, personal AI assistant for Salitha Marasinghe, operating in conversational voice mode (replicating ChatGPT Voice Mode).
 Salitha asked: "${userPrompt.slice(0, 250)}".
-Synthesize an articulate, intuitive, conversational spoken response (~120-200 words / 1-2 fluid spoken paragraphs) for his EAR.
+Synthesize a natural, conversational spoken response (~65-95 words / 3-4 fluid sentences) for his EAR.
 Rules:
-- Speak directly, warmly, and fluently like a knowledgeable senior mentor or chief-of-staff in a live conversation.
-- Answer the core question thoroughly with intuitive explanations, timelines, hours, and practical context.
-- End with a natural conversational follow-up question or thought to keep the dialogue flowing.
-- NEVER say "I have placed the breakdown on your screen, sir" or "as seen in the notes below". Speak naturally as in a direct conversation.
+- Speak directly, warmly, and naturally like an experienced human mentor in a live conversation.
+- Give a general, good-enough natural answer answering the core question directly (provide realistic timeline estimates, key practical context, or the main takeaway).
+- DO NOT ramble through detailed syllabus bullet points, and NEVER mention Salitha's internal work projects, tasks, or Kanban board unless asked.
+- End with a natural conversational follow-up question or thought.
+- NEVER say "I have placed the breakdown on your screen, sir" or "as seen below". Speak naturally as in a direct conversation.
 - No markdown formatting, no bullet points, no asterisks, no headers, no code, no emojis.
 - Return ONLY the spoken response text.`;
 
@@ -3230,9 +3258,9 @@ Rules:
           { role: 'user', content: `Synthesize this detailed breakdown into an intuitive, conversational spoken response:\n\n${replyText.slice(0, 2500)}` },
         ],
         temperature: 0.3,
-        max_tokens: 350,
+        max_tokens: 180,
       }),
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(7000),
     });
 
     if (!res.ok) return null;
@@ -3487,9 +3515,10 @@ Deno.serve(async (req: Request) => {
     const tavilyKey = Deno.env.get('TAVILY_API_KEY');
     let searchResult: SearchExecutionResult | null = null;
 
-    // Strip polite prefixes for better intent classification
+    // Strip conversational and polite prefixes for better intent classification
     const cleanMsg = message
-      .replace(/^(can you please |can you |could you please |could you |please |i want to |i need to |let's )/i, '')
+      .replace(/^(?:so\s+i\s+have\s+(?:a\s+few\s+|\d+\s+)?questions?\.?\s*(?:right\s+now\s+i\s+ask\s+it,?\s*)?)+/i, '')
+      .replace(/^(?:so\s+|hey\s+(?:jarvis\s+)?|jarvis\s+|ok\s+|okay\s+|well\s+|tell me\s+|can you please\s+|can you\s+|could you please\s+|could you\s+|please\s+|i want to\s+|i need to\s+|i'd like to\s+|i would like to\s+|let's\s+)+/i, '')
       .trim();
 
     const isTimerOrKanbanAction =
@@ -3531,6 +3560,9 @@ Deno.serve(async (req: Request) => {
 
     const isInfoQuestion =
       /^(what|who|when|where|why|how|which|is|are|can|could|does|do|explain|summarize|compare|benchmark|tell me about|find|status of|price of|version of|release of)\b/i.test(cleanMsg) ||
+      /\b(?:how long|how much|how many|what is|how do|how to|where can|who is|explain|compare|versus|vs)\b/i.test(message) ||
+      /\b(?:exam|certification|certificate|prep|preparation|syllabus|prerequisites|requirements|pass rate|study guide|passing score)\b/i.test(message) ||
+      /\b(?:dp-\d+|az-\d+|ai-\d+|sc-\d+|pl-\d+|ms-\d+|aws|gcp|cka|ckad|fabric|azure|kubernetes|docker)\b/i.test(message) ||
       /\b(latest|recent|current|today|yesterday|tomorrow|update|version|changelog|news|weather|price|stock|market|crypto|release|2024|2025|2026)\b/i.test(message);
 
     // Search runs automatically if:
@@ -3573,11 +3605,20 @@ Deno.serve(async (req: Request) => {
     // 7.2 Semantic Long-Term Episodic Memory Retrieval (pgvector + HNSW)
     let memoryAddendum = '';
     const isTrivialTimerCmd = /^(pause|resume|take a break|break|lunch|stop timer)\b/i.test(cleanMsg);
-    if (!isTrivialTimerCmd) {
+    const isExternalTopicOrExam =
+      /\b(?:exam|certification|certificate|prep|prepare|study|syllabus|test|dp-\d+|az-\d+|ai-\d+|sc-\d+|pl-\d+|ms-\d+|aws|gcp|cka|ckad)\b/i.test(message) ||
+      /\b(?:how long does it take|how much time|how long to|how long do i|what is the difference|explain the concept)\b/i.test(message);
+    const isExplicitUserHistoryQuery =
+      /\b(?:my (?:work|task|project|journal|meeting|log|history|career|code|resume|portfolio|achievement)|what did i|have i done|did we discuss)\b/i.test(message);
+
+    // Only query past engineering memory if it's relevant to user's personal work/history or operational commands
+    const shouldRetrieveMemory = !isTrivialTimerCmd && !isWeatherQuery && (!isExternalTopicOrExam || isExplicitUserHistoryQuery);
+
+    if (shouldRetrieveMemory) {
       try {
         const memChunks = await retrieveRelevantMemory(supabase, user.id, message);
         if (memChunks && memChunks.length > 0) {
-          memoryAddendum = `\n\n### LONG-TERM EPISODIC MEMORY (Verified Past Journals, Meetings & Storyline Apexes):\n${memChunks}\n(Ground your answers in these verified historical engineering logs, decisions, and resume metrics.)\n`;
+          memoryAddendum = `\n\n### LONG-TERM EPISODIC MEMORY (Verified Past Journals, Meetings & Storyline Apexes):\n${memChunks}\n(Context from past work journals and meetings. Use this context ONLY when Salitha asks about their past work, tasks, or project accomplishments. NEVER force past work or project references into general educational, external, or exam questions.)\n`;
         }
       } catch (memErr) {
         console.warn('[ai-assistant-chat] Memory retrieval notice:', memErr);
