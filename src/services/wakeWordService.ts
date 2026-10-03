@@ -109,11 +109,31 @@ class WakeWordService {
         baseAssetUrl: '/openwakeword/models',
         ortWasmPath: '/openwakeword/ort/',
         keywords: ['hey_jarvis'],
-        detectionThreshold: 0.52, // Balanced sensitivity for clear detection without false alarms
+        detectionThreshold: 0.45, // Optimized sensitivity for high accuracy and fast response
         cooldownMs: 2500,
-        vadHangoverFrames: 12,
-        debug: false,
+        vadHangoverFrames: 16,
+        debug: true,
       });
+
+      // Hybrid VAD + RMS energy booster so speech is never missed
+      const engineAny = this.engine as unknown as {
+        _runVad?: (chunk: Float32Array) => Promise<boolean>;
+      };
+      const origRunVad = engineAny._runVad?.bind(this.engine);
+      if (origRunVad) {
+        engineAny._runVad = async (chunk: Float32Array) => {
+          let sumSquares = 0;
+          for (let i = 0; i < chunk.length; i++) {
+            sumSquares += chunk[i] * chunk[i];
+          }
+          const rms = Math.sqrt(sumSquares / chunk.length);
+          // If acoustic energy exceeds background threshold, consider speech active
+          if (rms > 0.015) {
+            return true;
+          }
+          return await origRunVad(chunk);
+        };
+      }
 
       this.engine.on('detect', ({ keyword, score }: { keyword: string; score: number }) => {
         console.log(`[WakeWordService] 🎯 Wake word detected: "${keyword}" (score: ${score.toFixed(3)})`);
@@ -129,6 +149,10 @@ class WakeWordService {
         for (const listener of this.listeners) {
           listener.onDetected?.(keyword, score);
         }
+      });
+
+      this.engine.on('speech-start', () => {
+        console.log('[WakeWordService] 🗣️ Speech detected by VAD');
       });
 
       this.engine.on('error', (err: unknown) => {
@@ -161,6 +185,15 @@ class WakeWordService {
     try {
       this.isPaused = false;
       await this.engine.start();
+
+      // Ensure AudioContext is actively running (Chrome Autoplay / UserGesture policy)
+      const engineCtx = (this.engine as unknown as { _audioContext?: AudioContext })._audioContext;
+      if (engineCtx && engineCtx.state === 'suspended') {
+        console.log('[WakeWordService] AudioContext was suspended, resuming...');
+        await engineCtx.resume();
+      }
+      console.log('[WakeWordService] AudioContext state:', engineCtx?.state, 'sampleRate:', engineCtx?.sampleRate);
+
       this.isListening = true;
       this.error = null;
       this.notifyStateChange();
@@ -205,6 +238,12 @@ class WakeWordService {
     try {
       this.isPaused = false;
       await this.engine.start();
+
+      const engineCtx = (this.engine as unknown as { _audioContext?: AudioContext })._audioContext;
+      if (engineCtx && engineCtx.state === 'suspended') {
+        await engineCtx.resume();
+      }
+
       this.isListening = true;
       this.notifyStateChange();
       console.log('[WakeWordService] Resumed listening for "Hey Jarvis".');

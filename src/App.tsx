@@ -43,6 +43,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/mobile" element={<MobileJarvisPage />} />
+        <Route path="/jarvis" element={<MobileJarvisPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/map/:mapId" element={<MindmapPage />} />
         <Route path="/map/:mapId/node/:nodeId" element={<NodePage />} />

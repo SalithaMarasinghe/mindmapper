@@ -8,13 +8,14 @@ import { MicButton } from './MicButton';
 import { QuickRefinementChips } from './QuickRefinementChips';
 import { ContextBar } from './ContextBar';
 import { useMicLevel } from '../../hooks/useMicLevel';
-import { Copy, X, FileText, Check } from 'lucide-react';
+import { Copy, X, FileText, Check, Headphones } from 'lucide-react';
 
 export function VoiceDeck() {
   const {
     isRecording,
     isTranscribing,
     isSpeaking,
+    isHandsFree,
     audioLevel,
     transcript,
     statusMessage,
@@ -102,6 +103,14 @@ export function VoiceDeck() {
           onToggle={toggleRecording}
           onStopSpeaking={stopSpeaking}
         />
+
+        {/* Hands-Free ambient status hint */}
+        {isHandsFree && !isRecording && (
+          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-accent/10 border border-accent/30 text-accent text-[11px] font-mono animate-pulse">
+            <Headphones className="w-3.5 h-3.5 shrink-0" />
+            <span>Say "Hey Jarvis" to speak</span>
+          </div>
+        )}
 
         {/* Quick Refinement Chips */}
         <QuickRefinementChips onRefinement={(text) => submitCommand(text)} />
