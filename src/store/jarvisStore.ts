@@ -394,44 +394,76 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         // Hands-free silence monitor state
         let speechDetected = false;
         let silenceStart = 0;
-        const SILENCE_TIMEOUT_MS = 1800; // 1.8s of quiet after speech indicates user finished talking
-        const INITIAL_WAIT_MS = 8000;    // 8s to start speaking before timeout
+        let ambientCalibrated = false;
+        let ambientFloor = 0.01;
+        const calibrationSamples: number[] = [];
+        const SILENCE_TIMEOUT_MS = 1400; // 1.4s of quiet after speech finishes triggers auto-submit
+        const INITIAL_WAIT_MS = 6000;    // 6s timeout if no speech at all after wake word
+        const MAX_RECORDING_MS = 12000;  // 12s safety limit for hands-free utterance
         const startedAt = Date.now();
 
         // Poll audio level for orb visualizer and hands-free silence detection
         const pollAudio = () => {
           if (!get().isRecording) return;
           const level = jarvisVoice.getLiveAudioLevel();
+          const rms = jarvisVoice.getLiveRMS();
           set({ audioLevel: level });
 
-          // If hands-free is active, automatically detect end of speech
+          // If hands-free is active, monitor voice activity & silence using Time-Domain RMS
           if (get().isHandsFree) {
             const now = Date.now();
-            if (level > 0.05) {
-              speechDetected = true;
-              silenceStart = 0;
+
+            // Calibrate ambient noise floor during first 250ms
+            if (!ambientCalibrated) {
+              calibrationSamples.push(rms);
+              if (now - startedAt > 200 && calibrationSamples.length >= 3) {
+                const avg = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length;
+                ambientFloor = Math.max(0.006, avg);
+                ambientCalibrated = true;
+                console.log('[Jarvis] Ambient noise floor calibrated:', ambientFloor.toFixed(4));
+              }
+            }
+
+            const speechThreshold = Math.max(0.028, ambientFloor * 2.2);
+
+            // 1. Check if user is speaking
+            if (rms > speechThreshold) {
+              if (!speechDetected) {
+                console.log(`[Jarvis] Speech activity detected (RMS: ${rms.toFixed(4)} > ${speechThreshold.toFixed(4)})`);
+                speechDetected = true;
+              }
+              silenceStart = 0; // reset silence counter while user speaks
             } else if (speechDetected) {
+              // 2. User spoke and is now quiet
               if (silenceStart === 0) {
                 silenceStart = now;
               } else if (now - silenceStart >= SILENCE_TIMEOUT_MS) {
-                console.log('[Jarvis] Hands-free silence detected, automatically stopping recording...');
+                console.log(`[Jarvis] Hands-free silence detected (${SILENCE_TIMEOUT_MS}ms), auto-submitting utterance...`);
                 void get().toggleRecording();
                 return;
               }
             } else {
+              // 3. User said "Hey Jarvis" but has not said a command yet
               if (now - startedAt >= INITIAL_WAIT_MS) {
-                console.log('[Jarvis] Hands-free wait timeout (no speech detected)');
+                console.log('[Jarvis] Hands-free initial wait timeout (no command spoken)');
                 void jarvisVoice.stopRecording();
                 set({
                   isRecording: false,
                   orbState: 'idle',
-                  statusMessage: "Didn't hear anything. Say 'Hey Jarvis' when ready.",
+                  statusMessage: "Didn't hear a command. Say 'Hey Jarvis' when ready.",
                 });
                 if (get().isHandsFree) {
                   void wakeWordService.resume();
                 }
                 return;
               }
+            }
+
+            // 4. Safety maximum recording time cutoff (12 seconds)
+            if (now - startedAt >= MAX_RECORDING_MS) {
+              console.log('[Jarvis] Hands-free max recording time reached (12s), auto-submitting...');
+              void get().toggleRecording();
+              return;
             }
           }
 

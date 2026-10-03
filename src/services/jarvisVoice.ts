@@ -104,6 +104,20 @@ export class JarvisVoiceService {
     return Math.min(1, sum / dataArray.length / 128);
   }
 
+  // Time-domain Root-Mean-Square (RMS) amplitude for precision voice-activity and silence detection
+  getLiveRMS(): number {
+    if (!this.analyser) return 0;
+    const bufferLength = this.analyser.fftSize;
+    const dataArray = new Uint8Array(bufferLength);
+    this.analyser.getByteTimeDomainData(dataArray);
+    let sumSquares = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const normalized = (dataArray[i] - 128) / 128;
+      sumSquares += normalized * normalized;
+    }
+    return Math.sqrt(sumSquares / bufferLength);
+  }
+
   // ── MediaRecorder: Start Recording ─────────────────────────────────────
   async startRecording(): Promise<boolean> {
     // Immediately interrupt and kill any active speech narration
@@ -133,8 +147,8 @@ export class JarvisVoiceService {
       this.mediaRecorder.start(100); // collect chunks every 100ms
       this.isRecording = true;
 
-      // Wire analyser to this stream so the orb reacts to user voice
-      void this.initAudioAnalyzer(stream);
+      // Ensure analyser is initialized and attached before returning
+      await this.initAudioAnalyzer(stream);
 
       return true;
     } catch (err) {
