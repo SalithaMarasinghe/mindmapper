@@ -151,7 +151,7 @@ export function JarvisSidebar({ onClose, isMobile }: JarvisSidebarProps) {
           onClick={onClose}
           aria-label="Collapse sidebar"
           title="Collapse sidebar"
-          className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer"
+          className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer touch-manipulation active:scale-95"
         >
           {isMobile ? <X className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </button>

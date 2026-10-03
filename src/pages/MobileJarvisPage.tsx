@@ -109,6 +109,19 @@ export function MobileJarvisPage() {
     }
   }, []);
 
+  // Close sidebar on Escape key
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarOpen]);
+
   // Support ?voice=1 or ?voice=true URL param if user launches directly into Voice Mode
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -209,18 +222,35 @@ export function MobileJarvisPage() {
         <JarvisSidebar onClose={() => setSidebarOpen(false)} isMobile={false} />
       </aside>
 
-      {/* ── Mobile Sliding Drawer Overlay ── */}
-      {sidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <aside className="relative w-[280px] max-w-[85vw] h-full bg-surface border-r border-border flex flex-col shadow-2xl z-10 animate-in slide-in-from-left duration-200">
-            <JarvisSidebar onClose={() => setSidebarOpen(false)} isMobile={true} />
-          </aside>
-        </div>
-      )}
+      {/* ── Mobile Sliding Drawer Overlay with Smooth iOS-style Transition ── */}
+      <div
+        className={`md:hidden fixed inset-0 z-50 flex transition-opacity duration-300 ${
+          sidebarOpen ? 'pointer-events-auto' : 'pointer-events-none'
+        }`}
+        aria-hidden={!sidebarOpen}
+      >
+        {/* Scrim / Backdrop with gentle blur that smoothly fades in & out */}
+        <div
+          className={`fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 ease-out ${
+            sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          onClick={() => setSidebarOpen(false)}
+        />
+
+        {/* Sliding Side Panel with fluid spring-like transform and depth shadow */}
+        <aside
+          className={`relative w-[285px] max-w-[85vw] h-full bg-surface border-r border-border flex flex-col shadow-[8px_0_30px_rgba(0,0,0,0.6)] z-10 transition-transform duration-300 will-change-transform ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          style={{
+            transitionTimingFunction: sidebarOpen
+              ? 'cubic-bezier(0.16, 1, 0.3, 1)'
+              : 'cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <JarvisSidebar onClose={() => setSidebarOpen(false)} isMobile={true} />
+        </aside>
+      </div>
 
       {/* ── Main Chat Area (Compacts & Pushes Aside) ── */}
       <div className="flex-1 min-w-0 flex flex-col h-full h-[100dvh] overflow-hidden relative">
