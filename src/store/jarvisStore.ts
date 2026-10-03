@@ -41,7 +41,30 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-// Sentient speech sanitizer: converts raw written markdown into natural spoken speech
+// Live semantic turn-taking state (Adaptive Semantic VAD)
+let activeInterimRecognizer: any = null;
+let latestInterimTranscript = '';
+let isTrailingThoughtIncomplete = false;
+
+const INCOMPLETE_CONNECTORS = new Set([
+  'and', 'or', 'where', 'if', 'because', 'but', 'so', 'that', 'like', 'to',
+  'about', 'which', 'then', 'when', 'with', 'as', 'for', 'who', 'whom',
+  'whose', 'since', 'although', 'while', 'whether', 'how', 'what', 'why',
+  'find', 'is', 'are', 'was', 'were', 'the', 'a', 'an', 'in', 'on', 'at',
+  'into', 'from', 'by', 'after', 'before', 'between', 'during', 'through'
+]);
+
+function stopActiveInterimRecognizer() {
+  if (activeInterimRecognizer) {
+    try {
+      activeInterimRecognizer.abort();
+    } catch {
+      // ignore
+    }
+    activeInterimRecognizer = null;
+  }
+}
+
 // Sentient speech sanitizer: converts raw written markdown into natural spoken speech
 export function distillSpeechFromMarkdown(text: string): string {
   if (!text) return '';
@@ -379,11 +402,20 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
       if (get().isRecording) {
         // ── STOP → Transcribe ──────────────────────────────────────────
+        stopActiveInterimRecognizer();
         set({ isRecording: false, isTranscribing: true, orbState: 'thinking', statusMessage: 'Transcribing...' });
 
         const blob = await jarvisVoice.stopRecording();
 
         if (!blob || blob.size < 1000) {
+          const fallback = latestInterimTranscript.trim();
+          latestInterimTranscript = '';
+          isTrailingThoughtIncomplete = false;
+          if (fallback) {
+            set({ transcript: fallback, isTranscribing: false, orbState: 'idle' });
+            void get().submitCommand(fallback);
+            return;
+          }
           set({ isTranscribing: false, orbState: 'idle', statusMessage: 'Recording too short — try again' });
           if (get().isHandsFree) void wakeWordService.resume();
           return;
@@ -402,24 +434,40 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             import.meta.env.VITE_SUPABASE_ANON_KEY as string
           );
 
-          if (!text) {
+          // Resilient fallback to real-time interim transcript if Whisper returned blank
+          const finalTranscript = (text || latestInterimTranscript).trim();
+          latestInterimTranscript = '';
+          isTrailingThoughtIncomplete = false;
+
+          if (!finalTranscript) {
             set({ isTranscribing: false, orbState: 'idle', statusMessage: 'Could not hear anything — try again' });
             if (get().isHandsFree) void wakeWordService.resume();
             return;
           }
 
           set({
-            transcript: text,
+            transcript: finalTranscript,
             isTranscribing: false,
             orbState: 'idle',
-            statusMessage: 'Transcribed! Press Send to process.',
+            statusMessage: 'Transcribed! Processing...',
           });
 
-          // If in prompt engineer mode or in cockpit, auto-submit when speech ends
-          void get().submitCommand(text);
+          // Auto-submit when speech ends
+          void get().submitCommand(finalTranscript);
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Transcription failed';
           console.error('[Jarvis] Transcription error:', err);
+
+          // Resilient fallback to live interim speech if Whisper endpoint failed
+          const fallback = latestInterimTranscript.trim();
+          latestInterimTranscript = '';
+          isTrailingThoughtIncomplete = false;
+          if (fallback) {
+            set({ transcript: fallback, isTranscribing: false, orbState: 'idle' });
+            void get().submitCommand(fallback);
+            return;
+          }
+
           toast.error(msg);
           set({ isTranscribing: false, orbState: 'idle', statusMessage: 'Transcription failed — try again' });
           if (get().isHandsFree) void wakeWordService.resume();
@@ -429,14 +477,62 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         // Immediately interrupt and kill any active speech narration!
         jarvisVoice.stopSpeaking();
         wakeWordService.pause();
+        stopActiveInterimRecognizer();
+        latestInterimTranscript = '';
+        isTrailingThoughtIncomplete = false;
+
         set({
           isSpeaking: false,
           transcript: '',
-          statusMessage: get().isHandsFree ? 'Listening... say your command' : 'Listening...',
+          statusMessage: get().isHandsFree
+            ? 'Listening... say your command'
+            : 'Listening... press mic or pause when done',
         });
+
+        // Start browser interim speech recognizer if supported for live words & semantic VAD
+        const SpeechRec =
+          typeof window !== 'undefined'
+            ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+            : null;
+
+        if (SpeechRec) {
+          try {
+            const rec = new SpeechRec();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onresult = (e: any) => {
+              let accumulated = '';
+              for (let i = 0; i < e.results.length; i++) {
+                accumulated += (e.results[i][0]?.transcript || '') + ' ';
+              }
+              const trimmed = accumulated.trim();
+              if (trimmed) {
+                latestInterimTranscript = trimmed;
+                set({ transcript: trimmed });
+
+                // Semantic turn-completion check:
+                const tokens = trimmed.toLowerCase().replace(/[.,!?;:]/g, ' ').trim().split(/\s+/);
+                const lastWord = tokens[tokens.length - 1];
+                isTrailingThoughtIncomplete = Boolean(lastWord && INCOMPLETE_CONNECTORS.has(lastWord));
+              }
+            };
+
+            rec.onerror = (err: any) => {
+              console.debug('[Jarvis] Interim recognition notice:', err?.error);
+            };
+
+            rec.start();
+            activeInterimRecognizer = rec;
+          } catch (recErr) {
+            console.warn('[Jarvis] Could not start interim SpeechRecognition:', recErr);
+          }
+        }
 
         const ok = await jarvisVoice.startRecording();
         if (!ok) {
+          stopActiveInterimRecognizer();
           toast.error('Microphone access denied. Please allow mic permissions.');
           set({ statusMessage: 'Microphone access denied' });
           if (get().isHandsFree) void wakeWordService.resume();
@@ -448,83 +544,103 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           orbState: 'listening',
           statusMessage: get().isHandsFree
             ? 'Listening... pause when done speaking'
-            : 'Listening... press mic again to stop',
+            : 'Listening... press mic or pause when done',
         });
 
-        // Hands-free silence monitor state
+        // Adaptive silence monitor state
         let speechDetected = false;
         let silenceStart = 0;
         let ambientCalibrated = false;
         let ambientFloor = 0.01;
         const calibrationSamples: number[] = [];
-        const SILENCE_TIMEOUT_MS = 1400; // 1.4s of quiet after speech finishes triggers auto-submit
-        const INITIAL_WAIT_MS = 6000;    // 6s timeout if no speech at all after wake word
-        const MAX_RECORDING_MS = 12000;  // 12s safety limit for hands-free utterance
+        const BASE_SILENCE_TIMEOUT_MS = 2800; // 2.8s baseline pause buffer (comfortably room for breathing/thinking)
+        const EXTENDED_SILENCE_TIMEOUT_MS = 4800; // ~5s if paused on incomplete connector ("where", "and", etc.)
+        const INITIAL_WAIT_MS = 8000;    // 8s timeout if no speech at all after wake word
+        const MAX_RECORDING_MS = 60000;  // 60s (1 full minute) safety limit for complex prompts
         const startedAt = Date.now();
 
-        // Poll audio level for orb visualizer and hands-free silence detection
+        // Poll audio level for orb visualizer and adaptive silence detection
         const pollAudio = () => {
           if (!get().isRecording) return;
           const level = jarvisVoice.getLiveAudioLevel();
           const rms = jarvisVoice.getLiveRMS();
           set({ audioLevel: level });
 
-          // If hands-free is active, monitor voice activity & silence using Time-Domain RMS
-          if (get().isHandsFree) {
-            const now = Date.now();
+          const now = Date.now();
 
-            // Calibrate ambient noise floor during first 250ms
-            if (!ambientCalibrated) {
-              calibrationSamples.push(rms);
-              if (now - startedAt > 200 && calibrationSamples.length >= 3) {
-                const avg = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length;
-                ambientFloor = Math.max(0.006, avg);
-                ambientCalibrated = true;
-                console.log('[Jarvis] Ambient noise floor calibrated:', ambientFloor.toFixed(4));
-              }
+          // Calibrate ambient noise floor during first 250ms
+          if (!ambientCalibrated) {
+            calibrationSamples.push(rms);
+            if (now - startedAt > 200 && calibrationSamples.length >= 3) {
+              const avg = calibrationSamples.reduce((a, b) => a + b, 0) / calibrationSamples.length;
+              ambientFloor = Math.max(0.006, avg);
+              ambientCalibrated = true;
+              console.log('[Jarvis] Ambient noise floor calibrated:', ambientFloor.toFixed(4));
             }
+          }
 
-            const speechThreshold = Math.max(0.018, ambientFloor * 2.0);
+          const speechThreshold = Math.max(0.018, ambientFloor * 2.0);
+          const silenceTargetMs = isTrailingThoughtIncomplete ? EXTENDED_SILENCE_TIMEOUT_MS : BASE_SILENCE_TIMEOUT_MS;
 
-            // 1. Check if user is speaking
-            if (rms > speechThreshold) {
-              if (!speechDetected) {
-                console.log(`[Jarvis] Speech activity detected (RMS: ${rms.toFixed(4)} > ${speechThreshold.toFixed(4)})`);
-                speechDetected = true;
+          // 1. Check if user is speaking
+          if (rms > speechThreshold) {
+            if (!speechDetected) {
+              console.log(`[Jarvis] Speech activity detected (RMS: ${rms.toFixed(4)} > ${speechThreshold.toFixed(4)})`);
+              speechDetected = true;
+            }
+            silenceStart = 0; // reset silence counter while user speaks
+            set({
+              statusMessage: get().isHandsFree
+                ? 'Listening... pause when done speaking'
+                : 'Listening... press mic or pause when done',
+            });
+          } else if (speechDetected) {
+            // 2. User spoke and is now quiet / thinking
+            if (silenceStart === 0) {
+              silenceStart = now;
+            } else {
+              const elapsedSilence = now - silenceStart;
+
+              // Conversational holding status: inform user we are holding floor
+              if (elapsedSilence > 1200) {
+                if (isTrailingThoughtIncomplete) {
+                  set({ statusMessage: 'Holding floor... take your time, sir' });
+                } else if (get().isHandsFree) {
+                  set({ statusMessage: 'Finishing up...' });
+                }
               }
-              silenceStart = 0; // reset silence counter while user speaks
-            } else if (speechDetected) {
-              // 2. User spoke and is now quiet
-              if (silenceStart === 0) {
-                silenceStart = now;
-              } else if (now - silenceStart >= SILENCE_TIMEOUT_MS) {
-                console.log(`[Jarvis] Hands-free silence detected (${SILENCE_TIMEOUT_MS}ms), auto-submitting utterance...`);
+
+              // Auto-submit after silenceTargetMs in hands-free mode (or silenceTargetMs + 1000ms in manual mode)
+              const triggerTimeout = get().isHandsFree ? silenceTargetMs : (silenceTargetMs + 1000);
+              if (elapsedSilence >= triggerTimeout) {
+                console.log(`[Jarvis] Silence detected (${triggerTimeout}ms, incomplete=${isTrailingThoughtIncomplete}), auto-submitting utterance...`);
                 void get().toggleRecording();
                 return;
               }
-            } else {
-              // 3. User said "Hey Jarvis" but has not said a command yet
-              if (now - startedAt >= INITIAL_WAIT_MS) {
-                console.log('[Jarvis] Hands-free initial wait timeout (no command spoken)');
-                void jarvisVoice.stopRecording();
-                set({
-                  isRecording: false,
-                  orbState: 'idle',
-                  statusMessage: "Didn't hear a command. Say 'Hey Jarvis' when ready.",
-                });
-                if (get().isHandsFree) {
-                  void wakeWordService.resume();
-                }
-                return;
-              }
             }
-
-            // 4. Safety maximum recording time cutoff (12 seconds)
-            if (now - startedAt >= MAX_RECORDING_MS) {
-              console.log('[Jarvis] Hands-free max recording time reached (12s), auto-submitting...');
-              void get().toggleRecording();
+          } else if (get().isHandsFree) {
+            // 3. User said "Hey Jarvis" but has not said a command yet
+            if (now - startedAt >= INITIAL_WAIT_MS) {
+              console.log('[Jarvis] Hands-free initial wait timeout (no command spoken)');
+              void jarvisVoice.stopRecording();
+              stopActiveInterimRecognizer();
+              set({
+                isRecording: false,
+                orbState: 'idle',
+                statusMessage: "Didn't hear a command. Say 'Hey Jarvis' when ready.",
+              });
+              if (get().isHandsFree) {
+                void wakeWordService.resume();
+              }
               return;
             }
+          }
+
+          // 4. Safety maximum recording time cutoff (60 seconds)
+          if (now - startedAt >= MAX_RECORDING_MS) {
+            console.log('[Jarvis] Max recording time reached (60s), auto-submitting...');
+            void get().toggleRecording();
+            return;
           }
 
           requestAnimationFrame(pollAudio);
@@ -535,7 +651,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
     // ── Submit Command to AI ───────────────────────────────────────────────
     submitCommand: async (manualText?: string) => {
-      // Immediately stop any existing speech playback!
+      // Immediately stop any existing speech playback or active interim recognizer!
+      stopActiveInterimRecognizer();
       jarvisVoice.stopSpeaking();
       set({ isSpeaking: false });
 
