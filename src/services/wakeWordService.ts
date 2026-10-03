@@ -159,7 +159,13 @@ class WakeWordService {
         console.warn('[WakeWordService] Engine error event:', err);
       });
 
-      await this.engine.load();
+      try {
+        await this.engine.load();
+      } catch (loadErr) {
+        console.warn('[WakeWordService] Primary WASM loader failed, attempting CDN fallback...', loadErr);
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+        await this.engine.load();
+      }
       this.isLoaded = true;
       this.isLoading = false;
       this.notifyStateChange();
