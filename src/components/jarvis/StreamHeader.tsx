@@ -2,6 +2,7 @@ import { Globe, Plus } from 'lucide-react';
 import { ActiveProjectSelector } from '../layout/ActiveProjectSelector';
 import { JarvisOrb } from './JarvisOrb';
 import { useJarvisStore } from '../../store/jarvisStore';
+import { isVoiceInputEnabled } from '../../lib/jarvisFlags';
 
 interface StreamHeaderProps {
   messageCount: number;
@@ -29,14 +30,16 @@ export function StreamHeader({
         <ActiveProjectSelector compact variant="minimal" />
       </div>
 
-      {/* Center: Small Orb */}
-      <div className="flex items-center justify-center shrink-0">
-        <JarvisOrb
-          size={42}
-          state={orbState}
-          onClick={toggleVoiceMode}
-        />
-      </div>
+      {/* Center: Small Orb (hidden when voice input is disabled) */}
+      {isVoiceInputEnabled() && (
+        <div className="flex items-center justify-center shrink-0">
+          <JarvisOrb
+            size={42}
+            state={orbState}
+            onClick={toggleVoiceMode}
+          />
+        </div>
+      )}
 
       {/* Right: Actions */}
       <div className="flex items-center justify-end gap-2.5 flex-1 min-w-0">

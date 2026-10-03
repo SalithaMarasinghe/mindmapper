@@ -22,6 +22,7 @@ import { JarvisProposalRenderer } from '../components/jarvis/JarvisProposalRende
 import { ActiveProjectSelector } from '../components/layout/ActiveProjectSelector';
 import { Composer } from '../components/jarvis/Composer';
 import { JarvisVoiceMode } from '../components/jarvis/JarvisVoiceMode';
+import { isVoiceInputEnabled } from '../lib/jarvisFlags';
 
 export function MobileJarvisPage() {
   const {
@@ -283,38 +284,42 @@ export function MobileJarvisPage() {
             </div>
           </div>
 
-          {/* Center: Small Orb (38px) */}
-          <div className="flex items-center justify-center shrink-0 mx-1">
-            <JarvisOrb
-              size={38}
-              state={orbState}
-              onClick={toggleVoiceMode}
-            />
-          </div>
+          {/* Center: Small Orb (38px, hidden when voice input is disabled) */}
+          {isVoiceInputEnabled() && (
+            <div className="flex items-center justify-center shrink-0 mx-1">
+              <JarvisOrb
+                size={38}
+                state={orbState}
+                onClick={toggleVoiceMode}
+              />
+            </div>
+          )}
 
           {/* Right: Instant 1-Click Toggles & New Chat */}
           <div className="flex items-center justify-end gap-1 min-w-0 shrink-0">
-            {/* 1-Click Hands-Free Wake-Word Toggle */}
-            <button
-              type="button"
-              onClick={() => void toggleHandsFree()}
-              disabled={isWakeWordLoading}
-              title={isHandsFree ? "Hands-Free Active ('Hey Jarvis') - Tap to turn off" : "Enable Hands-Free ('Hey Jarvis')"}
-              className={`p-1.5 sm:px-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs border ${
-                isHandsFree
-                  ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
-                  : 'text-text-muted hover:text-text hover:bg-surface-2 border-transparent'
-              }`}
-            >
-              {isWakeWordLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />
-              ) : (
-                <Headphones className={`w-3.5 h-3.5 ${isHandsFree ? 'text-accent' : ''}`} />
-              )}
-              <span className="hidden md:inline text-[10px] font-mono uppercase">
-                {isHandsFree ? 'HF:ON' : 'HF'}
-              </span>
-            </button>
+            {/* 1-Click Hands-Free Wake-Word Toggle (hidden when voice input is disabled) */}
+            {isVoiceInputEnabled() && (
+              <button
+                type="button"
+                onClick={() => void toggleHandsFree()}
+                disabled={isWakeWordLoading}
+                title={isHandsFree ? "Hands-Free Active ('Hey Jarvis') - Tap to turn off" : "Enable Hands-Free ('Hey Jarvis')"}
+                className={`p-1.5 sm:px-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs border ${
+                  isHandsFree
+                    ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
+                    : 'text-text-muted hover:text-text hover:bg-surface-2 border-transparent'
+                }`}
+              >
+                {isWakeWordLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" />
+                ) : (
+                  <Headphones className={`w-3.5 h-3.5 ${isHandsFree ? 'text-accent' : ''}`} />
+                )}
+                <span className="hidden md:inline text-[10px] font-mono uppercase">
+                  {isHandsFree ? 'HF:ON' : 'HF'}
+                </span>
+              </button>
+            )}
 
             {/* 1-Click Auto Web Search Toggle */}
             <button
@@ -482,7 +487,7 @@ export function MobileJarvisPage() {
       </div>
 
       {/* ── Full-Screen Voice Mode Overlay ── */}
-      <JarvisVoiceMode />
+      {isVoiceInputEnabled() && <JarvisVoiceMode />}
     </div>
   );
 }

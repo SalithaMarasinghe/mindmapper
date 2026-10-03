@@ -1277,12 +1277,16 @@ async function executeAgentTool(
         .limit(40);
 
       const matchedExisting = recentTasks?.find((t: any) => {
+        if (t.status === 'done') return false; // Never hijack completed tasks
         const sim = calculateTitleSimilarity(title, t.title);
-        return sim >= 0.55 || t.title.toLowerCase().trim() === title.toLowerCase().trim();
+        return sim >= 0.75 || t.title.toLowerCase().trim() === title.toLowerCase().trim();
       });
 
       if (matchedExisting) {
-        const updates: Record<string, unknown> = { updated_at: currentTimeISO };
+        const updates: Record<string, unknown> = {
+          updated_at: currentTimeISO,
+          planned_date: plannedDate, // Ensure it moves to the requested/today's board
+        };
         if (status) updates.status = status;
         if (trackedSeconds > 0) updates.tracked_seconds = trackedSeconds;
         if (description) updates.description = description;
@@ -2113,10 +2117,12 @@ ${tasksList}
 ### ACTIONS:
 - Pausing running task: call 'update_task' with isPaused: true.
 - Resuming / Starting task: call 'update_task' with taskId, status: 'in_progress', isPaused: false.
-- Creating task: call 'create_task' with title, status: 'todo', priority (or 'tasks' array if creating multiple tasks).
+- Creating task: call 'create_task' with title, status: 'todo', priority (or 'tasks' array if creating multiple tasks). You MUST invoke 'create_task' to save to the database. NEVER simply write markdown tables or claim the task is created in text without calling 'create_task'!
 - Deleting task: call 'delete_task' with taskId.
 - Updating task: call 'update_task' with taskId and updated fields.
 - Switching active project: call 'switch_active_project' with projectName.
+
+CRITICAL: When the user asks you to create, update, delete, pause, or resume a task or switch project, you MUST invoke the corresponding tool. Do NOT describe the action in markdown or text without calling the tool.
 
 Deliver a crisp, warm, 1-sentence confirmation.`;
   }
@@ -2151,7 +2157,7 @@ ${runningTaskInfo}
 Tasks currently on the board:
 ${tasksList}
 
-Active Projects:
+### Active Projects:
 ${projectsList}
 
 ### STRICT TWO-TIER APPROVAL BOUNDARY:
@@ -2161,7 +2167,7 @@ ${projectsList}
    - Resuming task after break: call 'update_task' with status: 'in_progress', isPaused: false.
    - Marking completed task as Done: call 'update_task' with status: 'done', trackedSeconds.
    - Pausing incomplete task when done for the day: call 'update_task' with isPaused: true, status: 'in_progress'.
-   - Standalone user-requested tasks: call 'create_task' with status: 'todo' (or 'tasks' array if creating multiple tasks). If requested for tomorrow, use plannedDate: "${tomorrowDateISO}".
+   - Standalone user-requested tasks: call 'create_task' with status: 'todo' (or 'tasks' array if creating multiple tasks). You MUST call the 'create_task' tool to persist the task to the database. NEVER simply write markdown tables or claim the task is created in text without calling 'create_task'! If requested for tomorrow, use plannedDate: "${tomorrowDateISO}".
    - Deleting a task: call 'delete_task' with taskId.
    - Switching active focus project: call 'switch_active_project' with projectName.
    *CRITICAL: When logging a full meeting (creating a meeting journal entry), meeting action items are bundled into create_journal_entry. HOWEVER, if Salitha specifically requests creating or adding a task (e.g. "make a to do task for tomorrow", "just add as a task", "don't create this as a meeting"), ALWAYS invoke 'create_task'!*
@@ -3259,11 +3265,11 @@ function distillSpeech(text: string): string {
 async function synthesizeVoiceSummary(
   replyText: string,
   userPrompt: string,
-  provider?: ProviderConfig
+  candidateProviders: ProviderConfig[]
 ): Promise<string | null> {
-  if (!provider) return null;
-  try {
-    const systemInstruction = `You are Jarvis, personal engineering AI assistant for Salitha Marasinghe, operating in conversational voice mode (ChatGPT Voice Mode standard).
+  if (!candidateProviders || candidateProviders.length === 0) return null;
+
+  const systemInstruction = `You are Jarvis, personal engineering AI assistant for Salitha Marasinghe, operating in conversational voice mode (ChatGPT Voice Mode standard).
 Salitha asked: "${userPrompt.slice(0, 250)}".
 Synthesize a bespoke, humanized conversational spoken answer for his EAR, strictly adapting speaking length to question complexity across the 4-Tier Adaptive Spoken Cadence:
 1. Tier 1 (Operational Tasks - e.g. timer, board updates): 1 crisp, warm confirmation (5-10s, ~15-25 words).
@@ -3276,54 +3282,95 @@ Rules:
 - No markdown formatting, no bullet points, no asterisks, no headers, no code syntax, no emojis.
 - Return ONLY the spoken response text.`;
 
-    const res = await fetch(provider.url, {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + provider.key,
-        'Content-Type': 'application/json',
-        ...(provider.headers || {}),
-      },
-      body: JSON.stringify({
-        model: provider.model,
-        messages: [
-          { role: 'system', content: systemInstruction },
-          { role: 'user', content: `Synthesize this detailed breakdown into an intuitive, conversational spoken response:\n\n${replyText.slice(0, 2500)}` },
-        ],
-        temperature: 0.3,
-        max_tokens: 350,
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
+  for (const provider of candidateProviders) {
+    try {
+      // Use 20b for fast, lightweight voice synthesis to minimize latency and token consumption
+      const modelToUse = provider.url.includes('groq.com') ? 'openai/gpt-oss-20b' : provider.model;
+      const res = await fetch(provider.url, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + provider.key,
+          'Content-Type': 'application/json',
+          ...(provider.headers || {}),
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: `Synthesize this detailed breakdown into an intuitive, conversational spoken response:\n\n${replyText.slice(0, 2500)}` },
+          ],
+          temperature: 0.3,
+          max_tokens: 350,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
 
-    if (!res.ok) return null;
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content?.trim();
-    if (!content) return null;
+      if (!res.ok) continue;
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content?.trim();
+      if (!content) continue;
 
-    const cleaned = content
-      .replace(/^["']|["']$/g, '')
-      .replace(/[*_#`~>[\]]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+      const cleaned = content
+        .replace(/^["']|["']$/g, '')
+        .replace(/[*_#`~>[\]]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-    return cleaned || null;
-  } catch (err) {
-    console.debug('[ai-assistant-chat] synthesizeVoiceSummary notice:', err);
-    return null;
+      if (cleaned) return cleaned;
+    } catch (err) {
+      console.debug(`[ai-assistant-chat] synthesizeVoiceSummary notice on ${provider.label}:`, err);
+    }
   }
+
+  return null;
 }
 
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin') ?? '*';
   const corsHeaders = {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-latency-debug, x-fast-paid-escalation',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const url = new URL(req.url);
+  const isLatencyDebug =
+    Deno.env.get('FLAG_LATENCY_DEBUG') === 'true' ||
+    req.headers.get('x-latency-debug') === 'true' ||
+    url.searchParams.get('latency_debug') === 'true';
+  const isFastPaidEscalation =
+    Deno.env.get('FLAG_FAST_PAID_ESCALATION') === 'true' ||
+    req.headers.get('x-fast-paid-escalation') === 'true' ||
+    url.searchParams.get('fast_paid_escalation') === 'true';
+  const tTotalStart = isLatencyDebug ? performance.now() : 0;
+
+  interface ServerTimingItem {
+    name: string;
+    dur: number;
+    desc?: string;
+  }
+  const timingItems: ServerTimingItem[] = [];
+  function addTiming(name: string, dur: number, desc?: string) {
+    if (!isLatencyDebug) return;
+    timingItems.push({ name, dur: Number(dur.toFixed(1)), desc });
+  }
+  function formatServerTiming(items: ServerTimingItem[]): string {
+    return items
+      .map((item) => {
+        let entry = `${item.name};dur=${item.dur}`;
+        if (item.desc) {
+          const cleanDesc = item.desc.replace(/["\\]/g, '');
+          entry += `;desc="${cleanDesc}"`;
+        }
+        return entry;
+      })
+      .join(', ');
+  }
+  let totalLlmAttempts = 0;
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -3362,10 +3409,14 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: `Bearer ${jwt}` } } }
     );
 
+    const tAuthStart = isLatencyDebug ? performance.now() : 0;
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
+    if (isLatencyDebug) {
+      addTiming('auth', performance.now() - tAuthStart);
+    }
 
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Invalid or expired session' }), {
@@ -3374,6 +3425,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const tDbStart = isLatencyDebug ? performance.now() : 0;
     // 4. Ensure conversation exists
     if (!conversationId) {
       const titleSnippet = message.slice(0, 40).replace(/\n/g, ' ');
@@ -3414,69 +3466,61 @@ Deno.serve(async (req: Request) => {
         content: m.content,
       }));
 
-    // 7. Call LLM (Groq Ultra-Fast LPU Engine Primary, OpenRouter Free Secondary)
+    if (isLatencyDebug) {
+      addTiming('db_setup', performance.now() - tDbStart);
+    }
+    const tPromptBuildStart = isLatencyDebug ? performance.now() : 0;
+
+    // 7. Call LLM (Groq Multi-Account Free Waterfall Primary, Groq Paid Cushion Emergency)
     const deepseekKey = Deno.env.get('DEEPSEEK_API_KEY');
     const openrouterKey = Deno.env.get('OPENROUTER_API_KEY');
     const codecraftKey = Deno.env.get('CODECRAFT_API_KEY');
-    const groqKey = Deno.env.get('GROQ_API_KEY');
+    const groqKey1 = Deno.env.get('GROQ_API_KEY');
+    const groqKey2 = Deno.env.get('GROQ_API_KEY_2');
+    const groqKey3 = Deno.env.get('GROQ_API_KEY_3');
     const groqPaidKey = Deno.env.get('GROQ_PAID_API_KEY');
 
     const isExplicitTaskOnly = /\b(don'?t (?:create|log|make).*(?:meeting|look)|not a meeting|just (?:add|create|make).*(?:task|to ?do)|only (?:add|create|make).*(?:task|to ?do)|can you make a (?:to ?do )?task|add (?:a|this) task|create (?:a|this) task)\b/i.test(message);
+    const isTaskCreation = isExplicitTaskOnly || /\b(?:create|add|make|schedule)\s+(?:a\s+|an\s+|the\s+|this\s+|new\s+)*(?:to\s*do\s+)?task\b/i.test(message);
     const isMeetingReport = !isExplicitTaskOnly && /\b(meeting|sync|standup|1-on-1|just finished.*sync)\b/i.test(message);
     const isWorkSessionOrJournal = /\b(done for the day|finished|completed|halfway|wrap up|wrapping up|heading out for the day|profiling|implemented|evaluated|journal|career)\b/i.test(message);
     const isExplicitExplainOrQA = /\b(explain|what is|how does|why does|difference between|compare|tell me about)\b/i.test(message);
 
     const isQuickOperational = !isMeetingReport && !isWorkSessionOrJournal && !isExplicitExplainOrQA &&
-      /\b(pause|break|resume|start|stop timer|delete task|remove task|done for the break|take a break|back from break|add task|create task|schedule task|update task|change priority|switch project|focus on)\b/i.test(message);
+      (isTaskCreation || /\b(pause|break|resume|start|stop timer|delete task|remove task|done for the break|take a break|back from break|update task|change priority|switch project|focus on)\b/i.test(message));
+
+    // Register 3 Free Groq Accounts (1,000 req/day & 8,000 TPM each = 3,000 req/day total free)
+    const freeGroqAccounts: Array<{ label: string; key: string }> = [];
+    if (groqKey1) freeGroqAccounts.push({ label: 'Groq-Free-1', key: groqKey1 });
+    if (groqKey2 && groqKey2 !== groqKey1) freeGroqAccounts.push({ label: 'Groq-Free-2', key: groqKey2 });
+    if (groqKey3 && groqKey3 !== groqKey1 && groqKey3 !== groqKey2) freeGroqAccounts.push({ label: 'Groq-Free-3', key: groqKey3 });
 
     const providers: ProviderConfig[] = [];
 
-    // Tier 1: Ultra-Fast Free Groq LPU Engine (Primary - 100% Free Tier, $0.00 spent)
-    if (groqKey) {
-      if (isQuickOperational) {
+    // Dynamic Intent Routing:
+    // Operational / Simple -> Primary: openai/gpt-oss-20b (Ultra-fast, compact prompt, low tokens)
+    // Cognitive / Compound / Journals / Q&A -> Primary: openai/gpt-oss-120b (High-order reasoning, Google XYZ formula, multi-step actions)
+    if (isQuickOperational) {
+      // 1. Primary Free: 20B across all 3 Free Accounts
+      for (const acc of freeGroqAccounts) {
         providers.push({
-          label: 'Groq-Free-20B',
+          label: `${acc.label}-20B`,
           url: 'https://api.groq.com/openai/v1/chat/completions',
-          key: groqKey,
-          model: 'openai/gpt-oss-20b',
-        });
-        providers.push({
-          label: 'Groq-Free-Qwen',
-          url: 'https://api.groq.com/openai/v1/chat/completions',
-          key: groqKey,
-          model: 'qwen/qwen3.8-27b',
-        });
-        providers.push({
-          label: 'Groq-Free-120B',
-          url: 'https://api.groq.com/openai/v1/chat/completions',
-          key: groqKey,
-          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
-        });
-      } else {
-        providers.push({
-          label: 'Groq-Free-120B',
-          url: 'https://api.groq.com/openai/v1/chat/completions',
-          key: groqKey,
-          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
-        });
-        providers.push({
-          label: 'Groq-Free-Qwen',
-          url: 'https://api.groq.com/openai/v1/chat/completions',
-          key: groqKey,
-          model: 'qwen/qwen3.8-27b',
-        });
-        providers.push({
-          label: 'Groq-Free-20B',
-          url: 'https://api.groq.com/openai/v1/chat/completions',
-          key: groqKey,
+          key: acc.key,
           model: 'openai/gpt-oss-20b',
         });
       }
-    }
-
-    // Tier 2: Groq Pay-As-You-Go Overflow Cushion (Secondary - Only engages when Free quota is reached)
-    if (groqPaidKey && groqPaidKey !== groqKey) {
-      if (isQuickOperational) {
+      // 2. Free Fallback: 120B on Free Accounts (in case 20B experiences momentary congestion)
+      for (const acc of freeGroqAccounts) {
+        providers.push({
+          label: `${acc.label}-120B`,
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: acc.key,
+          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
+        });
+      }
+      // 3. Paid Emergency Cushion: ONLY low-cost models ($0.075 / 1M). NEVER call Qwen ($4.00/1M)!
+      if (groqPaidKey && !freeGroqAccounts.some((a) => a.key === groqPaidKey)) {
         providers.push({
           label: 'Groq-Paid-20B',
           url: 'https://api.groq.com/openai/v1/chat/completions',
@@ -3489,7 +3533,29 @@ Deno.serve(async (req: Request) => {
           key: groqPaidKey,
           model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
         });
-      } else {
+      }
+    } else {
+      // Cognitive / Compound / Journal / Q&A:
+      // 1. Primary Free: 120B across all 3 Free Accounts
+      for (const acc of freeGroqAccounts) {
+        providers.push({
+          label: `${acc.label}-120B`,
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: acc.key,
+          model: Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b',
+        });
+      }
+      // 2. Free Fallback: 20B on Free Accounts
+      for (const acc of freeGroqAccounts) {
+        providers.push({
+          label: `${acc.label}-20B`,
+          url: 'https://api.groq.com/openai/v1/chat/completions',
+          key: acc.key,
+          model: 'openai/gpt-oss-20b',
+        });
+      }
+      // 3. Paid Emergency Cushion: 120B ($0.15 / 1M) then 20B ($0.075 / 1M). ZERO Qwen!
+      if (groqPaidKey && !freeGroqAccounts.some((a) => a.key === groqPaidKey)) {
         providers.push({
           label: 'Groq-Paid-120B',
           url: 'https://api.groq.com/openai/v1/chat/completions',
@@ -3608,6 +3674,7 @@ Deno.serve(async (req: Request) => {
        explicitSearchKeywords ||
        isInfoQuestion);
 
+    const tSearchStart = isLatencyDebug ? performance.now() : 0;
     if (shouldRunSearch) {
       if (isWeatherQuery) {
         // 1. Weather: ALWAYS use 100% Free Open-Meteo! (0 Tavily credits used!)
@@ -3627,6 +3694,9 @@ Deno.serve(async (req: Request) => {
         }
       }
     }
+    if (isLatencyDebug && shouldRunSearch) {
+      addTiming('search', performance.now() - tSearchStart);
+    }
 
     let searchAddendum = '';
     if (searchResult && searchResult.rawContext) {
@@ -3645,6 +3715,7 @@ Deno.serve(async (req: Request) => {
     // Only query past engineering memory if it's relevant to user's personal work/history or operational commands
     const shouldRetrieveMemory = !isTrivialTimerCmd && !isWeatherQuery && (!isExternalTopicOrExam || isExplicitUserHistoryQuery);
 
+    const tRagStart = isLatencyDebug ? performance.now() : 0;
     if (shouldRetrieveMemory) {
       try {
         const memChunks = await retrieveRelevantMemory(supabase, user.id, message);
@@ -3654,6 +3725,9 @@ Deno.serve(async (req: Request) => {
       } catch (memErr) {
         console.warn('[ai-assistant-chat] Memory retrieval notice:', memErr);
       }
+    }
+    if (isLatencyDebug && shouldRetrieveMemory) {
+      addTiming('rag', performance.now() - tRagStart);
     }
 
     let systemPrompt = '';
@@ -3676,15 +3750,43 @@ Deno.serve(async (req: Request) => {
     const attemptedProviders: string[] = [];
     const providerErrors: Record<string, string> = {};
 
+    if (isLatencyDebug) {
+      const rawPromptElapsed = performance.now() - tPromptBuildStart;
+      const searchDur = timingItems.find((t) => t.name === 'search')?.dur ?? 0;
+      const ragDur = timingItems.find((t) => t.name === 'rag')?.dur ?? 0;
+      const netPromptDur = Math.max(0, rawPromptElapsed - searchDur - ragDur);
+      addTiming('prompt_build', netPromptDur);
+    }
+
     if (!isPromptRequest) {
+      let hasFreeTierRateLimited = false;
+      const rateLimitedAccountLabels = new Set<string>();
+
       for (const provider of providers) {
+        // If an entire account was rate-limited (e.g. Groq-Free-1 hit 429), skip other models on the SAME account
+        const accountPrefix = provider.label.replace(/-20B|-120B|-Qwen/, '');
+        if (rateLimitedAccountLabels.has(accountPrefix)) {
+          console.log(`[ai-assistant-chat] Skipping ${provider.label} because ${accountPrefix} already hit rate limit.`);
+          continue;
+        }
+
+        if (isFastPaidEscalation && hasFreeTierRateLimited && provider.label.startsWith('Groq-Free')) {
+          console.log(`[ai-assistant-chat] FLAG_FAST_PAID_ESCALATION: Skipping ${provider.label} after Free-tier limit hit.`);
+          continue;
+        }
+
         try {
           attemptedProviders.push(provider.label);
           console.log(`[ai-assistant-chat] Attempting Sentient ReAct Agent with ${provider.label} (${provider.model})...`);
 
           const historyForCall = isQuickOperational ? formattedHistory.slice(-2) : formattedHistory;
           const agentMessages: any[] = [
-            { role: 'system', content: buildAgentSystemPrompt(currentTimeISO, timezone, context, isQuickOperational) + searchAddendum + memoryAddendum },
+            {
+              role: 'system',
+              content:
+                buildAgentSystemPrompt(currentTimeISO, timezone, context, isQuickOperational) +
+                (isQuickOperational ? '' : searchAddendum + memoryAddendum),
+            },
             ...historyForCall,
             { role: 'user', content: message },
           ];
@@ -3713,6 +3815,11 @@ Deno.serve(async (req: Request) => {
                 },
                 ...agentMessages.slice(1),
               ];
+            } else if (provider.label.startsWith('Groq-Free')) {
+              // Groq Free tier enforces an 8,000 TPM limit (and 7,000 ITPM on Qwen).
+              // With max_tokens: 2800, prompts > 5,200 tokens trigger 413 Payload Too Large.
+              // Setting 1200 guarantees no truncation on complex multi-task / journal replies, while still fitting within the 8,000 TPM limit!
+              turnMaxTokens = 1200;
             }
 
             const llmBody: Record<string, unknown> = {
@@ -3729,26 +3836,67 @@ Deno.serve(async (req: Request) => {
               llmBody.tool_choice = 'auto';
             }
 
-            let llmRes = await fetch(provider.url, {
-              method: 'POST',
-              headers: {
-                Authorization: 'Bearer ' + provider.key,
-                'Content-Type': 'application/json',
-                ...(provider.headers || {}),
-              },
-              body: JSON.stringify(llmBody),
-              signal: AbortSignal.timeout(15000),
-            });
+            const tLlmTurnStart = isLatencyDebug ? performance.now() : 0;
+            totalLlmAttempts++;
+            const attemptId = totalLlmAttempts;
+            const tAttemptStart = isLatencyDebug ? performance.now() : 0;
+            let llmRes: Response;
+            try {
+              llmRes = await fetch(provider.url, {
+                method: 'POST',
+                headers: {
+                  Authorization: 'Bearer ' + provider.key,
+                  'Content-Type': 'application/json',
+                  ...(provider.headers || {}),
+                },
+                body: JSON.stringify(llmBody),
+                signal: AbortSignal.timeout(15000),
+              });
+              if (isLatencyDebug) {
+                const statusStr = llmRes.ok ? 'ok' : `${llmRes.status}`;
+                addTiming(`llm_attempt_${attemptId}`, performance.now() - tAttemptStart, `${provider.label} ${provider.model} [${statusStr}]`);
+              }
+            } catch (fetchErr: any) {
+              if (isLatencyDebug) {
+                addTiming(`llm_attempt_${attemptId}`, performance.now() - tAttemptStart, `${provider.label} ${provider.model} [error: ${fetchErr?.message || 'failed'}]`);
+              }
+              throw fetchErr;
+            }
 
             let retryCount = 0;
             let lastErrText = '';
+
+            if (llmRes.status === 413) {
+              const err413Text = await llmRes.text();
+              lastErrText = err413Text;
+              const payloadChars = JSON.stringify(llmBody).length;
+              const estTokens = Math.round(payloadChars / 3.7);
+              const promptChars = turnMessages.reduce((acc, m) => acc + (typeof m.content === 'string' ? m.content.length : 0), 0);
+              const toolsChars = llmBody.tools ? JSON.stringify(llmBody.tools).length : 0;
+              console.warn(`[ai-assistant-chat] ${provider.label} 413 Payload Too Large: payloadChars=${payloadChars} (~${estTokens} tok), promptChars=${promptChars}, toolsChars=${toolsChars}, maxTokens=${turnMaxTokens}. Response: ${err413Text}`);
+              if (isLatencyDebug) {
+                console.log(`[ai-assistant-chat][LatencyDebug] 413 on ${provider.label}: payloadChars=${payloadChars}, estTokens=${estTokens}, promptChars=${promptChars}, toolsChars=${toolsChars}, maxTokens=${turnMaxTokens}`);
+              }
+              if (isFastPaidEscalation && provider.label.startsWith('Groq-Free')) {
+                hasFreeTierRateLimited = true;
+              }
+              throw new Error(`${provider.label} tool error (413): ${err413Text}`);
+            }
+
+            if (llmRes.status === 429) {
+              const accountPrefix = provider.label.replace(/-20B|-120B|-Qwen/, '');
+              rateLimitedAccountLabels.add(accountPrefix);
+              if (isFastPaidEscalation && provider.label.startsWith('Groq-Free')) {
+                hasFreeTierRateLimited = true;
+              }
+            }
             while (llmRes.status === 429 && retryCount < 2) {
               retryCount++;
               lastErrText = await llmRes.text();
-              const isDailyLimit = /tokens per day|TPD/i.test(lastErrText);
-              // If we have a paid key ready, don't wait on free-tier rate limits - immediately failover to paid key!
-              if (isDailyLimit || (groqPaidKey && provider.label.includes('Free'))) {
-                console.log(`[ai-assistant-chat] ${provider.label} 429 encountered, immediately failing over to paid overflow provider...`);
+              const isDailyLimit = /tokens per day|TPD|requests per day|RPD/i.test(lastErrText);
+              // For free tiers or if daily limit hit, immediately failover to next account/provider in cascade!
+              if (isDailyLimit || provider.label.includes('Free') || isFastPaidEscalation) {
+                console.log(`[ai-assistant-chat] ${provider.label} 429 encountered, immediately failing over to next provider in cascade...`);
                 break;
               }
               let waitMs = 3000;
@@ -3761,16 +3909,30 @@ Deno.serve(async (req: Request) => {
                 console.log(`[ai-assistant-chat] 429 backoff: waiting ${waitMs}ms before retry ${retryCount}...`);
                 await new Promise((resolve) => setTimeout(resolve, waitMs));
 
-                llmRes = await fetch(provider.url, {
-                  method: 'POST',
-                  headers: {
-                    Authorization: 'Bearer ' + provider.key,
-                    'Content-Type': 'application/json',
-                    ...(provider.headers || {}),
-                  },
-                  body: JSON.stringify(llmBody),
-                  signal: AbortSignal.timeout(15000),
-                });
+                totalLlmAttempts++;
+                const retryAttemptId = totalLlmAttempts;
+                const tRetryStart = isLatencyDebug ? performance.now() : 0;
+                try {
+                  llmRes = await fetch(provider.url, {
+                    method: 'POST',
+                    headers: {
+                      Authorization: 'Bearer ' + provider.key,
+                      'Content-Type': 'application/json',
+                      ...(provider.headers || {}),
+                    },
+                    body: JSON.stringify(llmBody),
+                    signal: AbortSignal.timeout(15000),
+                  });
+                  if (isLatencyDebug) {
+                    const statusStr = llmRes.ok ? 'ok' : `${llmRes.status}`;
+                    addTiming(`llm_attempt_${retryAttemptId}`, performance.now() - tRetryStart, `${provider.label} ${provider.model} [retry ${retryCount}: ${statusStr}]`);
+                  }
+                } catch (retryFetchErr: any) {
+                  if (isLatencyDebug) {
+                    addTiming(`llm_attempt_${retryAttemptId}`, performance.now() - tRetryStart, `${provider.label} ${provider.model} [retry ${retryCount} error]`);
+                  }
+                  throw retryFetchErr;
+                }
                 lastErrText = '';
               } else {
                 break;
@@ -3784,6 +3946,11 @@ Deno.serve(async (req: Request) => {
             }
 
             const llmData = await llmRes.json();
+            if (isLatencyDebug) {
+              const dur = performance.now() - tLlmTurnStart;
+              const turnName = turn === 1 ? 'llm_turn_1' : turn === 2 ? 'llm_turn_2' : `llm_turn_${turn}`;
+              addTiming(turnName, dur, `${provider.label} (${provider.model})`);
+            }
             const choice = llmData.choices?.[0];
             const msg = choice?.message;
 
@@ -3880,7 +4047,7 @@ Deno.serve(async (req: Request) => {
                 } else if (primaryProp.type === 'update_task') {
                   agentFinalReply = msg.content?.trim() || `Updated "${taskTitle}" on your board.`;
                 } else if (primaryProp.type === 'create_tasks') {
-                  agentFinalReply = msg.content?.trim() || `I have prepared a proposal to add "${taskTitle}" to your To Do board. Please review and approve it below:`;
+                  agentFinalReply = msg.content?.trim() || `I have added "${taskTitle}" to your To Do board.`;
                 }
                 break;
               }
@@ -3889,7 +4056,7 @@ Deno.serve(async (req: Request) => {
               continue;
             }
 
-            // No tool calls: check if create_journal_entry was missed before finalizing
+            // No tool calls: check if create_journal_entry or create_task was missed before finalizing
             const replyContent = msg.content || '';
             const userReportedWorkOrMeeting =
               /\b(done for the day|finished|completed|worked on|halfway|wrap up|wrapping up|heading out for the day|profiling|implemented|evaluated|meeting|sync|standup|call with)\b/i.test(message);
@@ -3905,6 +4072,22 @@ Deno.serve(async (req: Request) => {
               agentMessages.push({
                 role: 'user',
                 content: `CRITICAL INSTRUCTION: You stated that you drafted a Work Journal / Meeting entry or the user reported work, but you have NOT called the 'create_journal_entry' tool! Without executing 'create_journal_entry', NO interactive review card is displayed on Salitha's screen. You MUST execute 'create_journal_entry' now with the Google XYZ formula.`,
+              });
+              continue;
+            }
+
+            const replyClaimsTaskCreated =
+              /\b(?:task\s+(?:has\s+been\s+|was\s+)?(?:created|added|scheduled)|added\s+.*to\s+your\s+(?:kanban|to[\s-]?do|task)\s+board|new\s+task\s+added)\b/i.test(replyContent);
+            const hasTaskProposalCheck = agentExecutedProposals.some(
+              (p) => ['create_tasks', 'update_task', 'start_task'].includes(p.type)
+            );
+
+            if (!hasTaskProposalCheck && (isTaskCreation || replyClaimsTaskCreated) && turn < maxTurns) {
+              console.log(`[ai-assistant-chat] ReAct Enforcement Turn ${turn}: LLM replied without calling 'create_task'. Enforcing tool execution...`);
+              agentMessages.push(msg);
+              agentMessages.push({
+                role: 'user',
+                content: `CRITICAL INSTRUCTION: You replied that a task was created or the user requested creating a task, but you have NOT called the 'create_task' tool! Text or markdown tables alone do NOT persist anything to the database. You MUST execute the 'create_task' tool right now with the task title, status: 'todo', and priority.`,
               });
               continue;
             }
@@ -4008,6 +4191,9 @@ Deno.serve(async (req: Request) => {
     } else {
       let rawContent = '{}';
       for (const provider of providers) {
+        totalLlmAttempts++;
+        const attemptId = totalLlmAttempts;
+        const tAttemptStart = isLatencyDebug ? performance.now() : 0;
         try {
           attemptedProviders.push(provider.label);
           console.log('[ai-assistant-chat] Fallback: attempting LLM call to ' + provider.label + ' (' + provider.model + ')...');
@@ -4026,12 +4212,19 @@ Deno.serve(async (req: Request) => {
               response_format: { type: 'json_object' },
             }),
           });
+          if (isLatencyDebug) {
+            const statusStr = llmRes.ok ? 'ok' : `${llmRes.status}`;
+            addTiming(`llm_attempt_${attemptId}`, performance.now() - tAttemptStart, `${provider.label} ${provider.model} [${statusStr}]`);
+          }
 
           // If provider rejected json_object response_format (e.g. 400 error), retry once without response_format
           if (!llmRes.ok && llmRes.status === 400) {
             const checkErr = await llmRes.text();
             if (checkErr.includes('response_format') || checkErr.includes('json') || checkErr.includes('schema')) {
               console.warn('[ai-assistant-chat] ' + provider.label + ' rejected response_format; retrying without it...');
+              totalLlmAttempts++;
+              const retryAttemptId = totalLlmAttempts;
+              const tRetryStart = isLatencyDebug ? performance.now() : 0;
               llmRes = await fetch(provider.url, {
                 method: 'POST',
                 headers: {
@@ -4046,6 +4239,10 @@ Deno.serve(async (req: Request) => {
                   max_tokens: 2800,
                 }),
               });
+              if (isLatencyDebug) {
+                const statusStr = llmRes.ok ? 'ok' : `${llmRes.status}`;
+                addTiming(`llm_attempt_${retryAttemptId}`, performance.now() - tRetryStart, `${provider.label} ${provider.model} [retry_no_format: ${statusStr}]`);
+              }
             } else {
               console.warn('[ai-assistant-chat] ' + provider.label + ' returned 400: ' + checkErr);
               providerErrors['Fallback_' + provider.label] = '400: ' + checkErr;
@@ -4068,10 +4265,16 @@ Deno.serve(async (req: Request) => {
           if (finishReason === 'length') {
             console.warn('[ai-assistant-chat] Warning: LLM output was cut off by max_tokens limit!');
           }
+          if (isLatencyDebug) {
+            addTiming('llm_fallback', performance.now() - tAttemptStart, `${provider.label} (${provider.model})`);
+          }
           lastError = null;
           console.log('[ai-assistant-chat] Successfully received response from ' + provider.label);
           break;
         } catch (callErr: any) {
+          if (isLatencyDebug) {
+            addTiming(`llm_attempt_${attemptId}`, performance.now() - tAttemptStart, `${provider.label} ${provider.model} [error: ${callErr?.message || 'failed'}]`);
+          }
           console.warn('[ai-assistant-chat] Exception calling ' + provider.label + ':', callErr);
           providerErrors['Fallback_' + provider.label] = callErr?.message || String(callErr);
           lastError = callErr instanceof Error ? callErr : new Error(String(callErr));
@@ -4154,12 +4357,22 @@ Deno.serve(async (req: Request) => {
     // Ensure speechText is populated with a natural, synthesized spoken answer for voice
     if (!parsedResult.speechText || parsedResult.speechText.trim() === '') {
       if (parsedResult.replyText.length > 200 && providers.length > 0) {
+        totalLlmAttempts++;
+        const synthAttemptId = totalLlmAttempts;
+        const tSynthStart = isLatencyDebug ? performance.now() : 0;
         try {
-          const synth = await synthesizeVoiceSummary(parsedResult.replyText, message, providers[0]);
+          const synth = await synthesizeVoiceSummary(parsedResult.replyText, message, providers);
+          if (isLatencyDebug) {
+            addTiming(`llm_attempt_${synthAttemptId}`, performance.now() - tSynthStart, `${providers[0].label} ${providers[0].model} [voice_synth]`);
+            addTiming('llm_synth', performance.now() - tSynthStart, `${providers[0].label} (${providers[0].model})`);
+          }
           if (synth) {
             parsedResult.speechText = synth;
           }
-        } catch (synthErr) {
+        } catch (synthErr: any) {
+          if (isLatencyDebug) {
+            addTiming(`llm_attempt_${synthAttemptId}`, performance.now() - tSynthStart, `${providers[0].label} ${providers[0].model} [voice_synth_error]`);
+          }
           console.warn('[ai-assistant-chat] Spoken synthesis fallback error:', synthErr);
         }
       }
@@ -4366,6 +4579,7 @@ Deno.serve(async (req: Request) => {
       persistedContent += `\n\n**Sources:**\n${sourceLinks}`;
     }
 
+    const tPersistStart = isLatencyDebug ? performance.now() : 0;
     const { data: assistantMsg, error: assistantMsgError } = await supabase
       .from('assistant_messages')
       .insert({
@@ -4386,6 +4600,18 @@ Deno.serve(async (req: Request) => {
       .update({ updated_at: new Date().toISOString() })
       .eq('id', conversationId);
 
+    const resHeaders: Record<string, string> = {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+    };
+    if (isLatencyDebug) {
+      addTiming('persistence', performance.now() - tPersistStart);
+      addTiming('llm_attempts', totalLlmAttempts, `${totalLlmAttempts} attempt(s)`);
+      addTiming('total', performance.now() - tTotalStart);
+      resHeaders['Access-Control-Expose-Headers'] = 'Server-Timing';
+      resHeaders['Server-Timing'] = formatServerTiming(timingItems);
+    }
+
     // 11. Return response
     return new Response(
       JSON.stringify({
@@ -4400,15 +4626,22 @@ Deno.serve(async (req: Request) => {
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: resHeaders,
       }
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : JSON.stringify(err);
     console.error('[ai-assistant-chat] error:', message);
+    const errHeaders: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' };
+    if (isLatencyDebug && tTotalStart) {
+      addTiming('llm_attempts', totalLlmAttempts, `${totalLlmAttempts} attempt(s)`);
+      addTiming('total', performance.now() - tTotalStart);
+      errHeaders['Access-Control-Expose-Headers'] = 'Server-Timing';
+      errHeaders['Server-Timing'] = formatServerTiming(timingItems);
+    }
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: errHeaders,
     });
   }
 });

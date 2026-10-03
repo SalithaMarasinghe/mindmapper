@@ -11,6 +11,7 @@ import { Composer } from './Composer';
 import { JarvisProposalRenderer } from './JarvisProposalRenderer';
 import { JarvisVoiceMode } from './JarvisVoiceMode';
 import { TranscriptBox } from './TranscriptBox';
+import { isVoiceInputEnabled } from '../../lib/jarvisFlags';
 
 export function ConversationStream() {
   const {
@@ -109,7 +110,7 @@ export function ConversationStream() {
       />
 
       {/* ── Interim Speech Transcript Banner ──────────────────────────── */}
-      {transcript && isRecording && (
+      {isVoiceInputEnabled() && transcript && isRecording && (
         <div className="bg-surface border-b border-border px-4 py-2 shrink-0 animate-in fade-in">
           <TranscriptBox transcript={transcript} />
         </div>
@@ -214,7 +215,7 @@ export function ConversationStream() {
       />
 
       {/* ── Full-Screen Voice Mode Overlay ── */}
-      <JarvisVoiceMode />
+      {isVoiceInputEnabled() && <JarvisVoiceMode />}
     </div>
   );
 }

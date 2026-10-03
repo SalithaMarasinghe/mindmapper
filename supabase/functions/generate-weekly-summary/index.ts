@@ -256,32 +256,51 @@ Deno.serve(async (req: Request) => {
     // ── Build prompt + call Groq ──────────────────────────────────────────
     const { systemPrompt, userPrompt } = buildPrompt(week_start_date, chains, standaloneEvents);
 
-    const groqKey = Deno.env.get('GROQ_API_KEY');
-    if (!groqKey) throw new Error('GROQ_API_KEY secret is not set');
+    const groqKey1 = Deno.env.get('GROQ_API_KEY');
+    const groqKey2 = Deno.env.get('GROQ_API_KEY_2');
+    const groqKey3 = Deno.env.get('GROQ_API_KEY_3');
+    const groqPaidKey = Deno.env.get('GROQ_PAID_API_KEY');
 
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]
-      }),
-    });
+    const groqKeys = [groqKey1, groqKey2, groqKey3, groqPaidKey].filter(Boolean) as string[];
+    if (groqKeys.length === 0) throw new Error('No Groq API keys configured (GROQ_API_KEY, GROQ_API_KEY_2, GROQ_API_KEY_3, or GROQ_PAID_API_KEY)');
 
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
-      console.error('[generate-weekly-summary] Groq API error response:', errText);
-      throw new Error(`Groq API error ${groqRes.status}: ${errText}`);
+    let generatedText = '';
+    let lastError = '';
+
+    for (const key of groqKeys) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'openai/gpt-oss-120b',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          }),
+        });
+
+        if (!groqRes.ok) {
+          const errText = await groqRes.text();
+          lastError = `Groq API error ${groqRes.status}: ${errText}`;
+          console.warn('[generate-weekly-summary] Key failed, trying next:', lastError);
+          continue;
+        }
+
+        const groqData = await groqRes.json();
+        generatedText = groqData.choices?.[0]?.message?.content ?? '';
+        if (generatedText) break;
+      } catch (err: unknown) {
+        lastError = err instanceof Error ? err.message : String(err);
+        console.warn('[generate-weekly-summary] Key exception, trying next:', lastError);
+      }
     }
 
-    const groqData = await groqRes.json();
-    const generatedText: string = groqData.choices?.[0]?.message?.content ?? '';
+    if (!generatedText) throw new Error(`Groq generation failed on all keys: ${lastError}`);
     if (!generatedText) throw new Error('Groq returned an empty response');
 
     // ── Collect source event IDs ───────────────────────────────────────────

@@ -733,7 +733,7 @@ async function storeMemoryChunk(
 
 async function generateGoogleXYZSummary(projectName: string, contextLogs: string): Promise<string> {
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
-  const groqKey = Deno.env.get('GROQ_PAID_API_KEY') || Deno.env.get('GROQ_API_KEY');
+  const groqKey = Deno.env.get('GROQ_API_KEY') || Deno.env.get('GROQ_API_KEY_2') || Deno.env.get('GROQ_API_KEY_3') || Deno.env.get('GROQ_PAID_API_KEY');
   let lastErr = '';
 
   const prompt = `You are a Principal Engineering Lead and Executive Resume Strategist specializing in Google's strict XYZ formula:

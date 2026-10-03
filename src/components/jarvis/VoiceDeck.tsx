@@ -9,6 +9,7 @@ import { QuickRefinementChips } from './QuickRefinementChips';
 import { ContextBar } from './ContextBar';
 import { jarvisVoice } from '../../services/jarvisVoice';
 import { Copy, X, FileText, Check, Headphones } from 'lucide-react';
+import { isVoiceInputEnabled } from '../../lib/jarvisFlags';
 
 export function VoiceDeck() {
   const {
@@ -67,37 +68,42 @@ export function VoiceDeck() {
       <div className="p-4 space-y-4">
         <VoiceDeckHeader />
 
-        {/* Centered Radial Waveform Orb */}
-        <div className="flex flex-col items-center justify-center pt-1 pb-2">
-          <JarvisOrb
-            size={120}
-            state={derivedOrbState}
-            analyser={micAnalyser}
-            onClick={handleOrbToggle}
-          />
-          <div className="mt-2.5 w-full">
-            <StatusText text={statusMessage} />
-          </div>
-        </div>
+        {/* Voice controls (Orb, Transcript, Mic, Hands-free) */}
+        {isVoiceInputEnabled() && (
+          <>
+            {/* Centered Radial Waveform Orb */}
+            <div className="flex flex-col items-center justify-center pt-1 pb-2">
+              <JarvisOrb
+                size={120}
+                state={derivedOrbState}
+                analyser={micAnalyser}
+                onClick={handleOrbToggle}
+              />
+              <div className="mt-2.5 w-full">
+                <StatusText text={statusMessage} />
+              </div>
+            </div>
 
-        {/* Live transcript directly under the orb */}
-        <TranscriptBox transcript={transcript} />
+            {/* Live transcript directly under the orb */}
+            <TranscriptBox transcript={transcript} />
 
-        {/* Mic control button */}
-        <MicButton
-          isRecording={isRecording}
-          isDisabled={isSubmitting || isTranscribing}
-          isSpeaking={isSpeaking}
-          onToggle={toggleRecording}
-          onStopSpeaking={stopSpeaking}
-        />
+            {/* Mic control button */}
+            <MicButton
+              isRecording={isRecording}
+              isDisabled={isSubmitting || isTranscribing}
+              isSpeaking={isSpeaking}
+              onToggle={toggleRecording}
+              onStopSpeaking={stopSpeaking}
+            />
 
-        {/* Hands-Free ambient status hint */}
-        {isHandsFree && !isRecording && (
-          <div className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-accent/10 border border-accent/30 text-accent text-[11px] font-mono animate-pulse">
-            <Headphones className="w-3.5 h-3.5 shrink-0" />
-            <span>Say "Hey Jarvis" to speak</span>
-          </div>
+            {/* Hands-Free ambient status hint */}
+            {isHandsFree && !isRecording && (
+              <div className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-accent/10 border border-accent/30 text-accent text-[11px] font-mono animate-pulse">
+                <Headphones className="w-3.5 h-3.5 shrink-0" />
+                <span>Say "Hey Jarvis" to speak</span>
+              </div>
+            )}
+          </>
         )}
 
         {/* Quick Refinement Chips */}

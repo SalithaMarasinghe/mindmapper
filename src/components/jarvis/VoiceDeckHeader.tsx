@@ -1,5 +1,6 @@
 import { Volume2, VolumeX, Headphones, Loader2, Zap, ShieldCheck } from 'lucide-react';
 import { useJarvisStore } from '../../store/jarvisStore';
+import { isVoiceInputEnabled } from '../../lib/jarvisFlags';
 
 export function VoiceDeckHeader() {
   const isMuted = useJarvisStore((s) => s.isMuted);
@@ -14,7 +15,7 @@ export function VoiceDeckHeader() {
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-1.5">
         <span className="text-sm font-medium text-text-secondary">Voice deck</span>
-        {isHandsFree && (
+        {isVoiceInputEnabled() && isHandsFree && (
           <button
             onClick={() => void setWakeWordEngine(wakeWordEngine === 'browser' ? 'wasm' : 'browser')}
             title={
@@ -41,24 +42,26 @@ export function VoiceDeckHeader() {
 
       <div className="flex items-center gap-1.5">
         {/* Hands-Free Wake-Word Toggle */}
-        <button
-          onClick={() => void toggleHandsFree()}
-          disabled={isWakeWordLoading}
-          aria-label="Toggle Hands-Free"
-          title={isHandsFree ? "Hands-Free listening active · Say 'Hey Jarvis'" : "Turn on Hands-Free ('Hey Jarvis')"}
-          className={`px-2 py-1 rounded-[8px] text-[11px] border transition-all flex items-center gap-1 cursor-pointer ${
-            isHandsFree
-              ? 'bg-accent/15 text-accent border-accent/50 font-medium ring-1 ring-accent/30'
-              : 'border-border text-text-muted hover:text-text'
-          }`}
-        >
-          {isWakeWordLoading ? (
-            <Loader2 className="w-3 h-3 animate-spin text-accent" />
-          ) : (
-            <Headphones className={`w-3 h-3 ${isHandsFree ? 'text-accent animate-pulse' : ''}`} />
-          )}
-          <span>{isWakeWordLoading ? '...' : isHandsFree ? 'Hey Jarvis' : 'Hands-Free'}</span>
-        </button>
+        {isVoiceInputEnabled() && (
+          <button
+            onClick={() => void toggleHandsFree()}
+            disabled={isWakeWordLoading}
+            aria-label="Toggle Hands-Free"
+            title={isHandsFree ? "Hands-Free listening active · Say 'Hey Jarvis'" : "Turn on Hands-Free ('Hey Jarvis')"}
+            className={`px-2 py-1 rounded-[8px] text-[11px] border transition-all flex items-center gap-1 cursor-pointer ${
+              isHandsFree
+                ? 'bg-accent/15 text-accent border-accent/50 font-medium ring-1 ring-accent/30'
+                : 'border-border text-text-muted hover:text-text'
+            }`}
+          >
+            {isWakeWordLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin text-accent" />
+            ) : (
+              <Headphones className={`w-3 h-3 ${isHandsFree ? 'text-accent animate-pulse' : ''}`} />
+            )}
+            <span>{isWakeWordLoading ? '...' : isHandsFree ? 'Hey Jarvis' : 'Hands-Free'}</span>
+          </button>
+        )}
 
         {/* Mute Button */}
         <button

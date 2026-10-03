@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Mic, MicOff, Send, Plus, VolumeX } from 'lucide-react';
+import { isVoiceInputEnabled } from '../../lib/jarvisFlags';
 
 export interface ComposerProps {
   value: string;
@@ -88,7 +89,7 @@ export function Composer({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isDisabled}
-            placeholder={isRecording ? 'Listening to voice...' : placeholder}
+            placeholder={isVoiceInputEnabled() && isRecording ? 'Listening to voice...' : placeholder}
             className="flex-1 bg-transparent text-[15px] text-text placeholder:text-text-muted/60 resize-none focus:outline-none min-h-[24px] max-h-[120px] leading-relaxed px-2 py-1"
           />
 
@@ -108,29 +109,31 @@ export function Composer({
           </button>
         </div>
 
-        {/* ── Separate Round Mic Button (Red Live State on Recording) ── */}
-        <button
-          type="button"
-          onClick={onMicClick}
-          disabled={isDisabled}
-          aria-label={isRecording ? 'Stop recording' : 'Start voice dictation'}
-          title={isRecording ? 'Stop recording' : 'Dictate with voice'}
-          className={`w-12 h-12 min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer shadow-md mb-0.5 touch-manipulation active:scale-95 ${
-            isRecording
-              ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/40 scale-105'
-              : isSpeaking
-              ? 'bg-surface-2 text-accent border border-accent/40'
-              : 'bg-surface-2/90 backdrop-blur-md border border-border/60 text-text-muted hover:text-text hover:border-border-strong'
-          }`}
-        >
-          {isRecording ? (
-            <MicOff className="w-5 h-5 text-white" />
-          ) : isSpeaking ? (
-            <VolumeX className="w-5 h-5" />
-          ) : (
-            <Mic className="w-5 h-5" />
-          )}
-        </button>
+        {/* ── Separate Round Mic Button (hidden when voice input is disabled) ── */}
+        {isVoiceInputEnabled() && (
+          <button
+            type="button"
+            onClick={onMicClick}
+            disabled={isDisabled}
+            aria-label={isRecording ? 'Stop recording' : 'Start voice dictation'}
+            title={isRecording ? 'Stop recording' : 'Dictate with voice'}
+            className={`w-12 h-12 min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer shadow-md mb-0.5 touch-manipulation active:scale-95 ${
+              isRecording
+                ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/40 scale-105'
+                : isSpeaking
+                ? 'bg-surface-2 text-accent border border-accent/40'
+                : 'bg-surface-2/90 backdrop-blur-md border border-border/60 text-text-muted hover:text-text hover:border-border-strong'
+            }`}
+          >
+            {isRecording ? (
+              <MicOff className="w-5 h-5 text-white" />
+            ) : isSpeaking ? (
+              <VolumeX className="w-5 h-5" />
+            ) : (
+              <Mic className="w-5 h-5" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

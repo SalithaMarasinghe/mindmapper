@@ -5,6 +5,8 @@
 // Visualizer: Web Audio API frequency analyser
 
 import { supabase } from '../lib/supabase';
+import { jarvisTelemetry } from './jarvisTelemetry';
+import { isVoiceInputEnabled, isVoiceOutputEnabled } from '../lib/jarvisFlags';
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binaryString = window.atob(base64);
@@ -72,6 +74,7 @@ export class JarvisVoiceService {
   }
 
   async initAudioAnalyzer(stream?: MediaStream): Promise<boolean> {
+    if (!isVoiceInputEnabled()) return false;
     if (typeof window === 'undefined') return false;
     const ctx = this.ensureAudioContext();
     if (!ctx || !this.analyser) return false;
@@ -144,6 +147,10 @@ export class JarvisVoiceService {
 
   // ── MediaRecorder: Start Recording ─────────────────────────────────────
   async startRecording(): Promise<boolean> {
+    if (!isVoiceInputEnabled()) {
+      console.log('[JarvisVoice] Recording disabled by FLAG_ENABLE_VOICE_INPUT');
+      return false;
+    }
     // Immediately interrupt and kill any active speech narration
     this.stopSpeaking();
     if (this.isRecording) return true;
@@ -285,6 +292,7 @@ export class JarvisVoiceService {
     accessToken: string,
     anonKey: string
   ): Promise<string> {
+    if (!isVoiceInputEnabled()) return '';
     const form = new FormData();
     let fileName = 'recording.webm';
     if (blob.type.includes('mp4') || blob.type.includes('m4a') || blob.type.includes('aac')) {
@@ -296,7 +304,8 @@ export class JarvisVoiceService {
     }
     form.append('audio', blob, fileName);
 
-    const res = await fetch(`${supabaseUrl}/functions/v1/jarvis-transcribe`, {
+    const qs = jarvisTelemetry.isEnabled() ? '?latency_debug=true' : '';
+    const res = await fetch(`${supabaseUrl}/functions/v1/jarvis-transcribe${qs}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -310,6 +319,9 @@ export class JarvisVoiceService {
       throw new Error(`Transcription failed (${res.status}): ${err}`);
     }
 
+    const sttServerTiming = res.headers.get('Server-Timing');
+    jarvisTelemetry.setServerTiming('stt-done', sttServerTiming);
+
     const json = (await res.json()) as { text?: string; error?: string };
     if (json.error) throw new Error(json.error);
     return json.text?.trim() ?? '';
@@ -317,6 +329,7 @@ export class JarvisVoiceService {
 
   // ── Neural TTS: Google Cloud Text-to-Speech (Neural2) ───────────────────
   private async speakNeural(text: string, onEnd?: () => void): Promise<boolean> {
+    if (!isVoiceOutputEnabled()) return false;
     if (typeof window === 'undefined') return false;
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
@@ -338,7 +351,8 @@ export class JarvisVoiceService {
       // Proceed with anon key if no active session
     }
 
-    const res = await fetch(`${supabaseUrl}/functions/v1/jarvis-tts`, {
+    const ttsQs = jarvisTelemetry.isEnabled() ? '?latency_debug=true' : '';
+    const res = await fetch(`${supabaseUrl}/functions/v1/jarvis-tts${ttsQs}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -362,6 +376,9 @@ export class JarvisVoiceService {
     }
 
     const data = (await res.json()) as { audioContent?: string };
+    jarvisTelemetry.mark('tts-response-received', {
+      serverTiming: res.headers.get('Server-Timing'),
+    });
     if (!data.audioContent) {
       console.warn('[JarvisVoice] Neural TTS response missing audioContent.');
       return false;
@@ -415,6 +432,8 @@ export class JarvisVoiceService {
     };
 
     source.start(0);
+    jarvisTelemetry.mark('first-audio-frame');
+    jarvisTelemetry.logTurnSummary();
     return true;
   }
 
@@ -473,6 +492,10 @@ export class JarvisVoiceService {
   }
 
   private speakBrowser(cleanedText: string, onEnd?: () => void) {
+    if (!isVoiceOutputEnabled()) {
+      onEnd?.();
+      return;
+    }
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       onEnd?.();
       return;
@@ -491,6 +514,8 @@ export class JarvisVoiceService {
     utterance.onstart = () => {
       this.isSpeaking = true;
       this.onOrbStateCallback?.('speaking');
+      jarvisTelemetry.mark('first-audio-frame');
+      jarvisTelemetry.logTurnSummary();
 
       // Fix Chromium 15-second speech freeze bug by pinging pause/resume
       if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
@@ -520,6 +545,13 @@ export class JarvisVoiceService {
 
   // ── Unified Speak API ───────────────────────────────────────────────────
   speak(text: string, onEnd?: () => void) {
+    if (!isVoiceOutputEnabled()) {
+      this.isSpeaking = false;
+      this.onOrbStateCallback?.('idle');
+      onEnd?.();
+      return;
+    }
+
     // Reset previous audio silently without broadcasting idle
     this.stopSpeaking(false);
 

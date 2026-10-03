@@ -26,6 +26,7 @@ import type {
 } from '../types';
 import { formatTime, toDateStr } from '../utils/taskTime';
 import { toast } from 'react-hot-toast';
+import { jarvisTelemetry } from '../services/jarvisTelemetry';
 
 interface RawConversation {
   id: string;
@@ -449,8 +450,18 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       if (!session?.access_token) throw new Error('Active user session expired.');
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-      const fnUrl = `${supabaseUrl}/functions/v1/ai-assistant-chat`;
+      const params = new URLSearchParams();
+      if (jarvisTelemetry.isEnabled()) params.set('latency_debug', 'true');
+      if (
+        (typeof window !== 'undefined' && window.localStorage?.getItem('FLAG_FAST_PAID_ESCALATION') === 'true') ||
+        import.meta.env.VITE_FF_FAST_PAID_ESCALATION === 'true'
+      ) {
+        params.set('fast_paid_escalation', 'true');
+      }
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const fnUrl = `${supabaseUrl}/functions/v1/ai-assistant-chat${qs}`;
 
+      jarvisTelemetry.mark('chat-request-sent');
       const res = await fetch(fnUrl, {
         method: 'POST',
         headers: {
@@ -471,6 +482,12 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       });
 
       const json = await res.json();
+      jarvisTelemetry.mark('chat-response-received', {
+        serverTiming: res.headers.get('Server-Timing'),
+      });
+      if (!jarvisTelemetry.hasMark('speech-end')) {
+        jarvisTelemetry.logTurnSummary();
+      }
       if (!res.ok) throw new Error(json.error || 'Failed to call assistant.');
 
       const { conversationId, messageId, replyText: rawReplyText, speechText: rawSpeechText, engineeredPrompt, proposals, searchSources } = json;
@@ -1068,6 +1085,7 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       // Refresh conversations list to update title and updated_at
       void get().fetchConversations();
     } catch (err: unknown) {
+      jarvisTelemetry.clearMarks();
       const msg = err instanceof Error ? err.message : 'Failed to send message';
       toast.error(msg);
       set({ error: msg, isSending: false });

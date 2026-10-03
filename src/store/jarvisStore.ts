@@ -5,6 +5,10 @@ import { useAssistantStore } from './assistantStore';
 import { supabase } from '../lib/supabase';
 import type { AssistantProposal, SearchSource } from '../types';
 import { toast } from 'react-hot-toast';
+import { jarvisTelemetry } from '../services/jarvisTelemetry';
+import { isVoiceInputEnabled, isVoiceOutputEnabled } from '../lib/jarvisFlags';
+
+export { isVoiceInputEnabled, isVoiceOutputEnabled } from '../lib/jarvisFlags';
 
 export type OrbVisualState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'success';
 export type JarvisOperatingMode = 'cockpit' | 'prompt_engineer' | 'technical_qa';
@@ -210,6 +214,7 @@ function isLikelySpeakerEcho(detectedText: string, spokenText: string): boolean 
 
 function startBargeInListener() {
   stopBargeInListener();
+  if (!isVoiceInputEnabled()) return;
 
   // On iOS, skip webkitSpeechRecognition to prevent the OS "Speech Recognition" permission modal
   // and avoid WebKit audio session locking that breaks speech audio.
@@ -534,7 +539,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             void get().toggleRecording();
           }
         }, 400);
-      } else if (get().isHandsFree && !get().isRecording && !get().isTranscribing && !get().isSubmitting && !get().isSpeaking) {
+      } else if (isVoiceInputEnabled() && get().isHandsFree && !get().isRecording && !get().isTranscribing && !get().isSubmitting && !get().isSpeaking) {
         // Automatically re-arm wake word detection once speech playback is done
         void wakeWordService.resume();
         set({ statusMessage: "Hands-Free active · Say 'Hey Jarvis'" });
@@ -543,25 +548,28 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
   });
 
   // Hook openWakeWord listener to start hands-free voice command capture
-  wakeWordService.addListener({
-    onDetected: (keyword, score) => {
-      console.log(`[JarvisStore] 🎯 Wake word triggered (${keyword}, score: ${score.toFixed(3)})`);
-      const state = get();
-      if (state.isRecording || state.isTranscribing || state.isSubmitting) {
-        console.log('[JarvisStore] Ignoring wake word because system is active.');
-        return;
-      }
-      if (state.isSpeaking) {
-        stopBargeInListener();
-        jarvisVoice.stopSpeaking();
-      }
-      // Trigger recording immediately
-      void get().toggleRecording();
-    },
-    onStateChange: ({ isLoading, error, engineType }) => {
-      set({ isWakeWordLoading: isLoading, wakeWordError: error, wakeWordEngine: engineType });
-    },
-  });
+  // Disabled by default in text-only mode; active only when FLAG_ENABLE_VOICE_INPUT is ON
+  if (isVoiceInputEnabled()) {
+    wakeWordService.addListener({
+      onDetected: (keyword, score) => {
+        console.log(`[JarvisStore] 🎯 Wake word triggered (${keyword}, score: ${score.toFixed(3)})`);
+        const state = get();
+        if (state.isRecording || state.isTranscribing || state.isSubmitting) {
+          console.log('[JarvisStore] Ignoring wake word because system is active.');
+          return;
+        }
+        if (state.isSpeaking) {
+          stopBargeInListener();
+          jarvisVoice.stopSpeaking();
+        }
+        // Trigger recording immediately
+        void get().toggleRecording();
+      },
+      onStateChange: ({ isLoading, error, engineType }) => {
+        set({ isWakeWordLoading: isLoading, wakeWordError: error, wakeWordEngine: engineType });
+      },
+    });
+  }
 
   return {
     isOpen: false,
@@ -571,7 +579,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     orbState: 'idle',
     transcript: '',
     pastedText: '',
-    statusMessage: 'Press the mic to start speaking',
+    statusMessage: isVoiceInputEnabled() ? 'Press the mic to start speaking' : 'Ready',
     activeProposal: null,
     activeMessageId: null,
     isMuted: false,
@@ -582,6 +590,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     micMuted: false,
     lastSpokenText: '',
     openVoiceMode: () => {
+      if (!isVoiceInputEnabled()) return;
       set({ voiceModeOpen: true, transcript: '' });
       if (!get().isRecording && !get().isSpeaking && !get().isSubmitting) {
         void get().toggleRecording();
@@ -613,6 +622,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       });
     },
     toggleVoiceMode: () => {
+      if (!isVoiceInputEnabled()) return;
       if (get().voiceModeOpen) {
         get().closeVoiceMode();
       } else {
@@ -664,6 +674,10 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     lastSearchSources: [],
 
     toggleHandsFree: async () => {
+      if (!isVoiceInputEnabled()) {
+        toast('Voice input is currently disabled');
+        return;
+      }
       const current = get().isHandsFree;
       if (current) {
         await wakeWordService.stopListening();
@@ -700,7 +714,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       set({
         isOpen: true,
         orbState: 'idle',
-        statusMessage: 'Press the mic or start speaking, sir',
+        statusMessage: isVoiceInputEnabled() ? 'Press the mic or start speaking, sir' : 'Ready',
         transcript: '',
         pastedText: '',
         activeProposal: null,
@@ -708,7 +722,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         isTranscribing: false,
       });
 
-      if (greet && !get().isMuted) {
+      if (greet && !get().isMuted && isVoiceOutputEnabled()) {
         jarvisVoice.speak('Hello sir, how can I help you today?');
       }
     },
@@ -774,12 +788,19 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
     // ── Toggle push-to-talk recording ─────────────────────────────────────
     toggleRecording: async () => {
+      if (!isVoiceInputEnabled()) {
+        console.log('[JarvisStore] Voice input disabled by FLAG_ENABLE_VOICE_INPUT');
+        return;
+      }
       if (isTogglingRecording || get().isSubmitting || get().isTranscribing) return;
       isTogglingRecording = true;
 
       try {
         if (get().isRecording) {
           // ── STOP → Transcribe ──────────────────────────────────────────
+          if (!jarvisTelemetry.hasMark('speech-end')) {
+            jarvisTelemetry.mark('speech-end');
+          }
           stopAudioPoll();
           stopActiveInterimRecognizer();
 
@@ -790,6 +811,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           // If no speech was ever detected and there is no interim text, user just tapped mic to cancel or silence elapsed
           if (!hasUserSpokenInActiveRecording && !savedInterim) {
             console.log('[JarvisStore] No speech detected during recording session; cancelling cleanly without submitting.');
+            jarvisTelemetry.clearMarks();
             latestInterimTranscript = '';
             isTrailingThoughtIncomplete = false;
             set({
@@ -811,6 +833,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               void get().submitCommand(savedInterim);
               return;
             }
+            jarvisTelemetry.clearMarks();
             latestInterimTranscript = '';
             isTrailingThoughtIncomplete = false;
             set({
@@ -852,6 +875,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
             // Resilient fallback to real-time interim transcript if Whisper returned blank
             const finalTranscript = (text || savedInterim).trim();
+            jarvisTelemetry.mark('stt-done');
             latestInterimTranscript = '';
             isTrailingThoughtIncomplete = false;
 
@@ -861,6 +885,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
             if (!hasMeaningfulContent || isHallucination) {
               console.log('[JarvisStore] Rejected empty or hallucinated transcript:', finalTranscript);
+              jarvisTelemetry.clearMarks();
               set({
                 isTranscribing: false,
                 orbState: 'idle',
@@ -893,6 +918,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               return;
             }
 
+            jarvisTelemetry.clearMarks();
             latestInterimTranscript = '';
             isTrailingThoughtIncomplete = false;
             toast.error(msg);
@@ -901,6 +927,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           }
         } else {
           // ── START recording ────────────────────────────────────────────
+          jarvisTelemetry.startTurn();
           stopAudioPoll();
           stopBargeInListener();
           jarvisVoice.stopSpeaking();
@@ -988,6 +1015,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           // Adaptive silence monitor state
           let speechDetected = false;
           let silenceStart = 0;
+          let lastVoiceActivityAt = 0;
           let ambientCalibrated = false;
           let ambientFloor = 0.01;
           const calibrationSamples: number[] = [];
@@ -1019,6 +1047,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             // 1. Check if user is speaking
             if (rms > speechThreshold) {
               hasUserSpokenInActiveRecording = true;
+              lastVoiceActivityAt = performance.now();
               if (!speechDetected) {
                 speechDetected = true;
               }
@@ -1052,6 +1081,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
                 const triggerTimeout = get().isHandsFree ? silenceTargetMs : (silenceTargetMs + 1000);
                 if (elapsedSilence >= triggerTimeout) {
                   console.log(`[Jarvis] Silence detected (${triggerTimeout}ms), auto-submitting utterance...`);
+                  jarvisTelemetry.mark('speech-end', { startTime: lastVoiceActivityAt || performance.now() });
                   stopAudioPoll();
                   void get().toggleRecording();
                   return;
@@ -1061,6 +1091,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               // 3. User said "Hey Jarvis" but has not said a command yet
               if (now - startedAt >= INITIAL_WAIT_MS) {
                 console.log('[Jarvis] Hands-free initial wait timeout (no command spoken)');
+                jarvisTelemetry.clearMarks();
                 stopAudioPoll();
                 void jarvisVoice.stopRecording();
                 stopActiveInterimRecognizer();
@@ -1079,6 +1110,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             // 4. Safety maximum recording time cutoff (60 seconds)
             if (now - startedAt >= MAX_RECORDING_MS) {
               console.log('[Jarvis] Max recording time reached (60s), auto-submitting...');
+              jarvisTelemetry.mark('speech-end', { startTime: lastVoiceActivityAt || performance.now() });
               stopAudioPoll();
               void get().toggleRecording();
               return;
@@ -1105,8 +1137,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       const hasMeaningfulText = /[a-zA-Z0-9\u0600-\u06FF\u4e00-\u9fa5]/.test(text);
 
       if (!hasMeaningfulText && !pasted) {
+        jarvisTelemetry.clearMarks();
         set({ isSubmitting: false, orbState: 'idle' });
         return;
+      }
+
+      if (!jarvisTelemetry.hasMark('speech-end')) {
+        jarvisTelemetry.startTurn();
       }
 
       // Check if an active proposal is awaiting user review and the user spoke an approval or rejection intent
@@ -1249,13 +1286,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             isSubmitting: false,
             activeProposal: targetProp,
             activeMessageId: lastMsg.id,
-            orbState: !get().isMuted ? 'speaking' : 'idle',
+            orbState: !get().isMuted && isVoiceOutputEnabled() ? 'speaking' : 'idle',
             statusMessage: 'Ready for your review',
-            lastSpokenText: !get().isMuted ? voiceMsg : '',
+            lastSpokenText: !get().isMuted && isVoiceOutputEnabled() ? voiceMsg : '',
             transcript: '',
           });
 
-          if (!get().isMuted) {
+          if (!get().isMuted && isVoiceOutputEnabled()) {
             jarvisVoice.speak(voiceMsg);
           }
         } else if (autoExecuted.length > 0) {
@@ -1273,17 +1310,21 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           } else if (firstExec.type === 'finish_task') {
             const title = typeof payload.taskTitle === 'string' ? payload.taskTitle : 'Task';
             execVoice = `Marked "${title}" as completed.`;
+          } else if (firstExec.type === 'create_tasks') {
+            const tasks = (payload.tasks as Array<{ title?: string }>) || [];
+            const title = tasks[0]?.title || payload.taskTitle || 'Task';
+            execVoice = `Created "${title}" in To Do.`;
           }
           set({
             isSubmitting: false,
-            orbState: 'success',
+            orbState: isVoiceOutputEnabled() ? 'success' : 'idle',
             statusMessage: execVoice,
-            lastSpokenText: execVoice,
+            lastSpokenText: isVoiceOutputEnabled() ? execVoice : '',
             transcript: '',
           });
-          if (!get().isMuted) jarvisVoice.speak(execVoice);
+          if (!get().isMuted && isVoiceOutputEnabled()) jarvisVoice.speak(execVoice);
         } else {
-          if (!get().isMuted && lastMsg.content) {
+          if (!get().isMuted && isVoiceOutputEnabled() && lastMsg.content) {
             const speechToSpeak = lastMsg.speechText || distillSpeechFromMarkdown(lastMsg.content);
             set({
               isSubmitting: false,
@@ -1300,17 +1341,21 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               statusMessage: 'Answer ready',
               transcript: '',
             });
-            if (get().isHandsFree) void wakeWordService.resume();
+            if (!jarvisTelemetry.hasMark('speech-end')) {
+              jarvisTelemetry.logTurnSummary();
+            }
+            if (isVoiceInputEnabled() && get().isHandsFree) void wakeWordService.resume();
           }
         }
       } catch (err: unknown) {
+        jarvisTelemetry.clearMarks();
         const msg = err instanceof Error ? err.message : 'Execution failed';
         console.error('[Jarvis] Submit error:', err);
         toast.error(msg);
         set({ isSubmitting: false, orbState: 'idle', statusMessage: 'An error occurred, sir.' });
-        if (!get().isMuted) {
+        if (!get().isMuted && isVoiceOutputEnabled()) {
           jarvisVoice.speak('I encountered an issue processing that request, sir.');
-        } else if (get().isHandsFree) {
+        } else if (isVoiceInputEnabled() && get().isHandsFree) {
           void wakeWordService.resume();
         }
       }
@@ -1422,13 +1467,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
         set({
           isSubmitting: false,
-          orbState: 'success',
+          orbState: isVoiceOutputEnabled() ? 'success' : 'idle',
           statusMessage: voiceText,
           activeProposal: null,
           activeMessageId: null,
         });
 
-        if (!get().isMuted) {
+        if (!get().isMuted && isVoiceOutputEnabled()) {
           jarvisVoice.speak(voiceText);
         }
 
@@ -1457,7 +1502,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         }
       }
       set({ activeProposal: null, activeMessageId: null, orbState: 'idle', statusMessage: 'Action cancelled.' });
-      if (!get().isMuted) jarvisVoice.speak('Action cancelled, sir.');
+      if (!get().isMuted && isVoiceOutputEnabled()) jarvisVoice.speak('Action cancelled, sir.');
       setTimeout(() => {
         if (get().isOpen) get().closeHUD();
       }, 1000);

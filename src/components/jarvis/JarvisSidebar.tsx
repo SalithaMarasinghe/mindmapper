@@ -22,6 +22,7 @@ import { useJarvisStore } from '../../store/jarvisStore';
 import { useAuthStore } from '../../store/authStore';
 import { useTimelineStore } from '../../store/timelineStore';
 import type { AssistantConversation } from '../../types';
+import { isVoiceInputEnabled } from '../../lib/jarvisFlags';
 
 interface JarvisSidebarProps {
   onClose?: () => void;
@@ -259,36 +260,38 @@ export function JarvisSidebar({ onClose, isMobile }: JarvisSidebarProps) {
           Instant Controls
         </div>
 
-        {/* 1-Click Hands-Free Wake-Word Toggle */}
-        <button
-          type="button"
-          onClick={() => void toggleHandsFree()}
-          disabled={isWakeWordLoading}
-          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[8px] text-xs transition-colors cursor-pointer border ${
-            isHandsFree
-              ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
-              : 'hover:bg-surface-2 text-text-secondary hover:text-text border-transparent'
-          }`}
-          title={isHandsFree ? "Hands-Free Active ('Hey Jarvis') - Tap to turn off" : "Turn on Hands-Free ('Hey Jarvis')"}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            {isWakeWordLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent shrink-0" />
-            ) : (
-              <Headphones className={`w-3.5 h-3.5 shrink-0 ${isHandsFree ? 'text-accent' : 'text-text-muted'}`} />
-            )}
-            <span className="truncate">Hands-Free ('Hey Jarvis')</span>
-          </div>
-          <span
-            className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full uppercase shrink-0 transition-colors ${
+        {/* 1-Click Hands-Free Wake-Word Toggle (hidden when voice input is disabled) */}
+        {isVoiceInputEnabled() && (
+          <button
+            type="button"
+            onClick={() => void toggleHandsFree()}
+            disabled={isWakeWordLoading}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[8px] text-xs transition-colors cursor-pointer border ${
               isHandsFree
-                ? 'bg-accent text-bg font-bold'
-                : 'bg-surface-2 text-text-muted font-medium'
+                ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
+                : 'hover:bg-surface-2 text-text-secondary hover:text-text border-transparent'
             }`}
+            title={isHandsFree ? "Hands-Free Active ('Hey Jarvis') - Tap to turn off" : "Turn on Hands-Free ('Hey Jarvis')"}
           >
-            {isWakeWordLoading ? '...' : isHandsFree ? 'ON' : 'OFF'}
-          </span>
-        </button>
+            <div className="flex items-center gap-2 min-w-0">
+              {isWakeWordLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-accent shrink-0" />
+              ) : (
+                <Headphones className={`w-3.5 h-3.5 shrink-0 ${isHandsFree ? 'text-accent' : 'text-text-muted'}`} />
+              )}
+              <span className="truncate">Hands-Free ('Hey Jarvis')</span>
+            </div>
+            <span
+              className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full uppercase shrink-0 transition-colors ${
+                isHandsFree
+                  ? 'bg-accent text-bg font-bold'
+                  : 'bg-surface-2 text-text-muted font-medium'
+              }`}
+            >
+              {isWakeWordLoading ? '...' : isHandsFree ? 'ON' : 'OFF'}
+            </span>
+          </button>
+        )}
 
         {/* 1-Click Auto Web Search Toggle */}
         <button

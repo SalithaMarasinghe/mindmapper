@@ -1,13 +1,16 @@
 // Jarvis Text-to-Speech Edge Function
-// Supports a 3-Tier Zero-Cost / Low-Cost Cascade:
-// 1. Groq Free Tier (GROQ_API_KEY) — 100% Free, $0.00 spent
-// 2. Groq Paid Tier (GROQ_PAID_API_KEY) — Overflow cushion, ONLY engages if daily free quota (100 req/day) is reached
-// 3. Google Cloud TTS (GOOGLE_TTS_API_KEY) — Optional fallback
-// 4. Browser TTS — Client automatically engages patched browser speech if all cloud providers fail
+// Supports a 3-Tier Free Cascading Engine:
+// 1. Groq Free Tier Account 1 (GROQ_API_KEY) — 100 req/day, $0.00 spent
+// 2. Groq Free Tier Account 2 (GROQ_API_KEY_2) — 100 req/day, $0.00 spent
+// 3. Groq Free Tier Account 3 (GROQ_API_KEY_3) — 100 req/day, $0.00 spent
+// Total free quota: 300 neural voice replies/day ($0.00 spend).
+// NOTE: GROQ_PAID_API_KEY is deliberately excluded from TTS to eliminate risk of $22.00/1M character charges.
+// 4. Google Cloud TTS (GOOGLE_TTS_API_KEY) — Optional fallback
+// 5. Browser TTS — Client automatically engages local browser speech if all cloud providers fail ($0.00).
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-latency-debug',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -141,15 +144,42 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const url = new URL(req.url);
+  const isVoiceOutputDisabled =
+    Deno.env.get('FLAG_ENABLE_VOICE_OUTPUT') === 'false' ||
+    req.headers.get('x-disable-voice-output') === 'true' ||
+    url.searchParams.get('disable_voice_output') === 'true';
+
+  if (isVoiceOutputDisabled) {
+    return new Response(
+      JSON.stringify({
+        disabled: true,
+        message: 'TTS is disabled (FLAG_ENABLE_VOICE_OUTPUT is false).',
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
+  const isLatencyDebug =
+    Deno.env.get('FLAG_LATENCY_DEBUG') === 'true' ||
+    req.headers.get('x-latency-debug') === 'true' ||
+    url.searchParams.get('latency_debug') === 'true';
+  const tTtsStart = isLatencyDebug ? performance.now() : 0;
+  const chunkTimings: string[] = [];
+
   try {
-    const groqKey = Deno.env.get('GROQ_API_KEY');
-    const groqPaidKey = Deno.env.get('GROQ_PAID_API_KEY');
+    const groqKey1 = Deno.env.get('GROQ_API_KEY');
+    const groqKey2 = Deno.env.get('GROQ_API_KEY_2');
+    const groqKey3 = Deno.env.get('GROQ_API_KEY_3');
     const googleApiKey = Deno.env.get('GOOGLE_TTS_API_KEY');
 
-    if (!groqKey && !groqPaidKey && !googleApiKey) {
+    if (!groqKey1 && !groqKey2 && !groqKey3 && !googleApiKey) {
       return new Response(
         JSON.stringify({
-          error: 'No TTS API keys configured (GROQ_API_KEY, GROQ_PAID_API_KEY, or GOOGLE_TTS_API_KEY).',
+          error: 'No TTS API keys configured (GROQ_API_KEY, GROQ_API_KEY_2, GROQ_API_KEY_3, or GOOGLE_TTS_API_KEY).',
           code: 'MISSING_API_KEY',
         }),
         {
@@ -172,15 +202,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ── Build Priority-Ordered Groq Providers ──────────────────────────────
-    // Tier 1: Free Groq API Key (0$ spend)
-    // Tier 2: Paid Groq API Key (Overflow cushion, only activates if Free hits 429 or quota limit)
+    // ── Build Priority-Ordered Free Groq Providers (100% Free - $0.00 spent) ────
+    // 3 Free Groq Accounts = 300 free high-fidelity neural voice replies/day.
+    // GROQ_PAID_API_KEY is intentionally EXCLUDED from TTS to prevent expensive $22.00/1M charges.
+    // If all free accounts are exhausted, returns 503 so client falls back to local browser speech ($0.00).
     const groqProviders: Array<{ label: string; key: string }> = [];
-    if (groqKey) {
-      groqProviders.push({ label: 'Groq-Free', key: groqKey });
+    if (groqKey1) {
+      groqProviders.push({ label: 'Groq-Free-1', key: groqKey1 });
     }
-    if (groqPaidKey && groqPaidKey !== groqKey) {
-      groqProviders.push({ label: 'Groq-Paid-Cushion', key: groqPaidKey });
+    if (groqKey2 && groqKey2 !== groqKey1) {
+      groqProviders.push({ label: 'Groq-Free-2', key: groqKey2 });
+    }
+    if (groqKey3 && groqKey3 !== groqKey1 && groqKey3 !== groqKey2) {
+      groqProviders.push({ label: 'Groq-Free-3', key: groqKey3 });
     }
 
     const debugErrors: string[] = [];
@@ -195,8 +229,10 @@ Deno.serve(async (req: Request) => {
       try {
         const wavBuffers: Uint8Array[] = [];
         let success = true;
+        let chunkIdx = 0;
 
         for (const chunk of chunks) {
+          const tChunkStart = isLatencyDebug ? performance.now() : 0;
           const groqRes = await fetch('https://api.groq.com/openai/v1/audio/speech', {
             method: 'POST',
             headers: {
@@ -222,11 +258,23 @@ Deno.serve(async (req: Request) => {
 
           const buf = new Uint8Array(await groqRes.arrayBuffer());
           wavBuffers.push(buf);
+          if (isLatencyDebug) {
+            const chunkDur = Number((performance.now() - tChunkStart).toFixed(1));
+            chunkTimings.push(`tts_chunk_${chunkIdx};dur=${chunkDur}`);
+          }
+          chunkIdx++;
         }
 
         if (success && wavBuffers.length > 0) {
           const combinedWav = concatenateWavBuffers(wavBuffers);
           const base64Audio = uint8ArrayToBase64(combinedWav);
+
+          const resHeaders: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' };
+          if (isLatencyDebug) {
+            const totalDur = Number((performance.now() - tTtsStart).toFixed(1));
+            resHeaders['Access-Control-Expose-Headers'] = 'Server-Timing';
+            resHeaders['Server-Timing'] = [...chunkTimings, `tts_total;dur=${totalDur}`].join(', ');
+          }
 
           return new Response(
             JSON.stringify({
@@ -236,7 +284,7 @@ Deno.serve(async (req: Request) => {
             }),
             {
               status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              headers: resHeaders,
             }
           );
         }
@@ -280,6 +328,12 @@ Deno.serve(async (req: Request) => {
         if (googleRes.ok) {
           const data = (await googleRes.json()) as { audioContent?: string };
           if (data.audioContent) {
+            const resHeaders: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' };
+            if (isLatencyDebug) {
+              const totalDur = Number((performance.now() - tTtsStart).toFixed(1));
+              resHeaders['Access-Control-Expose-Headers'] = 'Server-Timing';
+              resHeaders['Server-Timing'] = `tts_google;dur=${totalDur}, tts_total;dur=${totalDur}`;
+            }
             return new Response(
               JSON.stringify({
                 audioContent: data.audioContent,
@@ -288,7 +342,7 @@ Deno.serve(async (req: Request) => {
               }),
               {
                 status: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: resHeaders,
               }
             );
           }
