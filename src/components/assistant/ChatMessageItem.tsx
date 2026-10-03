@@ -1,4 +1,5 @@
-import { Bot, User } from 'lucide-react';
+import { useState } from 'react';
+import { Bot, User, Copy, Check } from 'lucide-react';
 import type { AssistantMessage, AssistantProposal } from '../../types';
 import { MarkdownViewer } from '../common/MarkdownViewer';
 import { TaskProposalCard } from './cards/TaskProposalCard';
@@ -22,11 +23,30 @@ export function ChatMessageItem({
   onRejectProposal,
   submittingProposalId,
 }: ChatMessageItemProps) {
+  const [copied, setCopied] = useState(false);
   const isUser = message.role === 'user';
   const timeFormatted = new Date(message.createdAt).toLocaleTimeString([], {
     hour: 'numeric',
     minute: '2-digit',
   });
+
+  const handleCopy = async () => {
+    if (!message.content) return;
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = message.content;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (isUser) {
     return (
@@ -55,15 +75,59 @@ export function ChatMessageItem({
       </div>
 
       <div className="flex flex-col max-w-[90%] sm:max-w-[85%] flex-1">
-        <div className="flex items-center gap-2 mb-1 px-1">
-          <span className="text-xs font-medium text-teal-400">Assistant</span>
-          <span className="text-[11px] text-slate-500">{timeFormatted}</span>
+        <div className="flex items-center justify-between mb-1 px-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-teal-400">Assistant</span>
+            <span className="text-[11px] text-slate-500">{timeFormatted}</span>
+          </div>
+          {message.content && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-teal-300 transition-colors py-0.5 px-1.5 rounded hover:bg-white/5 cursor-pointer"
+              title="Copy answer"
+              aria-label="Copy answer to clipboard"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Text bubble */}
         {message.content && (
-          <div className="bg-[#0a0a0a] border border-[#161616] text-slate-200 px-4 py-3 rounded-2xl rounded-tl-sm text-sm shadow-sm">
+          <div className="bg-[#0a0a0a] border border-[#161616] text-slate-200 px-4 py-3 rounded-2xl rounded-tl-sm text-sm shadow-sm relative group/bubble">
             <MarkdownViewer content={message.content} />
+            <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-teal-300 transition-colors py-0.5 px-2 rounded hover:bg-white/5 cursor-pointer"
+                title="Copy answer"
+                aria-label="Copy answer to clipboard"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400 font-medium">Copied answer</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy answer</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
 

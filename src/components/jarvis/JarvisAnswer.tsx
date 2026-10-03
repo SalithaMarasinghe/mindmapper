@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Globe, Sparkles, Copy, Check } from 'lucide-react';
 import { marked, type Tokens } from 'marked';
 import type { SearchSource } from '../../types';
@@ -64,7 +64,26 @@ export function JarvisAnswer({
   onCopyPrompt,
   isCopied,
 }: JarvisAnswerProps) {
+  const [isAnswerCopied, setIsAnswerCopied] = useState(false);
   const renderedHtml = useMemo(() => renderMinimalMarkdown(content), [content]);
+
+  const handleCopyAnswer = async () => {
+    if (!content) return;
+    try {
+      await navigator.clipboard.writeText(content);
+      setIsAnswerCopied(true);
+      setTimeout(() => setIsAnswerCopied(false), 2000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = content;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setIsAnswerCopied(true);
+      setTimeout(() => setIsAnswerCopied(false), 2000);
+    }
+  };
 
   // Event delegation for code block copy buttons
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -104,26 +123,48 @@ export function JarvisAnswer({
         dangerouslySetInnerHTML={{ __html: renderedHtml }}
       />
 
-      {/* ── Quiet Collapsed Sources Row ───────────────────────────────── */}
-      {searchSources && searchSources.length > 0 && (
-        <footer className="mt-3 pt-2 flex items-center gap-2 flex-wrap text-xs text-text-muted">
-          <span className="text-[11px] text-text-secondary font-medium flex items-center gap-1">
-            <Globe className="w-3 h-3 text-text-muted" /> Sources:
-          </span>
-          {searchSources.map((source, i) => (
-            <a
-              key={i}
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-text-secondary hover:text-text underline decoration-border-strong/60 transition-colors truncate max-w-[200px]"
-              title={source.title}
-            >
-              {source.title}
-            </a>
-          ))}
-        </footer>
-      )}
+      {/* ── Answer Actions & Sources Row ───────────────────────────────── */}
+      <footer className="mt-3 pt-2 flex items-center justify-between flex-wrap gap-2 text-xs border-t border-border/20">
+        <button
+          type="button"
+          onClick={handleCopyAnswer}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-medium text-text-secondary hover:text-text bg-surface-2/50 hover:bg-surface-2 border border-border/40 transition-colors cursor-pointer"
+          title="Copy answer"
+          aria-label="Copy answer to clipboard"
+        >
+          {isAnswerCopied ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-emerald-400 font-medium">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+
+        {searchSources && searchSources.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap text-xs text-text-muted ml-auto">
+            <span className="text-[11px] text-text-secondary font-medium flex items-center gap-1">
+              <Globe className="w-3 h-3 text-text-muted" /> Sources:
+            </span>
+            {searchSources.map((source, i) => (
+              <a
+                key={i}
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-text-secondary hover:text-text underline decoration-border-strong/60 transition-colors truncate max-w-[200px]"
+                title={source.title}
+              >
+                {source.title}
+              </a>
+            ))}
+          </div>
+        )}
+      </footer>
 
       {/* ── Context-Engineered Prompt Block ───────────────────────────── */}
       {engineeredPrompt && (
