@@ -8,6 +8,121 @@ import * as ort from 'onnxruntime-web';
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.wasmPaths = '/openwakeword/ort/';
 
+// ── Bulletproof Patch for WakeWordEngine Loopback / Echo Bug ─────────────
+// By default, WakeWordEngine connects its AudioWorkletNode directly to audioContext.destination:
+//   source.connect(gainNode) -> workletNode -> audioContext.destination
+// This causes Chromium to route the live microphone audio straight to the PC speakers!
+// Furthermore, it lacks echoCancellation constraints, causing video/music on the PC to feed back into the mic.
+// We patch start() to:
+//   1. Enable OS hardware echoCancellation, noiseSuppression, and autoGainControl
+//   2. Silence worklet outputs completely in the processor (outputs.fill(0))
+//   3. Route worklet through a 0-gain node to destination (keeping Web Audio clock ticking while 100% MUTING all speaker output)
+const SILENT_AUDIO_PROCESSOR = `
+class AudioProcessor extends AudioWorkletProcessor {
+    bufferSize = 1280;
+    _buffer = new Float32Array(this.bufferSize);
+    _pos = 0;
+    process(inputs, outputs) {
+        const input = inputs[0] ? inputs[0][0] : null;
+        if (input) {
+            for (let i = 0; i < input.length; i++) {
+                this._buffer[this._pos++] = input[i];
+                if (this._pos === this.bufferSize) {
+                    this.port.postMessage(new Float32Array(this._buffer));
+                    this._pos = 0;
+                }
+            }
+        }
+        // Explicitly zero output buffers so NO mic audio can EVER leak into the speakers
+        if (outputs && outputs[0]) {
+            for (let c = 0; c < outputs[0].length; c++) {
+                outputs[0][c].fill(0);
+            }
+        }
+        return true;
+    }
+}
+registerProcessor('audio-processor', AudioProcessor);
+`;
+
+interface PatchedEngineInstance {
+  _loaded?: boolean;
+  _workletNode?: AudioWorkletNode | null;
+  _mediaStream?: MediaStream | null;
+  _audioContext?: AudioContext | null;
+  _gainNode?: GainNode | null;
+  _muteNode?: GainNode | null;
+  _processingQueue?: Promise<void>;
+  _resetState?: () => void;
+  _processChunk?: (chunk: Float32Array) => Promise<void>;
+  _debug?: (...args: unknown[]) => void;
+  _emitter?: { emit: (event: string, payload?: unknown) => void };
+  config?: { sampleRate?: number };
+}
+
+WakeWordEngine.prototype.start = async function (this: PatchedEngineInstance, { deviceId, gain = 1.0 } = {}) {
+  if (!this._loaded) throw new Error('Call load() before start()');
+  if (this._workletNode) return;
+
+  this._resetState?.();
+  this._mediaStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      deviceId: deviceId ? { exact: deviceId } : undefined,
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
+
+  const sampleRate = this.config?.sampleRate || 16000;
+  this._audioContext = new AudioContext({ sampleRate });
+  const source = this._audioContext.createMediaStreamSource(this._mediaStream);
+  this._gainNode = this._audioContext.createGain();
+  this._gainNode.gain.value = gain;
+
+  const blob = new Blob([SILENT_AUDIO_PROCESSOR], { type: 'application/javascript' });
+  const workletURL = URL.createObjectURL(blob);
+  await this._audioContext.audioWorklet.addModule(workletURL);
+  this._workletNode = new AudioWorkletNode(this._audioContext, 'audio-processor');
+
+  this._workletNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
+    const chunk = event.data;
+    if (!chunk || !this._processChunk) return;
+    this._processingQueue = (this._processingQueue || Promise.resolve())
+      .then(() => this._processChunk?.(chunk))
+      .catch((err: unknown) => {
+        this._emitter?.emit('error', err);
+      });
+  };
+
+  source.connect(this._gainNode);
+  this._gainNode.connect(this._workletNode);
+
+  // CRITICAL FIX: DO NOT connect workletNode directly to audioContext.destination!
+  // Instead, route through a 0-gain mute node to satisfy Chrome's audio clock requirement
+  // without sending even a single millivolt of microphone audio to the PC speakers!
+  const muteNode = this._audioContext.createGain();
+  muteNode.gain.setValueAtTime(0, this._audioContext.currentTime);
+  this._workletNode.connect(muteNode);
+  muteNode.connect(this._audioContext.destination);
+  this._muteNode = muteNode;
+
+  this._debug?.('Microphone stream started (SPEAKER OUTPUT 100% MUTED)', { deviceId: deviceId ?? 'default', gain });
+};
+
+const origEngineStop = WakeWordEngine.prototype.stop;
+WakeWordEngine.prototype.stop = async function (this: PatchedEngineInstance) {
+  if (this._muteNode) {
+    try {
+      this._muteNode.disconnect();
+    } catch {
+      // ignore
+    }
+    this._muteNode = null;
+  }
+  return await origEngineStop.call(this);
+};
+
 export interface WakeWordServiceListener {
   onDetected?: (keyword: string, score: number) => void;
   onStateChange?: (state: { isListening: boolean; isLoading: boolean; error: string | null }) => void;
