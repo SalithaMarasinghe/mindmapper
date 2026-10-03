@@ -7,7 +7,7 @@ import { TranscriptBox } from './TranscriptBox';
 import { MicButton } from './MicButton';
 import { QuickRefinementChips } from './QuickRefinementChips';
 import { ContextBar } from './ContextBar';
-import { useMicLevel } from '../../hooks/useMicLevel';
+import { jarvisVoice } from '../../services/jarvisVoice';
 import { Copy, X, FileText, Check, Headphones } from 'lucide-react';
 
 export function VoiceDeck() {
@@ -40,17 +40,7 @@ export function VoiceDeck() {
     ? 'thinking'
     : 'idle';
 
-  // Live microphone audio hook parallel to SpeechRecognition
-  const { analyser: micAnalyser, level: micLevel, isBlocked } = useMicLevel({
-    enabled: isRecording,
-  });
-
-  const effectiveAudioLevel = isRecording ? micLevel || audioLevel : audioLevel;
-
-  const effectiveStatusText =
-    isBlocked && isRecording
-      ? 'Microphone blocked by browser'
-      : statusMessage;
+  const micAnalyser = jarvisVoice.getAnalyser();
 
   useEffect(() => {
     if (lastCopiedAt) {
@@ -83,12 +73,12 @@ export function VoiceDeck() {
           <JarvisOrb
             size={120}
             state={derivedOrbState}
-            level={effectiveAudioLevel}
+            level={audioLevel}
             analyser={micAnalyser}
             onClick={handleOrbToggle}
           />
           <div className="mt-2.5 w-full">
-            <StatusText text={effectiveStatusText} />
+            <StatusText text={statusMessage} />
           </div>
         </div>
 

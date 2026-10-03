@@ -77,7 +77,27 @@ export class JarvisVoiceService {
     if (!ctx || !this.analyser) return false;
 
     try {
-      const s = stream || (await navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
+      const s =
+        stream ||
+        (await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        }));
+
+      // Strip any outgoing connections on the analyser node
+      // The analyser should ONLY act as a passive measurement sink for FFT & RMS, NEVER output to speakers
+      if (this.analyser) {
+        try {
+          this.analyser.disconnect();
+        } catch {
+          // ignore
+        }
+      }
+
       if (this.micSourceNode) {
         try {
           this.micSourceNode.disconnect();
@@ -93,6 +113,10 @@ export class JarvisVoiceService {
       console.warn('[JarvisVoice] Microphone analyser init failed:', err);
       return false;
     }
+  }
+
+  getAnalyser(): AnalyserNode | null {
+    return this.analyser;
   }
 
   getLiveAudioLevel(): number {
@@ -125,7 +149,14 @@ export class JarvisVoiceService {
     if (this.isRecording) return true;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
       this.recordingStream = stream;
       this.recordingChunks = [];
 
@@ -292,12 +323,17 @@ export class JarvisVoiceService {
     const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
 
-    // Connect source to analyser so the orb visualizer reacts to speech
+    // Connect source to destination so user hears TTS playback
+    source.connect(ctx.destination);
+
+    // Also feed source into analyser for orb visualizer, ensuring analyser itself NEVER routes to speakers
     if (this.analyser) {
+      try {
+        this.analyser.disconnect();
+      } catch {
+        // ignore
+      }
       source.connect(this.analyser);
-      this.analyser.connect(ctx.destination);
-    } else {
-      source.connect(ctx.destination);
     }
 
     this.activeAudioSource = source;
@@ -475,6 +511,15 @@ export class JarvisVoiceService {
 
     // 3. Stop browser fallback speech
     this.stopBrowserSpeech();
+
+    // 4. Ensure analyser is detached from any outputs
+    if (this.analyser) {
+      try {
+        this.analyser.disconnect();
+      } catch {
+        // ignore
+      }
+    }
 
     this.isSpeaking = false;
     this.onOrbStateCallback?.('idle');

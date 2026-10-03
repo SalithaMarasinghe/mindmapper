@@ -109,29 +109,27 @@ class WakeWordService {
         baseAssetUrl: '/openwakeword/models',
         ortWasmPath: '/openwakeword/ort/',
         keywords: ['hey_jarvis'],
-        detectionThreshold: 0.45, // Optimized sensitivity for high accuracy and fast response
-        cooldownMs: 2500,
+        detectionThreshold: 0.32, // Sensitive threshold for natural speech & desk distances
+        cooldownMs: 1500,
         vadHangoverFrames: 16,
         debug: true,
       });
 
-      // Hybrid VAD + RMS energy booster so speech is never missed
+      // Keep Silero VAD state tensors continuously synchronized across chunks
+      // and ensure speech active is maintained so keyword scores > 0.32 are never vetoed
       const engineAny = this.engine as unknown as {
         _runVad?: (chunk: Float32Array) => Promise<boolean>;
       };
       const origRunVad = engineAny._runVad?.bind(this.engine);
       if (origRunVad) {
         engineAny._runVad = async (chunk: Float32Array) => {
-          let sumSquares = 0;
-          for (let i = 0; i < chunk.length; i++) {
-            sumSquares += chunk[i] * chunk[i];
+          try {
+            await origRunVad(chunk);
+          } catch (e) {
+            console.warn('[WakeWordService] VAD step warning:', e);
           }
-          const rms = Math.sqrt(sumSquares / chunk.length);
-          // If acoustic energy exceeds background threshold, consider speech active
-          if (rms > 0.015) {
-            return true;
-          }
-          return await origRunVad(chunk);
+          // Always return true to ensure valid keyword detections are never suppressed
+          return true;
         };
       }
 
@@ -190,7 +188,7 @@ class WakeWordService {
 
     try {
       this.isPaused = false;
-      await this.engine.start();
+      await this.engine.start({ gain: 1.5 });
 
       // Ensure AudioContext is actively running (Chrome Autoplay / UserGesture policy)
       const engineCtx = (this.engine as unknown as { _audioContext?: AudioContext })._audioContext;
@@ -243,7 +241,7 @@ class WakeWordService {
     if (!this.isPaused || !this.isLoaded || !this.engine) return;
     try {
       this.isPaused = false;
-      await this.engine.start();
+      await this.engine.start({ gain: 1.5 });
 
       const engineCtx = (this.engine as unknown as { _audioContext?: AudioContext })._audioContext;
       if (engineCtx && engineCtx.state === 'suspended') {

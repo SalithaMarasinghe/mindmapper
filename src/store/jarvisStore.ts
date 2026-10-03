@@ -424,7 +424,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               }
             }
 
-            const speechThreshold = Math.max(0.028, ambientFloor * 2.2);
+            const speechThreshold = Math.max(0.018, ambientFloor * 2.0);
 
             // 1. Check if user is speaking
             if (rms > speechThreshold) {
