@@ -2,12 +2,38 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import fs from 'fs'
 
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    {
+      name: 'serve-openwakeword-static',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url && req.url.startsWith('/openwakeword/')) {
+            const cleanUrl = req.url.split('?')[0];
+            const filePath = path.join(__dirname, 'public', cleanUrl);
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+              if (filePath.endsWith('.mjs') || filePath.endsWith('.js')) {
+                res.setHeader('Content-Type', 'application/javascript');
+              } else if (filePath.endsWith('.wasm')) {
+                res.setHeader('Content-Type', 'application/wasm');
+              } else if (filePath.endsWith('.onnx')) {
+                res.setHeader('Content-Type', 'application/octet-stream');
+              }
+              res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              fs.createReadStream(filePath).pipe(res);
+              return;
+            }
+          }
+          next();
+        });
+      },
+    },
     react(),
     tailwindcss(),
     VitePWA({
@@ -36,11 +62,16 @@ export default defineConfig({
   ],
   server: {
     host: true,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
     hmr: {
       host: 'localhost',
       protocol: 'ws',
       port: 5173,
       clientPort: 5173,
+      overlay: false,
     },
     watch: {
       usePolling: true,

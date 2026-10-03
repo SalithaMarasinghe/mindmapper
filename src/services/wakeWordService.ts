@@ -420,7 +420,7 @@ class WakeWordService {
         await this.engine.load();
       } catch (loadErr) {
         console.warn('[WakeWordService] Primary WASM loader failed, attempting CDN fallback...', loadErr);
-        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/';
         await this.engine.load();
       }
       this.isLoaded = true;
@@ -464,7 +464,24 @@ class WakeWordService {
     // 2. Local OpenWakeWord WASM Mode (100% Private, On-Device)
     if (!this.isLoaded) {
       const ok = await this.init();
-      if (!ok) return false;
+      if (!ok) {
+        console.warn('[WakeWordService] WASM engine failed to load, automatically activating Browser Speech...');
+        this.engineType = 'browser';
+        const browserOk = this.initBrowserRecognition();
+        if (browserOk) {
+          try {
+            this.browserRecognition.start();
+            this.isListening = true;
+            this.error = null;
+            this.notifyStateChange();
+            console.log('[WakeWordService] Started listening for "Hey Jarvis" via Browser Speech 🎙️');
+            return true;
+          } catch (e) {
+            console.error('[WakeWordService] Fallback to browser recognition also failed:', e);
+          }
+        }
+        return false;
+      }
     }
 
     if (!this.engine || this.isListening) return true;
