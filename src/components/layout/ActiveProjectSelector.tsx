@@ -19,15 +19,19 @@ export function ActiveProjectSelector({ compact = false, variant = 'pill' }: Act
   }, [projects.length, fetchProjects]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, [isOpen]);
 
   const activeProject = getActiveProject();
@@ -35,21 +39,22 @@ export function ActiveProjectSelector({ compact = false, variant = 'pill' }: Act
   return (
     <div className="relative inline-flex items-center" ref={containerRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={
           variant === 'minimal'
-            ? 'flex items-center gap-1.5 py-1 text-xs text-text-secondary hover:text-text cursor-pointer transition-colors group'
-            : `flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-200 cursor-pointer ${
+            ? 'flex items-center gap-1.5 py-1 px-2 rounded-lg text-xs text-text-secondary hover:text-text hover:bg-surface-2/60 cursor-pointer transition-colors group'
+            : `flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border transition-all duration-200 cursor-pointer ${
                 activeProject
-                  ? 'bg-surface hover:bg-surface-2 border-border hover:border-accent/40 text-text'
+                  ? 'bg-surface hover:bg-surface-2 border-border hover:border-accent/40 text-text shadow-2xs'
                   : 'bg-surface/50 hover:bg-surface border-border text-text-muted hover:text-text-secondary'
               } ${compact ? 'text-xs h-7' : 'text-xs h-7.5'}`
         }
-        title="Active Focus Project (Narrative Spine)"
+        title="Active Focus Project (Narrative Spine) - Tap to switch"
         aria-label="Active Focus Project"
       >
-        {variant !== 'minimal' && (
-          <span className="relative flex h-2 w-2">
+        {variant !== 'minimal' ? (
+          <span className="relative flex h-2 w-2 shrink-0">
             {activeProject && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-60"></span>
             )}
@@ -59,21 +64,23 @@ export function ActiveProjectSelector({ compact = false, variant = 'pill' }: Act
               }`}
             ></span>
           </span>
+        ) : (
+          <FolderGit2 className="w-3.5 h-3.5 text-accent shrink-0" />
         )}
 
-        <span className="font-medium text-text-secondary group-hover:text-text truncate max-w-[105px] xs:max-w-[130px] sm:max-w-[160px]">
+        <span className="font-medium text-text group-hover:text-accent transition-colors truncate max-w-[85px] xs:max-w-[115px] sm:max-w-[160px]">
           {activeProject ? activeProject.name : 'Select Project'}
         </span>
 
         <ChevronDown
-          className={`w-3 h-3 text-text-muted group-hover:text-text transition-transform duration-200 ${
+          className={`w-3 h-3 text-text-muted group-hover:text-text transition-transform duration-200 shrink-0 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 w-64 bg-panel border border-border rounded-[10px] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 top-full mt-1.5 w-64 max-w-[calc(100vw-24px)] bg-panel border border-border rounded-[12px] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md">
           <div className="px-2 py-1 mb-1 border-b border-border/50 flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1">
               <Target className="w-3 h-3 text-accent" /> Active Focus Storyline

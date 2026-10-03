@@ -12,10 +12,15 @@ import {
   LogOut,
   PanelLeftClose,
   X,
+  Target,
+  FolderGit2,
+  Check,
+  ChevronDown,
 } from 'lucide-react';
 import { useAssistantStore } from '../../store/assistantStore';
 import { useJarvisStore } from '../../store/jarvisStore';
 import { useAuthStore } from '../../store/authStore';
+import { useTimelineStore } from '../../store/timelineStore';
 import type { AssistantConversation } from '../../types';
 
 interface JarvisSidebarProps {
@@ -42,6 +47,41 @@ export function JarvisSidebar({ onClose, isMobile }: JarvisSidebarProps) {
   } = useJarvisStore();
 
   const { user, signOut } = useAuthStore();
+
+  const {
+    projects,
+    activeProjectId,
+    setActiveProjectId,
+    getActiveProject,
+    fetchProjects,
+  } = useTimelineStore();
+
+  const [projectDropdownOpen, setProjectDropdownOpen] = React.useState(false);
+  const projectRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (projects.length === 0) {
+      void fetchProjects();
+    }
+  }, [projects.length, fetchProjects]);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (projectRef.current && !projectRef.current.contains(e.target as Node)) {
+        setProjectDropdownOpen(false);
+      }
+    };
+    if (projectDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [projectDropdownOpen]);
+
+  const activeProject = getActiveProject();
 
   // Group conversations chronologically
   const grouped = React.useMemo(() => {
@@ -133,6 +173,84 @@ export function JarvisSidebar({ onClose, isMobile }: JarvisSidebarProps) {
           </div>
           <span className="text-[10px] text-text-muted/60 font-mono">Clean chat</span>
         </button>
+      </div>
+
+      {/* ── Active Project Section ────────────────────────────────────────── */}
+      <div className="p-3 border-b border-border/30 shrink-0" ref={projectRef}>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted/60 px-1 mb-1.5 flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <Target className="w-3 h-3 text-accent" /> Active Focus Project
+          </span>
+          <span className="text-[10px] text-text-muted/50 font-mono">
+            {projects.length} project{projects.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-[8px] bg-surface-2/80 hover:bg-surface-2 border border-border/60 hover:border-border text-xs transition-colors cursor-pointer group shadow-2xs"
+            title="Switch Active Project"
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
+              <FolderGit2 className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span className="font-medium text-text truncate">
+                {activeProject ? activeProject.name : 'Select Project'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {activeProject && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wider bg-accent/15 text-accent font-medium">
+                  {activeProject.status}
+                </span>
+              )}
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-text-muted group-hover:text-text transition-transform duration-200 ${
+                  projectDropdownOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </div>
+          </button>
+
+          {projectDropdownOpen && (
+            <div className="mt-1.5 w-full bg-panel border border-border rounded-[10px] shadow-xl p-1 max-h-48 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100 z-10">
+              {projects.length === 0 ? (
+                <div className="p-2.5 text-center text-xs text-text-muted">No projects found.</div>
+              ) : (
+                projects.map((p) => {
+                  const isSelected = p.id === activeProjectId || (!activeProjectId && p.id === activeProject?.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveProjectId(p.id);
+                        setProjectDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded-[6px] text-left text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-surface-2 text-text font-medium border border-border/50'
+                          : 'text-text-secondary hover:bg-surface hover:text-text border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <FolderGit2 className={`w-3 h-3 shrink-0 ${isSelected ? 'text-accent' : 'text-text-muted'}`} />
+                        <span className="truncate">{p.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full uppercase text-text-muted">
+                          {p.status}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Instant 1-Click Toggles Section ────────────────────────────── */}

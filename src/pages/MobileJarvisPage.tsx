@@ -177,8 +177,8 @@ export function MobileJarvisPage() {
 
         {/* ── Slim Minimal Header ────────────────────────────────────────── */}
         <header className="pt-[max(env(safe-area-inset-top,0px),12px)] pb-2 px-3 sm:px-4 border-b border-border/20 bg-bg/85 backdrop-blur-md shrink-0 flex items-center justify-between z-30">
-          {/* Left: Sidebar Toggle + Jarvis Wordmark + Minimal Project Selector */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+          {/* Left: Sidebar Toggle + Jarvis Wordmark (sm+) + Active Project Selector (always visible on mobile) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[calc(50%-22px)] shrink">
             <button
               type="button"
               onClick={handleToggleSidebar}
@@ -192,21 +192,21 @@ export function MobileJarvisPage() {
             <Link
               to="/dashboard"
               onClick={() => sessionStorage.setItem('prefer_desktop', 'true')}
-              className="font-semibold text-text text-sm tracking-tight shrink-0 hover:opacity-80 transition-opacity"
+              className="font-semibold text-text text-sm tracking-tight shrink-0 hover:opacity-80 transition-opacity hidden sm:inline"
               title="Switch to Desktop View"
             >
               Jarvis
             </Link>
             <span className="text-text-muted/30 text-xs select-none hidden sm:inline">/</span>
-            <div className="hidden sm:block max-w-[120px] lg:max-w-[180px] truncate">
-              <ActiveProjectSelector compact variant="minimal" />
+            <div className="min-w-0 truncate">
+              <ActiveProjectSelector compact variant="pill" />
             </div>
           </div>
 
-          {/* Center: Small Orb (40px) */}
+          {/* Center: Small Orb (38px) */}
           <div className="flex items-center justify-center shrink-0 mx-1">
             <JarvisOrb
-              size={40}
+              size={38}
               state={orbState}
               audioLevel={audioLevel}
               onClick={toggleVoiceMode}
@@ -214,7 +214,7 @@ export function MobileJarvisPage() {
           </div>
 
           {/* Right: Instant 1-Click Toggles & New Chat */}
-          <div className="flex items-center justify-end gap-1 flex-1 min-w-0">
+          <div className="flex items-center justify-end gap-1 min-w-0 shrink-0">
             {/* 1-Click Hands-Free Wake-Word Toggle */}
             <button
               type="button"
