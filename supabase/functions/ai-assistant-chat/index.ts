@@ -1077,6 +1077,23 @@ const agentTools = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Performs live internet search for real-time information, breaking news, weather, current documentation, latest library versions, external facts, live prices, or anything you do not know or cannot explain with certainty.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Natural language search query to find up-to-date information on the web',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
 ];
 
 const operationalTools = agentTools.filter((t) =>
@@ -2013,6 +2030,33 @@ async function executeAgentTool(
       };
     }
 
+    case 'web_search': {
+      const q = String(args.query || userMessage || '').trim();
+      if (!q) {
+        return { result: { error: 'Search query is required' } };
+      }
+      const isWeather = /\b(weather|temperature|forecast|rain|humidity|climate)\b/i.test(q);
+      let sRes: SearchExecutionResult | null = null;
+      if (isWeather) {
+        sRes = await performFreeWeatherSearch(q, timezone);
+      }
+      if (!sRes) {
+        const cleanQ = buildCleanSearchQuery(q, isWeather, timezone);
+        sRes = await performDuckDuckGoSearch(cleanQ);
+        const tKey = Deno.env.get('TAVILY_API_KEY');
+        if (!sRes && tKey) {
+          sRes = await performTavilySearch(cleanQ, tKey);
+        }
+      }
+      return {
+        result: {
+          query: q,
+          rawContext: sRes?.rawContext || 'No live results found for this query on the web.',
+          sources: sRes?.sources || [],
+        },
+      };
+    }
+
     default:
       return { result: { error: `Unknown tool: ${toolName}` } };
   }
@@ -2719,6 +2763,12 @@ ${recentMeetingsList}
 - Unfinished Tasks From Prior Days:
 ${pastUnfinishedList}
 
+### AUTONOMOUS REAL-TIME WEB SEARCH DIRECTIVE:
+You are equipped with the 'web_search' tool.
+- Whenever Salitha asks a question requiring real-time facts, current events, latest documentation, library updates, weather, prices, sports scores, release notes, or anything you cannot verify or explain with certainty, ALWAYS invoke the 'web_search' tool immediately.
+- Ground your answer in the retrieved search results and cite key sources naturally.
+- Never state "My knowledge cutoff is..." or "I cannot browse the live web". Simply run 'web_search' autonomously whenever needed!
+
 ### OUTPUT FORMAT:
 You MUST respond with a single JSON object matching this structure:
 {
@@ -3394,15 +3444,21 @@ Deno.serve(async (req: Request) => {
     const explicitSearchKeywords =
       /\b(search for|search online|search web|google|lookup|look up|what are the latest|latest changes in|recent updates to|current documentation for|release notes for|changelog for)\b/i.test(message);
 
-    // Search runs ONLY IF:
+    const isInfoQuestion =
+      /^(what|who|when|where|why|how|which|is|are|can|could|does|do|explain|summarize|compare|benchmark|tell me about|find|status of|price of|version of|release of)\b/i.test(cleanMsg) ||
+      /\b(latest|recent|current|today|yesterday|tomorrow|update|version|changelog|news|weather|price|stock|market|crypto|release|2024|2025|2026)\b/i.test(message);
+
+    // Search runs automatically if:
     // 1) Not an operational action, AND
-    // 2) For prompt requests: ONLY IF explicit search requested or enableSearch toggle is true
-    // 3) For other requests: IF enableSearch toggle is true, or explicit search keywords, or live real-time query
+    // 2) The user didn't explicitly disable search (body.enableSearch !== false), AND
+    // 3) Either: explicit search keywords, live realtime query, general info question, or enableSearch is true!
     const shouldRunSearch =
       !isOperational &&
-      (isPromptRequest
-        ? (Boolean(body.enableSearch) || explicitSearchKeywords)
-        : (Boolean(body.enableSearch) || explicitSearchKeywords || isLiveRealtimeQuery));
+      body.enableSearch !== false &&
+      (Boolean(body.enableSearch) ||
+       isLiveRealtimeQuery ||
+       explicitSearchKeywords ||
+       isInfoQuestion);
 
     if (shouldRunSearch) {
       if (isWeatherQuery) {
@@ -3606,6 +3662,22 @@ Deno.serve(async (req: Request) => {
 
                 if (execution.proposal) {
                   agentExecutedProposals.push(execution.proposal);
+                }
+
+                if (fnName === 'web_search' && execution.result?.sources) {
+                  const newSources = execution.result.sources as SearchResultSource[];
+                  if (!searchResult) {
+                    searchResult = {
+                      sources: newSources,
+                      rawContext: String(execution.result.rawContext || ''),
+                    };
+                  } else if (Array.isArray(searchResult.sources)) {
+                    for (const src of newSources) {
+                      if (!searchResult.sources.some((s: any) => s.url === src.url)) {
+                        searchResult.sources.push(src);
+                      }
+                    }
+                  }
                 }
 
                 agentMessages.push({

@@ -172,7 +172,7 @@ export function JarvisSidebar({ onClose, isMobile }: JarvisSidebarProps) {
           </span>
         </button>
 
-        {/* 1-Click Live Web Search Toggle */}
+        {/* 1-Click Auto Web Search Toggle */}
         <button
           type="button"
           onClick={toggleWebSearch}
@@ -181,11 +181,11 @@ export function JarvisSidebar({ onClose, isMobile }: JarvisSidebarProps) {
               ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
               : 'hover:bg-surface-2 text-text-secondary hover:text-text border-transparent'
           }`}
-          title={isWebSearchEnabled ? 'Live Web Search Active - Tap to turn off' : 'Turn on Live Web Search'}
+          title={isWebSearchEnabled ? 'Auto Web Search Active (searches automatically when needed) - Tap to disable' : 'Auto Web Search Disabled - Tap to enable'}
         >
           <div className="flex items-center gap-2 min-w-0">
             <Globe className={`w-3.5 h-3.5 shrink-0 ${isWebSearchEnabled ? 'text-accent' : 'text-text-muted'}`} />
-            <span className="truncate">Live Web Search</span>
+            <span className="truncate">Auto Web Search</span>
           </div>
           <span
             className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full uppercase shrink-0 transition-colors ${
@@ -194,7 +194,7 @@ export function JarvisSidebar({ onClose, isMobile }: JarvisSidebarProps) {
                 : 'bg-surface-2 text-text-muted font-medium'
             }`}
           >
-            {isWebSearchEnabled ? 'ON' : 'OFF'}
+            {isWebSearchEnabled ? 'AUTO' : 'OFF'}
           </span>
         </button>
       </div>

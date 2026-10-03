@@ -347,7 +347,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     promptHistory: [],
     mode: 'cockpit',
     lastCopiedAt: null,
-    isWebSearchEnabled: false,
+    isWebSearchEnabled: true,
     lastSearchSources: [],
 
     toggleHandsFree: async () => {

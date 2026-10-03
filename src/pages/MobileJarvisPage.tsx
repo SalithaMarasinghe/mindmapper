@@ -237,11 +237,11 @@ export function MobileJarvisPage() {
               </span>
             </button>
 
-            {/* 1-Click Live Web Search Toggle */}
+            {/* 1-Click Auto Web Search Toggle */}
             <button
               type="button"
               onClick={toggleWebSearch}
-              title={isWebSearchEnabled ? "Live Web Search Active - Tap to turn off" : "Enable Live Web Search"}
+              title={isWebSearchEnabled ? "Auto Web Search Active (searches automatically when needed) - Tap to disable" : "Auto Web Search Disabled - Tap to enable"}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs border ${
                 isWebSearchEnabled
                   ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
@@ -250,7 +250,7 @@ export function MobileJarvisPage() {
             >
               <Globe className={`w-3.5 h-3.5 ${isWebSearchEnabled ? 'text-accent' : ''}`} />
               <span className="hidden sm:inline text-[10px] font-mono uppercase">
-                {isWebSearchEnabled ? 'WEB:ON' : 'WEB'}
+                {isWebSearchEnabled ? 'AUTO:ON' : 'OFF'}
               </span>
             </button>
 
