@@ -2576,7 +2576,11 @@ ${emailMeetingsList}
      * create_tasks: For adding new tasks, to-dos, or tickets to the Kanban board. User reviews and approves.
      * daily_wrap_up / carry_over_tasks: For ending the day and carrying over unfinished tasks.
      For Tier 2 actions, the user MUST inspect and click Approve/Edit/Reject.
-     In your replyText, confirm any auto-executed timer action directly, and explain that you have drafted the work summary / journal proposal below for their review and approval.
+     CRITICAL TONE & TENSE RULE FOR TIER 2 PROPOSALS (create_tasks, create_project, create_work_event, create_meeting_event):
+     - These actions REQUIRE USER APPROVAL and are NOT committed to the database yet!
+     - NEVER use past tense claiming you already added or created them (e.g. NEVER say "I have created the task", "I added the task to your board", or "I logged the entry").
+     - ALWAYS use prospective proposal language: "I have prepared a proposal to add [Task Name] to your To Do board. Please review and approve it below:" or "I've drafted the work journal entry below for your review:".
+     - In your replyText, confirm any auto-executed timer action directly, and explain that you have drafted the proposal below for their review and approval.
 2. AMBIGUITY RULE:
    - If the user's intent is ambiguous (e.g. "Start the bug fix" when there are multiple bug fix tasks, or "I'm done" when nothing is clearly running or multiple tasks are active), DO NOT guess and DO NOT generate a timer proposal.
    - Instead, set proposals: [] and ask a clear, friendly clarifying question in replyText listing the options.
@@ -3876,7 +3880,7 @@ Deno.serve(async (req: Request) => {
                 } else if (primaryProp.type === 'update_task') {
                   agentFinalReply = msg.content?.trim() || `Updated "${taskTitle}" on your board.`;
                 } else if (primaryProp.type === 'create_tasks') {
-                  agentFinalReply = msg.content?.trim() || `Created task "${taskTitle}" on your To Do board.`;
+                  agentFinalReply = msg.content?.trim() || `I have prepared a proposal to add "${taskTitle}" to your To Do board. Please review and approve it below:`;
                 }
                 break;
               }

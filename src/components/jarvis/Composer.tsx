@@ -74,7 +74,7 @@ export function Composer({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             aria-label="Attach file or context"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-text hover:bg-surface transition-colors cursor-pointer shrink-0 mb-0.5"
+            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full flex items-center justify-center text-text-muted hover:text-text hover:bg-surface transition-colors cursor-pointer shrink-0 mb-0.5 touch-manipulation active:scale-95"
             title="Attach file or context"
           >
             <Plus className="w-4 h-4" />
@@ -98,7 +98,7 @@ export function Composer({
             onClick={onSubmit}
             disabled={isDisabled || !hasText}
             aria-label="Send message"
-            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-0.5 transition-all duration-200 cursor-pointer ${
+            className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full flex items-center justify-center shrink-0 mb-0.5 transition-all duration-200 cursor-pointer touch-manipulation ${
               hasText
                 ? 'bg-text text-bg hover:opacity-90 active:scale-95 shadow-sm scale-100 opacity-100'
                 : 'text-text-muted/20 bg-surface/30 cursor-default opacity-40 scale-90'
@@ -115,12 +115,12 @@ export function Composer({
           disabled={isDisabled}
           aria-label={isRecording ? 'Stop recording' : 'Start voice dictation'}
           title={isRecording ? 'Stop recording' : 'Dictate with voice'}
-          className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer shadow-md mb-0.5 ${
+          className={`w-12 h-12 min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer shadow-md mb-0.5 touch-manipulation active:scale-95 ${
             isRecording
               ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/40 scale-105'
               : isSpeaking
               ? 'bg-surface-2 text-accent border border-accent/40'
-              : 'bg-surface-2/90 backdrop-blur-md border border-border/60 text-text-muted hover:text-text hover:border-border-strong active:scale-95'
+              : 'bg-surface-2/90 backdrop-blur-md border border-border/60 text-text-muted hover:text-text hover:border-border-strong'
           }`}
         >
           {isRecording ? (

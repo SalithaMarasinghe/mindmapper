@@ -22,7 +22,7 @@ export function AppHeader({
   const navigate = useNavigate();
   const { profile, user, signOut } = useAuthStore();
   const { isReadOnly, toggleReadOnly } = useSettingsStore();
-  const { orbState, audioLevel, isRecording } = useJarvisStore();
+  const { orbState, isRecording } = useJarvisStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleJarvisTrigger = () => {
@@ -74,7 +74,7 @@ export function AppHeader({
             title="Switch to Jarvis AI (Alt+J)"
           >
             <div className="relative flex items-center justify-center">
-              <JarvisOrb size={24} state={orbState} audioLevel={audioLevel} glow={false} />
+              <JarvisOrb size={24} state={orbState} glow={false} />
               {isRecording && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-ping" />
               )}

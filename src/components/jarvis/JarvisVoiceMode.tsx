@@ -10,7 +10,6 @@ export function JarvisVoiceMode() {
     voiceModeOpen,
     micMuted,
     orbState,
-    audioLevel,
     transcript,
     isSubmitting,
     isTranscribing,
@@ -107,7 +106,7 @@ export function JarvisVoiceMode() {
           onClick={closeVoiceMode}
           aria-label="Close voice mode"
           title="Close voice mode (Esc)"
-          className="p-2.5 rounded-full text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer touch-manipulation active:scale-95"
+          className="p-3 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer touch-manipulation active:scale-95"
         >
           <X className="w-5 h-5" />
         </button>
@@ -124,7 +123,6 @@ export function JarvisVoiceMode() {
           <JarvisOrb
             size={activeProposal ? 68 : 190}
             state={micMuted ? 'idle' : orbState}
-            audioLevel={micMuted ? 0 : audioLevel}
             onClick={handleOrbClick}
             className="cursor-pointer transition-transform duration-300 touch-manipulation"
           />

@@ -405,6 +405,25 @@ The `direction` column on `nodes` was added after the initial schema was deploye
 
 ---
 
+### Session 19 — 60 FPS Re-Render Storm Resolution & Proposal Tense Directive
+- **Elimination of 60 FPS React Re-Render Storm (`src/store/jarvisStore.ts`, `src/components/jarvis/JarvisOrb.tsx`, `src/pages/MobileJarvisPage.tsx`, `src/components/jarvis/JarvisVoiceMode.tsx`)**:
+  - Root cause of 4–5 tap requirement on buttons: `set({ audioLevel: level })` was invoked on every single `requestAnimationFrame` (60–120 FPS on ProMotion iPhones) during speech and recording. Because `MobileJarvisPage` and `JarvisVoiceMode` subscribed to the entire Zustand store object, the entire page and modal DOM trees were re-rendering 60–120 times/sec. On iOS Safari, mutating a button's DOM node mid-touch (between `touchstart` and `touchend`) causes Safari to invalidate and abort synthetic `click` events!
+  - Fix 1: Throttled `set({ audioLevel })` in both `pollSpeakingAudio` and `pollAudio` to at most ~12 FPS (or significant delta >= 0.08), eliminating 85% of store dispatches while preserving full-speed RMS calculations for silence detection.
+  - Fix 2: Isolated `audioLevel` subscription entirely to `JarvisOrb` via fine-grained selector `useJarvisStore((s) => s.audioLevel)`. Removed `audioLevel` from `MobileJarvisPage`, `JarvisVoiceMode`, `StreamHeader`, and `AppHeader`. The page, modal, and button trees now remain completely stable in the DOM throughout touch lifecycles.
+- **Mobile Touch Target & Ergonomics Polish (`src/components/assistant/cards/ProposalCard.tsx`, `src/components/jarvis/Composer.tsx`, `src/pages/MobileJarvisPage.tsx`, `src/components/jarvis/JarvisVoiceMode.tsx`)**:
+  - Removed `select-none` from `MobileJarvisPage`'s root container, preventing WebKit touch gesture suppression.
+  - Enforced Apple HIG 44x44px–48x48px touch targets and `touch-manipulation` across:
+    - Close (X) buttons (top & bottom) in `JarvisVoiceMode` (`min-w-[48px] min-h-[48px]`)
+    - Approve, Reject, and Edit buttons in `ProposalCard` (`min-h-[44px] px-5 py-2.5`)
+    - Sidebar toggle button in `MobileJarvisPage` (`min-w-[44px] min-h-[44px]`)
+    - Dictation mic button (`min-w-[48px] min-h-[48px]`), Attach button, and Send button in `Composer`
+- **Prospective Tense Directive for Tier 2 Proposals (`supabase/functions/ai-assistant-chat/index.ts`)**:
+  - Root cause: ReAct LLM generated past tense ("Created task..." / "I have added the task regarding RAG...") when generating `create_tasks` proposals, confusing users into thinking the action was already committed before approval.
+  - Fix: Added strict rule to system prompt forbidding past tense for Tier 2 proposals (`create_tasks`, `create_project`, `create_work_event`, `create_meeting_event`) and replaced ReAct fallback with prospective phrasing: `"I have prepared a proposal to add [Task Name] to your To Do board. Please review and approve it below:"`.
+  - Deployed edge function `ai-assistant-chat` to Supabase cloud project `ixmvqmfesibpnrjmvzuj`.
+
+---
+
 ### Session 18 — Mobile PWA Sidebar Auto-Close & iOS Double-Permission Fix
 - **Mobile Sidebar Startup Fix (`src/pages/MobileJarvisPage.tsx`)**:
   - Root cause: `localStorage.getItem('jarvis_sidebar_open')` was persisted across sessions or desktop usage. When the app launched as an installed PWA on iPhone, `sidebarOpen` initialized to `true`, rendering the mobile drawer over the entire screen.

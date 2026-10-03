@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useJarvisStore } from '../../store/jarvisStore';
 
 export type JarvisOrbState = 'idle' | 'listening' | 'thinking' | 'speaking';
 
@@ -23,13 +24,21 @@ export function JarvisOrb({
   level,
   audioLevel,
 }: JarvisOrbProps) {
+  // Directly subscribe to store audioLevel so parent components never need to re-render on audio ticks!
+  const storeAudioLevel = useJarvisStore((s) => s.audioLevel);
+
   // Normalize legacy 'success' to 'idle'
   const normalizedState: JarvisOrbState =
     state === 'success' || !['idle', 'listening', 'thinking', 'speaking'].includes(state)
       ? 'idle'
       : (state as JarvisOrbState);
 
-  const effectiveLevel = typeof level === 'number' ? level : typeof audioLevel === 'number' ? audioLevel : 0;
+  const effectiveLevel =
+    typeof level === 'number'
+      ? level
+      : typeof audioLevel === 'number'
+      ? audioLevel
+      : storeAudioLevel;
 
   const stateLabel = useMemo(() => {
     switch (normalizedState) {

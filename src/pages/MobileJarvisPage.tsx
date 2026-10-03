@@ -34,7 +34,6 @@ export function MobileJarvisPage() {
     isWakeWordLoading,
     transcript,
     orbState,
-    audioLevel,
     stopSpeaking,
     toggleRecording,
     toggleHandsFree,
@@ -174,7 +173,7 @@ export function MobileJarvisPage() {
   ];
 
   return (
-    <div className="h-full h-[100dvh] w-full flex bg-bg text-text overflow-hidden select-none">
+    <div className="h-full h-[100dvh] w-full flex bg-bg text-text overflow-hidden">
       
       {/* ── Desktop In-Flow Sliding Side Panel (Pushes Chat Aside) ── */}
       <aside
@@ -210,9 +209,9 @@ export function MobileJarvisPage() {
               onClick={handleToggleSidebar}
               aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
               title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer shrink-0"
+              className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer shrink-0 touch-manipulation active:scale-95"
             >
-              <PanelLeft className="w-4 h-4" />
+              <PanelLeft className="w-5 h-5" />
             </button>
 
             <Link
@@ -234,7 +233,6 @@ export function MobileJarvisPage() {
             <JarvisOrb
               size={38}
               state={orbState}
-              audioLevel={audioLevel}
               onClick={toggleVoiceMode}
             />
           </div>

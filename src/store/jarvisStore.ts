@@ -457,13 +457,24 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     if (orbState === 'speaking') {
       wasSpeakingPriorToIdle = true;
       startBargeInListener();
+      let lastSpeakingAudioPollTime = 0;
+      let lastSpeakingAudioLevel = 0;
       const pollSpeakingAudio = () => {
         if (get().orbState !== 'speaking') {
-          set({ audioLevel: 0 });
+          if (lastSpeakingAudioLevel !== 0) {
+            lastSpeakingAudioLevel = 0;
+            set({ audioLevel: 0 });
+          }
           return;
         }
+        const now = performance.now();
         const level = jarvisVoice.getLiveAudioLevel();
-        set({ audioLevel: level });
+        // Throttle store updates to ~12 FPS or significant level change (> 0.08)
+        if (now - lastSpeakingAudioPollTime >= 80 || Math.abs(level - lastSpeakingAudioLevel) >= 0.08) {
+          lastSpeakingAudioPollTime = now;
+          lastSpeakingAudioLevel = level;
+          set({ audioLevel: level });
+        }
         requestAnimationFrame(pollSpeakingAudio);
       };
       requestAnimationFrame(pollSpeakingAudio);
@@ -930,14 +941,21 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           const MAX_RECORDING_MS = 60000;  // 60s (1 full minute) safety limit for complex prompts
           const startedAt = Date.now();
 
+          let lastRecAudioPollTime = 0;
+          let lastRecAudioLevel = 0;
           // Poll audio level for orb visualizer and adaptive silence detection
           const pollAudio = () => {
             if (!get().isRecording) return;
             const level = jarvisVoice.getLiveAudioLevel();
             const rms = jarvisVoice.getLiveRMS();
-            set({ audioLevel: level });
-
+            
             const now = Date.now();
+            // Throttle store updates to ~12 FPS or significant level change (> 0.08)
+            if (now - lastRecAudioPollTime >= 80 || Math.abs(level - lastRecAudioLevel) >= 0.08) {
+              lastRecAudioPollTime = now;
+              lastRecAudioLevel = level;
+              set({ audioLevel: level });
+            }
 
             // Calibrate ambient noise floor during first 250ms
             if (!ambientCalibrated) {

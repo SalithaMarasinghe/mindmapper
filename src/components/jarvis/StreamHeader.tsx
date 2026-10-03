@@ -16,7 +16,7 @@ export function StreamHeader({
   onToggleWebSearch,
   onNewSession,
 }: StreamHeaderProps) {
-  const { orbState, audioLevel, toggleVoiceMode } = useJarvisStore();
+  const { orbState, toggleVoiceMode } = useJarvisStore();
 
   return (
     <header className="px-5 py-2.5 border-b border-border/20 bg-bg shrink-0 flex items-center justify-between z-20">
@@ -34,7 +34,6 @@ export function StreamHeader({
         <JarvisOrb
           size={42}
           state={orbState}
-          audioLevel={audioLevel}
           onClick={toggleVoiceMode}
         />
       </div>
