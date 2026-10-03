@@ -12,7 +12,6 @@ import { useJarvisStore } from '../store/jarvisStore';
 import { useAssistantStore } from '../store/assistantStore';
 import { JarvisSidebar } from '../components/jarvis/JarvisSidebar';
 import { JarvisOrb } from '../components/jarvis/JarvisOrb';
-import { Waveform } from '../components/jarvis/Waveform';
 import { TranscriptBox } from '../components/jarvis/TranscriptBox';
 import { UserMessage } from '../components/jarvis/UserMessage';
 import { JarvisAnswer } from '../components/jarvis/JarvisAnswer';
@@ -36,7 +35,6 @@ export function MobileJarvisPage() {
     transcript,
     orbState,
     audioLevel,
-    statusMessage,
     stopSpeaking,
     toggleRecording,
     toggleHandsFree,
@@ -150,7 +148,7 @@ export function MobileJarvisPage() {
   ];
 
   return (
-    <div className="h-full w-full flex bg-bg text-text overflow-hidden select-none">
+    <div className="h-full h-[100dvh] w-full flex bg-bg text-text overflow-hidden select-none">
       
       {/* ── Desktop In-Flow Sliding Side Panel (Pushes Chat Aside) ── */}
       <aside
@@ -175,12 +173,12 @@ export function MobileJarvisPage() {
       )}
 
       {/* ── Main Chat Area (Compacts & Pushes Aside) ── */}
-      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 min-w-0 flex flex-col h-full h-[100dvh] overflow-hidden relative">
 
         {/* ── Slim Minimal Header ────────────────────────────────────────── */}
-        <header className="pt-[max(env(safe-area-inset-top,0px),8px)] pb-2 px-4 border-b border-border/20 bg-bg/85 backdrop-blur-md shrink-0 flex items-center justify-between z-30">
+        <header className="pt-[max(env(safe-area-inset-top,0px),12px)] pb-2 px-3 sm:px-4 border-b border-border/20 bg-bg/85 backdrop-blur-md shrink-0 flex items-center justify-between z-30">
           {/* Left: Sidebar Toggle + Jarvis Wordmark + Minimal Project Selector */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
             <button
               type="button"
               onClick={handleToggleSidebar}
@@ -199,14 +197,16 @@ export function MobileJarvisPage() {
             >
               Jarvis
             </Link>
-            <span className="text-text-muted/30 text-xs select-none">/</span>
-            <ActiveProjectSelector compact variant="minimal" />
+            <span className="text-text-muted/30 text-xs select-none hidden sm:inline">/</span>
+            <div className="hidden sm:block max-w-[120px] lg:max-w-[180px] truncate">
+              <ActiveProjectSelector compact variant="minimal" />
+            </div>
           </div>
 
-          {/* Center: Small Orb (42px) */}
-          <div className="flex items-center justify-center shrink-0">
+          {/* Center: Small Orb (40px) */}
+          <div className="flex items-center justify-center shrink-0 mx-1">
             <JarvisOrb
-              size={42}
+              size={40}
               state={orbState}
               audioLevel={audioLevel}
               onClick={toggleVoiceMode}
@@ -214,14 +214,14 @@ export function MobileJarvisPage() {
           </div>
 
           {/* Right: Instant 1-Click Toggles & New Chat */}
-          <div className="flex items-center justify-end gap-1.5 flex-1 min-w-0">
+          <div className="flex items-center justify-end gap-1 flex-1 min-w-0">
             {/* 1-Click Hands-Free Wake-Word Toggle */}
             <button
               type="button"
               onClick={() => void toggleHandsFree()}
               disabled={isWakeWordLoading}
               title={isHandsFree ? "Hands-Free Active ('Hey Jarvis') - Tap to turn off" : "Enable Hands-Free ('Hey Jarvis')"}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs border ${
+              className={`p-1.5 sm:px-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs border ${
                 isHandsFree
                   ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
                   : 'text-text-muted hover:text-text hover:bg-surface-2 border-transparent'
@@ -232,7 +232,7 @@ export function MobileJarvisPage() {
               ) : (
                 <Headphones className={`w-3.5 h-3.5 ${isHandsFree ? 'text-accent' : ''}`} />
               )}
-              <span className="hidden sm:inline text-[10px] font-mono uppercase">
+              <span className="hidden md:inline text-[10px] font-mono uppercase">
                 {isHandsFree ? 'HF:ON' : 'HF'}
               </span>
             </button>
@@ -242,14 +242,14 @@ export function MobileJarvisPage() {
               type="button"
               onClick={toggleWebSearch}
               title={isWebSearchEnabled ? "Auto Web Search Active (searches automatically when needed) - Tap to disable" : "Auto Web Search Disabled - Tap to enable"}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs border ${
+              className={`p-1.5 sm:px-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs border ${
                 isWebSearchEnabled
                   ? 'bg-accent/15 text-accent font-medium border-accent/40 shadow-xs'
                   : 'text-text-muted hover:text-text hover:bg-surface-2 border-transparent'
               }`}
             >
               <Globe className={`w-3.5 h-3.5 ${isWebSearchEnabled ? 'text-accent' : ''}`} />
-              <span className="hidden sm:inline text-[10px] font-mono uppercase">
+              <span className="hidden md:inline text-[10px] font-mono uppercase">
                 {isWebSearchEnabled ? 'AUTO:ON' : 'OFF'}
               </span>
             </button>
@@ -274,61 +274,30 @@ export function MobileJarvisPage() {
       )}
 
       {/* ── Main Scroll Area: Hero Orb OR Message Feed ────────────────── */}
-      <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 py-6">
+      <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 py-4">
         <div className="max-w-[720px] mx-auto w-full space-y-6 pb-28">
         {messages.length === 0 ? (
-          // ── Hero Orb Landing (Zero Messages) ────────────────────────
-          <div className="h-full flex flex-col items-center justify-center text-center px-4 py-6 max-w-md mx-auto">
-            <div
-              onClick={handleMicClick}
-              className="cursor-pointer group flex flex-col items-center my-auto"
-            >
-              <div className="relative p-2 rounded-full group-active:scale-95 transition-transform duration-200">
-                <JarvisOrb size={96} state={orbState} audioLevel={audioLevel} glow={false} />
-              </div>
+          // ── Minimal Mobile Landing (Zero Messages) ──────────────────
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-6 max-w-md mx-auto my-auto min-h-[42vh]">
+            <h2 className="text-xl sm:text-2xl font-semibold text-text tracking-tight mb-1.5">
+              What can I do for you today?
+            </h2>
+            <p className="text-xs text-text-muted mb-6 max-w-xs leading-relaxed">
+              Tap the orb for Voice Mode, type below, or try a quick prompt.
+            </p>
 
-              <div className="mt-4 h-6 flex items-center justify-center">
-                <Waveform
-                  barCount={28}
-                  isActive={isRecording}
-                  isThinking={isSystemBusy || isTranscribing}
-                  analyserNode={null}
-                  audioLevel={audioLevel}
-                />
-              </div>
-
-              <div className="mt-3">
-                <span className={`text-sm font-medium ${isRecording ? 'text-accent animate-pulse' : isHandsFree ? 'text-accent' : 'text-text'}`}>
-                  {isRecording
-                    ? 'Listening to voice...'
-                    : isSpeaking
-                    ? 'Jarvis speaking (tap to mute)'
-                    : isHandsFree
-                    ? '🎧 Hands-Free Active · Say "Hey Jarvis"'
-                    : statusMessage || 'Tap orb or mic to speak'}
-                </span>
-                <p className="text-xs text-text-muted mt-1">
-                  {isHandsFree
-                    ? '100% on-device private listening in WebAssembly'
-                    : 'Log WhatsApp calls, review action items, or ask questions'}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Suggestion Chips */}
-            <div className="w-full mt-6 space-y-2 text-left">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1 px-1">
-                <Sparkles className="w-3 h-3 text-accent" /> Quick Prompts
-              </span>
-              <div className="grid grid-cols-1 gap-2">
+            {/* Quick Suggestion Chips (2x2 grid) */}
+            <div className="w-full space-y-2 text-left">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {quickPrompts.map((q, idx) => (
                   <button
                     key={idx}
                     onClick={() => submitCommand(q.prompt)}
-                    className="p-2.5 rounded-[10px] bg-surface hover:bg-surface-2 border border-border text-left text-xs transition-colors cursor-pointer group"
+                    className="p-2.5 sm:p-3 rounded-[12px] bg-surface/80 hover:bg-surface-2 border border-border/60 hover:border-border text-left text-xs transition-all cursor-pointer group shadow-xs active:scale-[0.98]"
                   >
-                    <div className="font-medium text-text group-hover:text-accent transition-colors">
-                      {q.title}
+                    <div className="font-medium text-text group-hover:text-accent transition-colors flex items-center justify-between">
+                      <span>{q.title}</span>
+                      <Sparkles className="w-3 h-3 text-text-muted/40 group-hover:text-accent transition-colors" />
                     </div>
                     <div className="text-[11px] text-text-muted truncate mt-0.5">
                       {q.prompt}
