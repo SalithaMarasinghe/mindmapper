@@ -1229,14 +1229,29 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
     // ── Approve Proposal ──────────────────────────────────────────────────
     approveProposal: async (updatedProposal?: AssistantProposal) => {
-      const { activeProposal, activeMessageId } = get();
+      const { activeProposal } = get();
+      let activeMessageId = get().activeMessageId;
       const proposalToExecute = updatedProposal || activeProposal;
-      if (!proposalToExecute || !activeMessageId) return;
+      if (!proposalToExecute) return;
+
+      const assistantStore = useAssistantStore.getState();
+      if (!activeMessageId) {
+        const found = assistantStore.messages.find((m) => m.proposals?.some((p) => p.id === proposalToExecute.id));
+        if (found) {
+          activeMessageId = found.id;
+        } else if (assistantStore.messages.length > 0) {
+          activeMessageId = assistantStore.messages[assistantStore.messages.length - 1].id;
+        }
+      }
+
+      if (!activeMessageId) {
+        console.warn('[JarvisStore] Cannot approve: activeMessageId missing');
+        return;
+      }
 
       set({ isSubmitting: true, orbState: 'thinking', statusMessage: 'Writing changes...' });
 
       try {
-        const assistantStore = useAssistantStore.getState();
         await assistantStore.executeProposal(activeMessageId, proposalToExecute);
 
         // Natural, sentient voice response & feedback
@@ -1339,9 +1354,18 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
     // ── Reject Proposal ───────────────────────────────────────────────────
     rejectProposal: () => {
-      const { activeProposal, activeMessageId } = get();
-      if (activeProposal && activeMessageId) {
-        void useAssistantStore.getState().rejectProposal(activeMessageId, activeProposal.id);
+      const { activeProposal } = get();
+      let activeMessageId = get().activeMessageId;
+      if (activeProposal) {
+        if (!activeMessageId) {
+          const assistantStore = useAssistantStore.getState();
+          const found = assistantStore.messages.find((m) => m.proposals?.some((p) => p.id === activeProposal.id));
+          activeMessageId =
+            found?.id || (assistantStore.messages.length > 0 ? assistantStore.messages[assistantStore.messages.length - 1].id : null);
+        }
+        if (activeMessageId) {
+          void useAssistantStore.getState().rejectProposal(activeMessageId, activeProposal.id);
+        }
       }
       set({ activeProposal: null, activeMessageId: null, orbState: 'idle', statusMessage: 'Action cancelled.' });
       if (!get().isMuted) jarvisVoice.speak('Action cancelled, sir.');

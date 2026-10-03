@@ -98,7 +98,7 @@ export function ProposalCard({
             type="button"
             disabled={isSubmitting}
             onClick={onReject}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-muted hover:text-slate-200 hover:bg-surface transition disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text-muted hover:text-slate-200 hover:bg-surface transition disabled:opacity-50 touch-manipulation cursor-pointer active:scale-95"
           >
             Reject
           </button>
@@ -108,7 +108,7 @@ export function ProposalCard({
               type="button"
               disabled={isSubmitting}
               onClick={onEdit}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text hover:text-text hover:bg-surface-2 transition disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-text hover:text-text hover:bg-surface-2 transition disabled:opacity-50 touch-manipulation cursor-pointer active:scale-95"
             >
               Edit
             </button>
@@ -118,7 +118,7 @@ export function ProposalCard({
             type="button"
             disabled={isSubmitting}
             onClick={onApprove}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-bg bg-text hover:bg-text/90 text-bg shadow-sm active:scale-95 transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-bg bg-text hover:bg-text/90 shadow-sm active:scale-95 transition disabled:opacity-50 touch-manipulation cursor-pointer"
           >
             <Check className="w-3.5 h-3.5" />
             <span>{isSubmitting ? 'Executing...' : (approveLabel || 'Approve & Execute')}</span>

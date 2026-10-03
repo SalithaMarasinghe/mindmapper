@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Mic, MicOff, X } from 'lucide-react';
 import { useJarvisStore } from '../../store/jarvisStore';
 import { JarvisOrb } from './JarvisOrb';
@@ -74,17 +75,17 @@ export function JarvisVoiceMode() {
     }
   };
 
-  if (!voiceModeOpen) return null;
+  if (!voiceModeOpen || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Jarvis Voice Mode"
-      className="fixed inset-0 z-50 bg-[#0B0B0C] flex flex-col justify-between p-4 sm:p-6 select-none animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] bg-[#0B0B0C] flex flex-col justify-between p-4 sm:p-6 pointer-events-auto touch-manipulation animate-in fade-in duration-150"
     >
       {/* ── Top Bar with Title, Review Badge and Close (X) Button ────── */}
-      <header className="pt-[max(env(safe-area-inset-top,0px),8px)] w-full flex items-center justify-between max-w-lg mx-auto shrink-0">
+      <header className="pt-[max(env(safe-area-inset-top,0px),8px)] w-full flex items-center justify-between max-w-lg mx-auto shrink-0 relative z-20">
         <div className="flex items-center gap-2">
           <span className="text-xs uppercase tracking-widest font-semibold text-text-muted/60">
             Jarvis Voice
@@ -102,10 +103,11 @@ export function JarvisVoiceMode() {
         </div>
 
         <button
+          type="button"
           onClick={closeVoiceMode}
           aria-label="Close voice mode"
           title="Close voice mode (Esc)"
-          className="p-2.5 rounded-full text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer"
+          className="p-2.5 rounded-full text-text-muted hover:text-text hover:bg-surface-2 transition-colors cursor-pointer touch-manipulation active:scale-95"
         >
           <X className="w-5 h-5" />
         </button>
@@ -113,7 +115,7 @@ export function JarvisVoiceMode() {
 
       {/* ── Center Stage: Dynamic Orb + Proposal Card / Live Caption ─── */}
       <main
-        className={`flex flex-col items-center text-center max-w-lg mx-auto w-full px-2 transition-all duration-300 ease-out ${
+        className={`flex flex-col items-center text-center max-w-lg mx-auto w-full px-2 transition-all duration-300 ease-out relative z-10 ${
           activeProposal ? 'flex-1 min-h-0 my-1 justify-start' : 'my-auto py-2 space-y-7 justify-center'
         }`}
       >
@@ -124,7 +126,7 @@ export function JarvisVoiceMode() {
             state={micMuted ? 'idle' : orbState}
             audioLevel={micMuted ? 0 : audioLevel}
             onClick={handleOrbClick}
-            className="cursor-pointer transition-transform duration-300"
+            className="cursor-pointer transition-transform duration-300 touch-manipulation"
           />
         </div>
 
@@ -135,7 +137,7 @@ export function JarvisVoiceMode() {
 
         {/* Active Proposal Card (Interactive Multimodal Voice Canvas) */}
         {activeProposal ? (
-          <div className="w-full flex-1 min-h-0 overflow-y-auto px-1 py-1 my-1 text-left select-text animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-300">
+          <div className="w-full flex-1 min-h-0 overflow-y-auto px-1 py-1 my-1 text-left animate-in fade-in duration-150 relative z-20">
             <JarvisProposalRenderer
               proposal={activeProposal}
               onApprove={approveProposal}
@@ -163,16 +165,17 @@ export function JarvisVoiceMode() {
 
       {/* ── Bottom Controls: Mute & Close Buttons ────────────────────── */}
       <footer
-        className={`pb-[max(env(safe-area-inset-bottom,0px),20px)] flex items-center justify-center gap-6 max-w-lg mx-auto w-full shrink-0 ${
+        className={`pb-[max(env(safe-area-inset-bottom,0px),20px)] flex items-center justify-center gap-6 max-w-lg mx-auto w-full shrink-0 relative z-20 ${
           activeProposal ? 'pt-1' : ''
         }`}
       >
         {/* Mute-Mic Button */}
         <button
+          type="button"
           onClick={toggleMicMute}
           aria-label={micMuted ? 'Unmute microphone' : 'Mute microphone'}
           title={micMuted ? 'Unmute microphone' : 'Mute microphone'}
-          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 cursor-pointer ${
+          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 cursor-pointer touch-manipulation ${
             micMuted
               ? 'bg-rose-500/15 text-rose-400 border border-rose-500/40 hover:bg-rose-500/25'
               : 'bg-surface-2 text-text border border-border/70 hover:border-text-muted hover:bg-surface'
@@ -183,14 +186,16 @@ export function JarvisVoiceMode() {
 
         {/* Close (X) Button */}
         <button
+          type="button"
           onClick={closeVoiceMode}
           aria-label="Close voice mode"
           title="Exit voice mode (Esc)"
-          className="w-14 h-14 rounded-full bg-surface-2 border border-border/70 text-text-muted hover:text-text hover:bg-surface flex items-center justify-center shadow-lg transition-all active:scale-95 cursor-pointer"
+          className="w-14 h-14 rounded-full bg-surface-2 border border-border/70 text-text-muted hover:text-text hover:bg-surface flex items-center justify-center shadow-lg transition-all active:scale-95 cursor-pointer touch-manipulation"
         >
           <X className="w-6 h-6" />
         </button>
       </footer>
-    </div>
+    </div>,
+    document.body
   );
 }
