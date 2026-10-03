@@ -373,6 +373,21 @@ The `direction` column on `nodes` was added after the initial schema was deploye
 
 ---
 
+### Session 15 — Dual-Track Voice Mode, Comprehensive Reference Blueprint & Cloud Deploy (v98)
+- **Single-Pass Dual-Stream Architecture (`supabase/functions/ai-assistant-chat/index.ts`)**:
+  - Replaced two-pass LLM roundtrips with a single-pass dual-channel pipeline.
+  - Structured output includes `replyText` (exhaustive visual reference) and `speechText` / `<!-- SPOKEN_VOICE: ... -->` (spoken voice).
+  - 4-Tier Adaptive Spoken Cadence (Tier 1 Operational: 5-10s; Tier 2 Direct/Syntax: 20-35s; Tier 3 Strategic/Exam: 35-50s; Tier 4 Conceptual/RAG: 50-75s).
+- **The Comprehensive Reference Standard (Screen Channel)**:
+  - Enforced 5-section publication-grade structure for technical and exam questions: (1) Factors & Estimates Matrix Table, (2) Practical Milestone/Roadmap Table, (3) 4-5 Actionable Acceleration Strategies, (4) Definitive Bottom Line, and (5) Concrete Action Offerings.
+  - Raised `turnMaxTokens` and fallback `max_tokens` from 1,200 to 2,800 to prevent output compression.
+- **Copy to Clipboard Buttons**:
+  - Added 1-click markdown copy buttons to both `JarvisAnswer.tsx` and `ChatMessageItem.tsx`.
+- **Cloud Deployment (Supabase Edge Function)**:
+  - Deployed updated `ai-assistant-chat` (v98) via Supabase CLI to live cloud project `ixmvqmfesibpnrjmvzuj`.
+
+---
+
 ### Session 9 — Sharing System
 - Deployed `share_link_setup.sql` RLS policies to production Supabase
 - Built `SharedMapPage` with read-only canvas rendering
