@@ -266,8 +266,8 @@ function startBargeInListener() {
 export function distillSpeechFromMarkdown(text: string): string {
   if (!text) return '';
 
-  // 0. Check for explicit spoken summary tag
-  const tagMatch = text.match(/<!--\s*SPOKEN_SUMMARY:\s*([\s\S]*?)\s*-->/i);
+  // 0. Check for explicit spoken voice tag
+  const tagMatch = text.match(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*([\s\S]*?)\s*-->/i);
   if (tagMatch && tagMatch[1].trim()) {
     return tagMatch[1].trim();
   }
@@ -354,14 +354,12 @@ export function distillSpeechFromMarkdown(text: string): string {
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
     let speech = '';
-    let sentenceCount = 0;
     for (const s of sentences) {
       const trimmed = s.trim();
       if (!trimmed || trimmed.length < 10) continue;
-      // Provide a general, good-enough conversational response: 3-4 sentences, max ~480 chars (~70-90 words)
-      if (sentenceCount >= 4 || (speech && (speech + ' ' + trimmed).length > 480)) break;
+      // Allow conversational speech up to ~1500 chars (~200-240 words)
+      if (speech && (speech + ' ' + trimmed).length > 1500) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
-      sentenceCount++;
     }
 
     if (speech) {
@@ -373,7 +371,7 @@ export function distillSpeechFromMarkdown(text: string): string {
     }
   }
 
-  return clean.slice(0, 450).trim();
+  return clean.slice(0, 1500).trim();
 }
 
 interface JarvisState {

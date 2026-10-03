@@ -471,7 +471,16 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to call assistant.');
 
-      const { conversationId, messageId, replyText, speechText, engineeredPrompt, proposals, searchSources } = json;
+      const { conversationId, messageId, replyText: rawReplyText, speechText: rawSpeechText, engineeredPrompt, proposals, searchSources } = json;
+
+      let replyText = (rawReplyText || '').replace(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*[\s\S]*?\s*-->/gi, '').trim();
+      let speechText = rawSpeechText || undefined;
+      if (!speechText && rawReplyText) {
+        const voiceTagMatch = rawReplyText.match(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*([\s\S]*?)\s*-->/i);
+        if (voiceTagMatch) {
+          speechText = voiceTagMatch[1].trim();
+        }
+      }
 
       const isPromptRequest =
         options?.mode === 'prompt_engineer' ||

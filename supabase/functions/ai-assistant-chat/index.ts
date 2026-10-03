@@ -467,24 +467,9 @@ function buildCleanSearchQuery(msg: string, isWeather: boolean, tz?: string): st
     return `${cleanMsg} weather forecast`;
   }
 
-  // Remove conversational preamble, fillers, and framing
-  let clean = msg
-    .replace(/^(?:so\s+i\s+have\s+(?:a\s+few\s+|\d+\s+)?questions?\.?\s*(?:right\s+now\s+i\s+ask\s+it,?\s*)?)+/i, '')
-    .replace(/^(?:so\s+|hey\s+(?:jarvis\s+)?|jarvis\s+|ok\s+|okay\s+|well\s+|tell me\s+|can you please\s+|can you\s+|could you please\s+|could you\s+|please\s+|i want to\s+|i need to\s+|i'd like to\s+|i would like to\s+|let's\s+|search for\s+|search web for\s+|search online for\s+|google\s+|lookup\s+|look up\s+)+/i, '')
-    .replace(/\?+$/, '')
+  return msg
+    .replace(/^(can you please |please |search for |search web for |search online for |google |lookup |look up )/i, '')
     .trim();
-
-  // If query mentions an exam or certification like DP-700, DP-600, etc., extract the core subject
-  const examMatch = clean.match(/\b(?:microsoft\s+)?(dp-\d+|az-\d+|ai-\d+|sc-\d+|pl-\d+|ms-\d+|aws\s+[a-z\s]+|gcp\s+[a-z\s]+)\b/i);
-  if (examMatch) {
-    const examCode = examMatch[0].toUpperCase();
-    if (/\b(?:study|prepare|prep|time|long|hours|pass|duration)\b/i.test(clean)) {
-      return `${examCode} exam study preparation time requirements`;
-    }
-    return `${examCode} exam guide syllabus`;
-  }
-
-  return clean;
 }
 
 function buildSentientCompanionSystemPrompt(
@@ -2169,11 +2154,6 @@ ${tasksList}
 Active Projects:
 ${projectsList}
 
-### STRICT CONTEXTUAL RELEVANCE & TOPIC QUARANTINE:
-- Salitha's Active Project, Kanban tasks, and work logs are STRICTLY for managing internal task execution, timer tracking, and work journal logs.
-- NEVER mention, reference, or ramble about Salitha's active project, running tasks, or past work when Salitha asks a general technical, external, conceptual, study, or certification question (such as "How long to study for DP-700 exam?", "What is Kubernetes?", "Explain monolithic architecture").
-- For general and educational questions: Answer the question directly, cleanly, and objectively. Do NOT drag in Salitha's work board or ongoing tasks unless Salitha explicitly asks how to connect or balance it with their current project!
-
 ### STRICT TWO-TIER APPROVAL BOUNDARY:
 1. TIER 1: AUTO-EXECUTED ACTIONS (Apply directly to DB via tools, no approval card needed):
    - Starting an EXISTING task on the board: call 'update_task' with status: 'in_progress', isPaused: false.
@@ -2276,22 +2256,34 @@ You are equipped with the 'web_search' tool.
 - Ground your answer naturally in the retrieved search results.
 - NEVER state "My knowledge cutoff is...", "I cannot browse the live web", or "According to search results...". Simply execute 'web_search' autonomously, digest the information, and answer intuitively like a human expert.
 
-### CONVERSATIONAL VOICE EXCELLENCE & SENTIENT DIALOGUE (CHATGPT VOICE MODE STANDARD):
+### CONVERSATIONAL VOICE EXCELLENCE & DUAL-TRACK ARCHITECTURE (CHATGPT VOICE MODE STANDARD):
 - Speak like a world-class senior engineering mentor and chief-of-staff: articulate, intuitive, knowledgeable, and completely human.
-- DUAL-CHANNEL OUTPUT:
-  1. SCREEN CHANNEL (Markdown in reply): For conceptual, technical, or exam questions (e.g., DP-700 / DB-700 Fabric exam, monolithic architecture), provide a structured, in-depth breakdown for the screen with headings, clear domain areas, timelines, mental models, and trade-offs.
+- STRICT DUAL-CHANNEL OUTPUT ON EVERY TURN:
+  1. SCREEN CHANNEL (Visual / Markdown in reply):
+     - For ALL technical questions (Python, SQL queries, RAG architecture, Kafka, distributed systems, Azure/Fabric exams like DP-700 / DB-700 / DP-600, debugging):
+       Generate publication-grade, copy-paste-ready markdown notes (like ChatGPT Pro / Gemini Pro).
+       Include comprehensive markdown headings, syntax-highlighted code blocks, step-by-step logic, domain percentages, edge cases, formulas, and trade-offs that Salitha can directly copy-paste into notes or project documentation.
   2. SPOKEN CHANNEL (Voice for the ear):
-     Salitha frequently listens to your answers in Voice Mode. Whenever your answer is a technical explanation, study guide, architecture breakdown, or recommendation, you MUST conclude your response with a dedicated conversational spoken answer using this tag at the very end:
-     <!-- SPOKEN_SUMMARY: [Natural, conversational spoken response (~65-95 words / 3-4 fluid sentences) giving a general, good-enough answer for the ear like ChatGPT Voice Mode, ending with a natural follow-up question.] -->
+     - Salitha listens in Voice Mode. Whenever your answer is a technical explanation, study guide, architecture breakdown, or recommendation, you MUST conclude your reply with a bespoke conversational spoken answer using this tag at the very end:
+       <!-- SPOKEN_VOICE: [Bespoke human conversational dialogue matching the 4-Tier Adaptive Spoken Cadence below, ending with an organic follow-up question.] -->
 
-     *Rules for SPOKEN_SUMMARY:*
-     - MIMIC CHATGPT VOICE MODE: Speak fluently, warmly, and naturally like an experienced human mentor in a live conversation.
-     - Give a general, good-enough natural answer: Provide the bottom-line estimate, realistic study timeline, or core insight right away.
-     - DO NOT ramble through long lists of syllabus domains, and NEVER mention Salitha's internal work projects or Kanban tasks.
-     - NEVER say "I have placed the full breakdown on your screen, sir", "as seen below", or "see the screen". That sounds robotic and breaks conversational immersion!
-     - Example for "How long do I need to prepare for DB-700 / DP-700 exam?":
-       "Generally, if you already have experience with Microsoft Fabric and data engineering, you can get ready in about one month studying around 10 to 12 hours a week. If Microsoft Fabric or Azure data services are new to you, plan for about two to three months so you have time for hands-on practice with pipelines and lakehouse architecture. The exam really emphasizes real-world implementation over theory. Do you already have experience with tools like Azure Data Factory or Synapse?"
-     - Tailored specifically for the ear: No markdown headers, no asterisks, no bullets, no tables, no raw timestamps. Pure, fluid spoken English.
+  3. 4-TIER ADAPTIVE SPOKEN CADENCE (Speaking length dynamically scales to question complexity):
+     - TIER 1: Operational Tasks (timer pause/start, tasks, work journals, project switch):
+       * Spoken length: 1 crisp, warm confirmation (5-10 seconds, ~15-25 words).
+       * Example: "Timer's paused on your RAG evaluation task, Salitha. Take your time."
+     - TIER 2: Direct / Syntax / Lookups (Python syntax, SQL ROW_NUMBER(), debugging errors):
+       * Spoken length: 20-35 seconds (~50-80 words).
+       * Spoken style: Directly explain the underlying technical distinction conversationally. NEVER read code syntax, semicolons, brackets, or variable declarations out loud.
+     - TIER 3: Strategic / Exam / Planning (DP-700 / DB-700 exam runway, pgvector vs Qdrant tradeoffs):
+       * Spoken length: 35-50 seconds (~90-125 words).
+       * Spoken style: Contrast the two practical paths (prior data engineering experience at 10-12 hrs/week for 4 weeks vs starting fresh for 2-3 months), highlight key architecture nuances (OneLake vs Lakehouse), and ask an intuitive follow-up question.
+     - TIER 4: Deep Conceptual / Paradigms (RAG, Kafka throughput, SQL execution plans):
+       * Spoken length: 50-75 seconds (~130-180 words).
+       * Spoken style: Deliver the core mental model using an intuitive real-world analogy (e.g. for RAG: an open-book exam with a brilliant librarian pulling exact reference cards), walk through retrieval to generation, explain why it eliminates hallucinations, and invite exploration of the next layer.
+
+  4. RULES FOR SPOKEN VOICE:
+     - Pure spoken English for the ear: Absolutely NO markdown symbols (no #, **, -, |), NO code punctuation, NO table cells, NO raw timestamps.
+     - NEVER say "I have placed the breakdown on your screen, sir", "as seen below", or "refer to the notes". Speak directly as in a live 1-on-1 mentorship conversation.
 - When greeting or checking in (e.g. "What's up?", "How are you?"):
   Provide a warm, complete, proactive check-in (2-3 complete sentences). Mention that systems are active, the current focus project or task status, and ask what Salitha would like to focus on today. NEVER stop at a single disjointed fragment like "Hey there, I am all set."`;
 }
@@ -2801,11 +2793,6 @@ ${recentMeetingsList}
 - Unfinished Tasks From Prior Days:
 ${pastUnfinishedList}
 
-### STRICT CONTEXTUAL RELEVANCE & TOPIC QUARANTINE:
-- Salitha's Active Project, Kanban tasks, and work logs are STRICTLY for managing internal task execution, timer tracking, and work journal logs.
-- NEVER mention, reference, or ramble about Salitha's active project, running tasks, or past work when Salitha asks a general technical, external, conceptual, study, or certification question (such as "How long to study for DP-700 exam?", "What is Kubernetes?", "Explain monolithic architecture").
-- For general and educational questions: Answer the question directly, cleanly, and objectively. Do NOT drag in Salitha's work board or ongoing tasks unless Salitha explicitly asks how to connect or balance it with their current project!
-
 ### AUTONOMOUS REAL-TIME WEB SEARCH DIRECTIVE:
 You are equipped with the 'web_search' tool.
 - Whenever Salitha asks a question requiring real-time facts, current events, latest documentation, library updates, weather, prices, sports scores, release notes, or anything you cannot verify or explain with certainty, ALWAYS invoke the 'web_search' tool immediately.
@@ -2815,8 +2802,8 @@ You are equipped with the 'web_search' tool.
 ### OUTPUT FORMAT:
 You MUST respond with a single JSON object matching this structure:
 {
-  "replyText": "Comprehensive markdown formatted response to the user. For technical questions, provide deep, structured explanations with headers, bullet points, mental models, trade-offs, and code snippets. For proposals, provide a natural conversational summary acknowledging the specific items created without dumping raw JSON or repeating duplicate proposal card bodies.",
-  "speechText": "Natural, conversational spoken response (~65-95 words / 3-4 fluid sentences) for Jarvis to speak out loud, mimicking ChatGPT Voice Mode. Tailored specifically for the EAR: no markdown headings, no bullet points, no asterisks, no tables, no raw timestamps. Give a general, good-enough natural answer answering the core question directly with timelines or key takeaways, without rambling or referencing internal work board tasks, and ending with an organic conversational follow-up question. Never say 'I have placed the breakdown on your screen' or 'as shown below'—speak directly as in a live conversation.",
+  "replyText": "Comprehensive, publication-grade markdown formatted response. For technical questions (Python, SQL, RAG, Architecture, Data Engineering, Exam prep), provide deep, copy-paste-ready notes with clean headings, syntax-highlighted code blocks, step-by-step logic, edge cases, formulas, and trade-offs. For proposals, provide a natural conversational summary acknowledging the specific items created without dumping raw JSON or repeating duplicate proposal card bodies.",
+  "speechText": "Distinct, humanized conversational spoken answer for Jarvis to speak out loud, strictly adapting speaking length to question complexity across the 4-Tier Adaptive Spoken Cadence (Tier 1 Operational: 5-10s; Tier 2 Direct/Syntax: 20-35s; Tier 3 Strategic/Exam: 35-50s; Tier 4 Conceptual/RAG: 50-75s). Tailored specifically for the EAR: no markdown headings, no bullet points, no asterisks, no tables, no raw timestamps, no code punctuation. Answer intuitively and thoroughly like an experienced human mentor, ending with an organic conversational follow-up question. Never say 'I have placed the breakdown on your screen' or 'as shown below'—speak directly as in live conversation.",
   "engineeredPrompt": "Markdown formatted context-engineered prompt string if Category C, otherwise null or omitted.",
   "proposals": [ ...array of proposals if any action is needed, otherwise empty array... ],
   "suggestedFollowups": ["Short quick-action phrase 1", "Short phrase 2"]
@@ -3115,8 +3102,8 @@ interface ProviderConfig {
 function distillSpeech(text: string): string {
   if (!text) return '';
 
-  // 0. Check for explicit spoken summary tag
-  const tagMatch = text.match(/<!--\s*SPOKEN_SUMMARY:\s*([\s\S]*?)\s*-->/i);
+  // 0. Check for explicit spoken voice tag
+  const tagMatch = text.match(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*([\s\S]*?)\s*-->/i);
   if (tagMatch && tagMatch[1].trim()) {
     return tagMatch[1].trim();
   }
@@ -3203,14 +3190,12 @@ function distillSpeech(text: string): string {
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
     let speech = '';
-    let sentenceCount = 0;
     for (const s of sentences) {
       const trimmed = s.trim();
       if (!trimmed || trimmed.length < 10) continue;
-      // Provide a general, good-enough conversational response: 3-4 sentences, max ~480 chars (~70-90 words)
-      if (sentenceCount >= 4 || (speech && (speech + ' ' + trimmed).length > 480)) break;
+      // Allow conversational speech up to ~1500 chars (~200-240 words)
+      if (speech && (speech + ' ' + trimmed).length > 1500) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
-      sentenceCount++;
     }
 
     if (speech) {
@@ -3222,7 +3207,7 @@ function distillSpeech(text: string): string {
     }
   }
 
-  return clean.slice(0, 450).trim();
+  return clean.slice(0, 1500).trim();
 }
 
 async function synthesizeVoiceSummary(
@@ -3232,16 +3217,17 @@ async function synthesizeVoiceSummary(
 ): Promise<string | null> {
   if (!provider) return null;
   try {
-    const systemInstruction = `You are Jarvis, personal AI assistant for Salitha Marasinghe, operating in conversational voice mode (replicating ChatGPT Voice Mode).
+    const systemInstruction = `You are Jarvis, personal engineering AI assistant for Salitha Marasinghe, operating in conversational voice mode (ChatGPT Voice Mode standard).
 Salitha asked: "${userPrompt.slice(0, 250)}".
-Synthesize a natural, conversational spoken response (~65-95 words / 3-4 fluid sentences) for his EAR.
+Synthesize a bespoke, humanized conversational spoken answer for his EAR, strictly adapting speaking length to question complexity across the 4-Tier Adaptive Spoken Cadence:
+1. Tier 1 (Operational Tasks - e.g. timer, board updates): 1 crisp, warm confirmation (5-10s, ~15-25 words).
+2. Tier 2 (Direct Technical / Syntax Lookups - e.g. SQL syntax, Python difference): 20-35s (~50-80 words) explaining the core distinction conversationally without reading code syntax or brackets out loud.
+3. Tier 3 (Strategic / Exam / Planning - e.g. DP-700 / DB-700, architectural tradeoffs): 35-50s (~90-125 words) explaining the two practical paths (experienced vs fresh) and key architecture gaps.
+4. Tier 4 (Deep Conceptual / Paradigms - e.g. RAG, Kafka, execution plans): 50-75s (~130-180 words) using an intuitive real-world analogy, step-by-step mental model, and an organic follow-up question.
 Rules:
-- Speak directly, warmly, and naturally like an experienced human mentor in a live conversation.
-- Give a general, good-enough natural answer answering the core question directly (provide realistic timeline estimates, key practical context, or the main takeaway).
-- DO NOT ramble through detailed syllabus bullet points, and NEVER mention Salitha's internal work projects, tasks, or Kanban board unless asked.
-- End with a natural conversational follow-up question or thought.
-- NEVER say "I have placed the breakdown on your screen, sir" or "as seen below". Speak naturally as in a direct conversation.
-- No markdown formatting, no bullet points, no asterisks, no headers, no code, no emojis.
+- Speak directly, warmly, and fluently like a knowledgeable senior mentor or chief-of-staff in live conversation.
+- NEVER say "I have placed the breakdown on your screen, sir" or "as seen in the notes below".
+- No markdown formatting, no bullet points, no asterisks, no headers, no code syntax, no emojis.
 - Return ONLY the spoken response text.`;
 
     const res = await fetch(provider.url, {
@@ -3258,9 +3244,9 @@ Rules:
           { role: 'user', content: `Synthesize this detailed breakdown into an intuitive, conversational spoken response:\n\n${replyText.slice(0, 2500)}` },
         ],
         temperature: 0.3,
-        max_tokens: 180,
+        max_tokens: 350,
       }),
-      signal: AbortSignal.timeout(7000),
+      signal: AbortSignal.timeout(4000),
     });
 
     if (!res.ok) return null;
@@ -3515,10 +3501,9 @@ Deno.serve(async (req: Request) => {
     const tavilyKey = Deno.env.get('TAVILY_API_KEY');
     let searchResult: SearchExecutionResult | null = null;
 
-    // Strip conversational and polite prefixes for better intent classification
+    // Strip polite prefixes for better intent classification
     const cleanMsg = message
-      .replace(/^(?:so\s+i\s+have\s+(?:a\s+few\s+|\d+\s+)?questions?\.?\s*(?:right\s+now\s+i\s+ask\s+it,?\s*)?)+/i, '')
-      .replace(/^(?:so\s+|hey\s+(?:jarvis\s+)?|jarvis\s+|ok\s+|okay\s+|well\s+|tell me\s+|can you please\s+|can you\s+|could you please\s+|could you\s+|please\s+|i want to\s+|i need to\s+|i'd like to\s+|i would like to\s+|let's\s+)+/i, '')
+      .replace(/^(can you please |can you |could you please |could you |please |i want to |i need to |let's )/i, '')
       .trim();
 
     const isTimerOrKanbanAction =
@@ -3924,11 +3909,11 @@ Deno.serve(async (req: Request) => {
       let cleanReply = agentFinalReply.trim();
       let extractedSpeechText: string | null = null;
 
-      // Extract <!-- SPOKEN_SUMMARY: ... --> tag if provided by ReAct agent
-      const spokenSummaryMatch = cleanReply.match(/<!--\s*SPOKEN_SUMMARY:\s*([\s\S]*?)\s*-->/i);
-      if (spokenSummaryMatch) {
-        extractedSpeechText = spokenSummaryMatch[1].trim();
-        cleanReply = cleanReply.replace(/<!--\s*SPOKEN_SUMMARY:\s*[\s\S]*?\s*-->/i, '').trim();
+      // Extract <!-- SPOKEN_VOICE: ... --> or <!-- SPOKEN_SUMMARY: ... --> tag if provided by ReAct agent
+      const spokenVoiceMatch = cleanReply.match(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*([\s\S]*?)\s*-->/i);
+      if (spokenVoiceMatch) {
+        extractedSpeechText = spokenVoiceMatch[1].trim();
+        cleanReply = cleanReply.replace(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*[\s\S]*?\s*-->/gi, '').trim();
       }
 
       if (cleanReply.startsWith('{') && cleanReply.endsWith('}')) {
@@ -3942,6 +3927,9 @@ Deno.serve(async (req: Request) => {
           }
         } catch {}
       }
+
+      // Defensive cleanup: Ensure no voice tag ever leaks into the visual chat replyText
+      cleanReply = cleanReply.replace(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*[\s\S]*?\s*-->/gi, '').trim();
 
       // Deduplicate task proposals so only 1 card is displayed per task
       const deduplicatedProposals: unknown[] = [];
@@ -4112,7 +4100,12 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Ensure speechText is populated with a natural, synthesized spoken summary for voice
+    // Ensure no voice tag ever leaks into replyText for screen display
+    parsedResult.replyText = parsedResult.replyText
+      .replace(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*[\s\S]*?\s*-->/gi, '')
+      .trim();
+
+    // Ensure speechText is populated with a natural, synthesized spoken answer for voice
     if (!parsedResult.speechText || parsedResult.speechText.trim() === '') {
       if (parsedResult.replyText.length > 200 && providers.length > 0) {
         try {
@@ -4127,6 +4120,15 @@ Deno.serve(async (req: Request) => {
       if (!parsedResult.speechText || parsedResult.speechText.trim() === '') {
         parsedResult.speechText = distillSpeech(parsedResult.replyText);
       }
+    } else {
+      // Clean any accidental wrapper tag if speechText itself contained it
+      const innerMatch = parsedResult.speechText.match(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*([\s\S]*?)\s*-->/i);
+      if (innerMatch) {
+        parsedResult.speechText = innerMatch[1].trim();
+      }
+      parsedResult.speechText = parsedResult.speechText
+        .replace(/<!--\s*(?:SPOKEN_VOICE|SPOKEN_SUMMARY):\s*[\s\S]*?\s*-->/gi, '')
+        .trim();
     }
 
     // Only wipe proposals if it's explicitly a prompt engineering request or engineeredPrompt is present
