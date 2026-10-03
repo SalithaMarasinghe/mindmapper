@@ -4,10 +4,6 @@ import {
   Globe,
   Plus,
   Monitor,
-  Mic,
-  MicOff,
-  Send,
-  VolumeX,
   Sparkles,
   Settings,
   LogOut,
@@ -26,6 +22,7 @@ import { InstantActionRow } from '../components/jarvis/InstantActionRow';
 import { SystemStatusRow } from '../components/jarvis/SystemStatusRow';
 import { JarvisProposalRenderer } from '../components/jarvis/JarvisProposalRenderer';
 import { ActiveProjectSelector } from '../components/layout/ActiveProjectSelector';
+import { Composer } from '../components/jarvis/Composer';
 
 export function MobileJarvisPage() {
   const {
@@ -65,7 +62,6 @@ export function MobileJarvisPage() {
   const [inputVal, setInputVal] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Fetch initial conversations on mount
   useEffect(() => {
@@ -93,9 +89,6 @@ export function MobileJarvisPage() {
     }
     submitCommand(inputVal.trim());
     setInputVal('');
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
   };
 
   const handleMicClick = () => {
@@ -103,6 +96,19 @@ export function MobileJarvisPage() {
       stopSpeaking();
     }
     toggleRecording();
+  };
+
+  const handleAttachFile = async (file: File) => {
+    try {
+      if (file.type.startsWith('image/')) {
+        setInputVal((prev) => (prev ? `${prev} [Attached Image: ${file.name}]` : `[Attached Image: ${file.name}]`));
+      } else {
+        const text = await file.text();
+        setInputVal((prev) => (prev ? `${prev}\n\n[Attached: ${file.name}]\n${text}` : `[Attached: ${file.name}]\n${text}`));
+      }
+    } catch (err) {
+      console.warn('File attach error:', err);
+    }
   };
 
   const formatTime = (dateStr?: string | Date) => {
@@ -441,57 +447,18 @@ export function MobileJarvisPage() {
         </div>
       </div>
 
-      {/* ── Fixed Bottom Composer Dock (Touch & Thumb Optimized) ─────── */}
-      <footer className="bg-panel border-t border-border px-2 py-0.5 shrink-0 z-30">
-        <div className="bg-surface rounded-2xl border border-border flex items-end px-2 py-1 gap-1.5 focus-within:border-accent/50 transition-colors">
-          
-          {/* Large Mic Toggle Button */}
-          <button
-            onClick={handleMicClick}
-            disabled={isSystemBusy || isTranscribing}
-            className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
-              isRecording
-                ? 'bg-accent text-bg animate-pulse scale-105 shadow-md'
-                : isSpeaking
-                ? 'bg-surface-2 text-text border border-border'
-                : 'text-text-muted hover:text-text hover:bg-surface-2'
-            }`}
-            aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
-          >
-            {isRecording ? <MicOff className="w-4 h-4" /> : isSpeaking ? <VolumeX className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </button>
-
-          {/* Textarea: 16px font size to prevent iOS Safari auto-zoom! */}
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={inputVal}
-            onChange={(e) => {
-              setInputVal(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = `${Math.min(e.target.scrollHeight, 110)}px`;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            placeholder={isRecording ? 'Listening to voice...' : 'Speak or type to Jarvis...'}
-            className="flex-1 bg-transparent text-[16px] text-text placeholder:text-text-muted resize-none focus:outline-none min-h-[24px] max-h-[110px] leading-relaxed py-1"
-          />
-
-          {/* Send Button */}
-          <button
-            onClick={handleSubmit}
-            disabled={!inputVal.trim() || isSystemBusy}
-            className="h-9 w-9 rounded-full bg-white text-[#0B0B0C] flex items-center justify-center shrink-0 disabled:opacity-20 hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
-            aria-label="Send message"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-      </footer>
+      {/* ── Floating Bottom Pill Input Dock & Quick Dictation Mic ─────── */}
+      <Composer
+        value={inputVal}
+        onChange={setInputVal}
+        onSubmit={handleSubmit}
+        onMicClick={handleMicClick}
+        isDisabled={isSystemBusy || isTranscribing}
+        isRecording={isRecording}
+        isSpeaking={isSpeaking}
+        placeholder="Ask Jarvis..."
+        onAttach={handleAttachFile}
+      />
     </div>
   );
 }

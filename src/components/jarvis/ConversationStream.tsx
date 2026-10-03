@@ -90,8 +90,21 @@ export function ConversationStream() {
 
   const isSystemBusy = isSending || isSubmitting;
 
+  const handleAttachFile = async (file: File) => {
+    try {
+      if (file.type.startsWith('image/')) {
+        setInputVal((prev) => (prev ? `${prev} [Attached Image: ${file.name}]` : `[Attached Image: ${file.name}]`));
+      } else {
+        const text = await file.text();
+        setInputVal((prev) => (prev ? `${prev}\n\n[Attached: ${file.name}]\n${text}` : `[Attached: ${file.name}]\n${text}`));
+      }
+    } catch (err) {
+      console.warn('File attach error:', err);
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-bg">
+    <div className="flex-1 flex flex-col min-h-0 bg-bg relative">
       <StreamHeader
         messageCount={messages.length}
         isWebSearchEnabled={isWebSearchEnabled}
@@ -192,6 +205,9 @@ export function ConversationStream() {
         onMicClick={handleMicClick}
         isDisabled={isSystemBusy || isTranscribing}
         isRecording={isRecording}
+        isSpeaking={isSpeaking}
+        placeholder="Ask Jarvis..."
+        onAttach={handleAttachFile}
       />
     </div>
   );
