@@ -542,13 +542,26 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     closeVoiceMode: () => {
       wasSpeakingPriorToIdle = false;
       stopBargeInListener();
-      set({ voiceModeOpen: false });
-      if (get().isRecording) {
-        void get().toggleRecording();
-      }
+      stopAudioPoll();
+      stopActiveInterimRecognizer();
+      latestInterimTranscript = '';
+      isTrailingThoughtIncomplete = false;
+
+      // Abort any active recording cleanly without transcribing or submitting
+      jarvisVoice.cancelRecording();
+
       if (get().isSpeaking) {
         get().stopSpeaking();
       }
+
+      set({
+        voiceModeOpen: false,
+        isRecording: false,
+        isTranscribing: false,
+        transcript: '',
+        orbState: 'idle',
+        statusMessage: 'Ready',
+      });
     },
     toggleVoiceMode: () => {
       if (get().voiceModeOpen) {
@@ -562,9 +575,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       if (muted) {
         wasSpeakingPriorToIdle = false;
         stopBargeInListener();
-        if (get().isRecording) {
-          void get().toggleRecording();
-        }
+        stopAudioPoll();
+        stopActiveInterimRecognizer();
+        latestInterimTranscript = '';
+        isTrailingThoughtIncomplete = false;
+
+        jarvisVoice.cancelRecording();
+        set({ isRecording: false, isTranscribing: false, orbState: 'idle', transcript: '' });
       } else if (!muted && !get().isRecording && get().voiceModeOpen) {
         void get().toggleRecording();
       }
@@ -648,10 +665,15 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
     // ── Close HUD ─────────────────────────────────────────────────────────
     closeHUD: () => {
+      wasSpeakingPriorToIdle = false;
+      stopBargeInListener();
+      stopAudioPoll();
+      stopActiveInterimRecognizer();
+      latestInterimTranscript = '';
+      isTrailingThoughtIncomplete = false;
+
+      jarvisVoice.cancelRecording();
       jarvisVoice.stopSpeaking();
-      if (get().isRecording) {
-        void jarvisVoice.stopRecording();
-      }
       set({
         isOpen: false,
         isSpeaking: false,
@@ -715,7 +737,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           const savedInterim = latestInterimTranscript.trim();
 
           if (!blob || blob.size < 500) {
-            if (savedInterim) {
+            if (savedInterim && /[a-zA-Z0-9\u0600-\u06FF\u4e00-\u9fa5]/.test(savedInterim)) {
               latestInterimTranscript = '';
               isTrailingThoughtIncomplete = false;
               set({ transcript: savedInterim, isTranscribing: false, orbState: 'idle' });
@@ -758,7 +780,10 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             latestInterimTranscript = '';
             isTrailingThoughtIncomplete = false;
 
-            if (!finalTranscript) {
+            // Reject pure punctuation, symbols, or Whisper hallucinations on silence/clicks (e.g. ".", "...", "?")
+            const hasMeaningfulContent = /[a-zA-Z0-9\u0600-\u06FF\u4e00-\u9fa5]/.test(finalTranscript);
+
+            if (!hasMeaningfulContent) {
               set({ isTranscribing: false, orbState: 'idle', statusMessage: 'Could not hear anything — try again' });
               if (get().isHandsFree) void wakeWordService.resume();
               return;
@@ -778,7 +803,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
             console.error('[Jarvis] Transcription error:', err);
 
             // Resilient fallback to live interim speech if Whisper endpoint failed
-            if (savedInterim) {
+            if (savedInterim && /[a-zA-Z0-9\u0600-\u06FF\u4e00-\u9fa5]/.test(savedInterim)) {
               latestInterimTranscript = '';
               isTrailingThoughtIncomplete = false;
               set({ transcript: savedInterim, isTranscribing: false, orbState: 'idle' });
@@ -988,9 +1013,10 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
       const text = (manualText !== undefined ? manualText : get().transcript).trim();
       const pasted = get().pastedText.trim();
+      const hasMeaningfulText = /[a-zA-Z0-9\u0600-\u06FF\u4e00-\u9fa5]/.test(text);
 
-      if (!text && !pasted) {
-        toast('Record a voice command or enter instructions.');
+      if (!hasMeaningfulText && !pasted) {
+        set({ isSubmitting: false, orbState: 'idle' });
         return;
       }
 

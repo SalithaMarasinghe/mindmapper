@@ -229,6 +229,39 @@ export class JarvisVoiceService {
     });
   }
 
+  // ── Cancel Recording without returning blob or triggering callbacks ────
+  cancelRecording(): void {
+    if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+      this.isRecording = false;
+      this.recordingChunks = [];
+      return;
+    }
+
+    try {
+      this.mediaRecorder.onstop = null;
+      this.mediaRecorder.stop();
+    } catch {
+      // ignore
+    }
+
+    this.recordingChunks = [];
+    this.isRecording = false;
+
+    // Release mic tracks
+    this.recordingStream?.getTracks().forEach((t) => t.stop());
+    this.recordingStream = null;
+    this.mediaRecorder = null;
+
+    if (this.micSourceNode) {
+      try {
+        this.micSourceNode.disconnect();
+      } catch {
+        // ignore
+      }
+      this.micSourceNode = null;
+    }
+  }
+
   // ── Whisper transcription via Supabase edge function ────────────────────
   async transcribeBlob(
     blob: Blob,

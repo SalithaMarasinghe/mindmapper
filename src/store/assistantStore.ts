@@ -260,6 +260,8 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
   ) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    // Reject pure punctuation, symbols, or Whisper hallucinations on silence/clicks (e.g. "." or "..." or "?")
+    if (!/[a-zA-Z0-9\u0600-\u06FF\u4e00-\u9fa5]/.test(trimmed)) return;
 
     const { user } = useAuthStore.getState();
     if (!user) {
