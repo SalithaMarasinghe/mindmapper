@@ -99,88 +99,90 @@ export function ConversationStream() {
         onNewSession={startNewConversation}
       />
 
-      <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
-        {messages.length === 0 ? (
-          <EmptySuggestions onSuggestionClick={(text) => submitCommand(text)} />
-        ) : (
-          <>
-            {messages.map((msg) => {
-              if (msg.role === 'user') {
-                return (
-                  <UserMessage
-                    key={msg.id}
-                    content={msg.content}
-                    timestamp={formatTime(msg.createdAt)}
-                    hasContext={checkHasContext(msg.content)}
-                  />
-                );
-              }
+      <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-6 min-h-0">
+        <div className="max-w-[720px] mx-auto w-full space-y-6 pb-28">
+          {messages.length === 0 ? (
+            <EmptySuggestions onSuggestionClick={(text) => submitCommand(text)} />
+          ) : (
+            <>
+              {messages.map((msg) => {
+                if (msg.role === 'user') {
+                  return (
+                    <UserMessage
+                      key={msg.id}
+                      content={msg.content}
+                      timestamp={formatTime(msg.createdAt)}
+                      hasContext={checkHasContext(msg.content)}
+                    />
+                  );
+                }
 
-              if (msg.role === 'assistant') {
-                const msgProposals = msg.proposals || [];
-                const executedProposals = msgProposals.filter(
-                  (p) => p.status === 'auto_executed' || p.status === 'approved' || p.status === 'undone'
-                );
-                const hasActivePending = Boolean(
-                  activeProposal && msgProposals.some((p) => p.id === activeProposal.id)
-                );
+                if (msg.role === 'assistant') {
+                  const msgProposals = msg.proposals || [];
+                  const executedProposals = msgProposals.filter(
+                    (p) => p.status === 'auto_executed' || p.status === 'approved' || p.status === 'undone'
+                  );
+                  const hasActivePending = Boolean(
+                    activeProposal && msgProposals.some((p) => p.id === activeProposal.id)
+                  );
 
-                return (
-                  <div key={msg.id} className="space-y-3">
-                    {msg.content && (
-                      <JarvisAnswer
-                        content={msg.content}
-                        timestamp={formatTime(msg.createdAt)}
-                        searchSources={msg.searchSources}
-                        engineeredPrompt={msg.engineeredPrompt}
-                        onCopyPrompt={copyPromptToClipboard}
-                        isCopied={lastCopiedAt ? Date.now() - lastCopiedAt < 2000 : false}
-                      />
-                    )}
-
-                    {/* Pending proposal card waiting for user review & approval */}
-                    {hasActivePending && activeProposal && (
-                      <div className="max-w-4xl bg-surface rounded-[12px] border border-border p-4 mt-2">
-                        <JarvisProposalRenderer
-                          proposal={activeProposal}
-                          onApprove={approveProposal}
-                          onReject={rejectProposal}
+                  return (
+                    <div key={msg.id} className="space-y-4">
+                      {msg.content && (
+                        <JarvisAnswer
+                          content={msg.content}
+                          timestamp={formatTime(msg.createdAt)}
+                          searchSources={msg.searchSources}
+                          engineeredPrompt={msg.engineeredPrompt}
+                          onCopyPrompt={copyPromptToClipboard}
+                          isCopied={lastCopiedAt ? Date.now() - lastCopiedAt < 2000 : false}
                         />
-                      </div>
-                    )}
+                      )}
 
-                    {/* Executed / approved / undone actions */}
-                    {executedProposals.map((proposal) => (
-                      <InstantActionRow
-                        key={proposal.id}
-                        proposal={proposal}
-                        messageId={msg.id}
-                      />
-                    ))}
+                      {/* Pending proposal card waiting for user review & approval */}
+                      {hasActivePending && activeProposal && (
+                        <div className="w-full bg-surface rounded-[12px] border border-border/60 p-4 mt-2 shadow-sm">
+                          <JarvisProposalRenderer
+                            proposal={activeProposal}
+                            onApprove={approveProposal}
+                            onReject={rejectProposal}
+                          />
+                        </div>
+                      )}
+
+                      {/* Executed / approved / undone actions */}
+                      {executedProposals.map((proposal) => (
+                        <InstantActionRow
+                          key={proposal.id}
+                          proposal={proposal}
+                          messageId={msg.id}
+                        />
+                      ))}
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
+
+              {/* Fallback for orphan active proposal not attached to any message */}
+              {activeProposal &&
+                !messages.some((m) => m.proposals?.some((p) => p.id === activeProposal.id)) && (
+                  <div className="w-full bg-surface rounded-[12px] border border-border/60 p-4 mt-4 shadow-sm">
+                    <JarvisProposalRenderer
+                      proposal={activeProposal}
+                      onApprove={approveProposal}
+                      onReject={rejectProposal}
+                    />
                   </div>
-                );
-              }
+                )}
 
-              return null;
-            })}
-
-            {/* Fallback for orphan active proposal not attached to any message */}
-            {activeProposal &&
-              !messages.some((m) => m.proposals?.some((p) => p.id === activeProposal.id)) && (
-                <div className="max-w-4xl bg-surface rounded-[12px] border border-border p-4 mt-4">
-                  <JarvisProposalRenderer
-                    proposal={activeProposal}
-                    onApprove={approveProposal}
-                    onReject={rejectProposal}
-                  />
-                </div>
+              {isSystemBusy && (
+                <SystemStatusRow text="Jarvis is thinking…" />
               )}
-
-            {isSystemBusy && (
-              <SystemStatusRow text="Jarvis is thinking…" />
-            )}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       <Composer

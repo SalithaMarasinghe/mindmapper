@@ -332,7 +332,8 @@ export function MobileJarvisPage() {
       )}
 
       {/* ── Main Scroll Area: Hero Orb OR Message Feed ────────────────── */}
-      <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 p-3.5 space-y-4">
+      <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 py-6">
+        <div className="max-w-[720px] mx-auto w-full space-y-6 pb-28">
         {messages.length === 0 ? (
           // ── Hero Orb Landing (Zero Messages) ────────────────────────
           <div className="h-full flex flex-col items-center justify-center text-center px-4 py-6 max-w-md mx-auto">
@@ -420,23 +421,21 @@ export function MobileJarvisPage() {
                 );
 
                 return (
-                  <div key={msg.id} className="space-y-3">
+                  <div key={msg.id} className="space-y-4">
                     {msg.content && (
-                      <div className="bg-panel/40 rounded-[12px] p-3 border border-border/40">
-                        <JarvisAnswer
-                          content={msg.content}
-                          timestamp={formatTime(msg.createdAt)}
-                          searchSources={msg.searchSources}
-                          engineeredPrompt={msg.engineeredPrompt}
-                          onCopyPrompt={copyPromptToClipboard}
-                          isCopied={lastCopiedAt ? Date.now() - lastCopiedAt < 2000 : false}
-                        />
-                      </div>
+                      <JarvisAnswer
+                        content={msg.content}
+                        timestamp={formatTime(msg.createdAt)}
+                        searchSources={msg.searchSources}
+                        engineeredPrompt={msg.engineeredPrompt}
+                        onCopyPrompt={copyPromptToClipboard}
+                        isCopied={lastCopiedAt ? Date.now() - lastCopiedAt < 2000 : false}
+                      />
                     )}
 
                     {/* Pending Action Review Proposal Card (1-Tap Thumb Approvals) */}
                     {hasActivePending && activeProposal && (
-                      <div className="bg-surface rounded-[14px] border-2 border-accent/40 p-4 shadow-xl animate-in zoom-in-95 duration-200">
+                      <div className="bg-surface rounded-[14px] border border-accent/40 p-4 shadow-xl animate-in zoom-in-95 duration-200">
                         <JarvisProposalRenderer
                           proposal={activeProposal}
                           onApprove={approveProposal}
@@ -463,7 +462,7 @@ export function MobileJarvisPage() {
             {/* Fallback for orphan active proposal */}
             {activeProposal &&
               !messages.some((m) => m.proposals?.some((p) => p.id === activeProposal.id)) && (
-                <div className="bg-surface rounded-[14px] border-2 border-accent/40 p-4 shadow-xl">
+                <div className="bg-surface rounded-[14px] border border-accent/40 p-4 shadow-xl">
                   <JarvisProposalRenderer
                     proposal={activeProposal}
                     onApprove={approveProposal}
@@ -475,6 +474,7 @@ export function MobileJarvisPage() {
             {isSystemBusy && <SystemStatusRow text="Jarvis is thinking…" />}
           </>
         )}
+        </div>
       </div>
 
       {/* ── Fixed Bottom Composer Dock (Touch & Thumb Optimized) ─────── */}
