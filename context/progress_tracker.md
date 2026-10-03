@@ -416,6 +416,12 @@ The `direction` column on `nodes` was added after the initial schema was deploye
   - **Voice**: Conversational voice approval recognized in `submitCommand()` via natural phrases ("Approve", "Looks good", "Confirm", "Yes", "Proceed", "Cancel", "Discard").
 - **Seamless State Restitution**:
   - Upon approval or rejection, `activeProposal` clears, the card dismisses, the orb expands back to 190px and returns to dead-center, and Jarvis confirms execution vocally without the user ever leaving Voice Mode.
+- **Button Touch Responsiveness & React Portal Fix**:
+  - Root cause of unresponsiveness: `JarvisVoiceMode` was nested inside `MobileJarvisPage` with `overflow-hidden`, `select-none`, and `z-50` competing against the mobile drawer backdrop and composer layers.
+  - Portaled `JarvisVoiceMode` directly to `document.body` via `createPortal` with `z-[9999]` and `pointer-events-auto`.
+  - Removed `select-none` from modal overlay to prevent WebKit from suppressing synthetic click events on iOS/Android.
+  - Added `touch-manipulation cursor-pointer` and `type="button"` to all action buttons in `JarvisVoiceMode.tsx` and `ProposalCard.tsx`.
+  - Defensively resolved `activeMessageId` from `assistantStore.messages` in `approveProposal()` and `rejectProposal()`.
 
 ---
 
