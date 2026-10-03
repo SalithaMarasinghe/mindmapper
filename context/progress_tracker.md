@@ -388,6 +388,23 @@ The `direction` column on `nodes` was added after the initial schema was deploye
 
 ---
 
+### Session 16 — Voice Rambling Fix, Clean Exit Cancellation & Artifact Defense
+- **Concise Spoken Synthesis & Anti-Rambling Fallback (`distillSpeech`)**:
+  - Identified cause of mumbling: 1500-char raw sentence extraction from detailed markdown tables when the primary voice tag was absent.
+  - Sliced fallback speech down to 1–2 complete introductory sentences (capped at ~300 chars / ~45 words).
+  - Increased `synthesizeVoiceSummary` LLM call timeout from 4s to 8s for reliable humanized spoken generation.
+- **Voice Mode Exit "Dot" Bug Fix (`src/services/jarvisVoice.ts`, `src/store/jarvisStore.ts`)**:
+  - Root cause: When user exited/cut voice mode, `closeVoiceMode()` called `toggleRecording()`, which treated closing as a recording submission, sent 0.1s audio click to Whisper, and transcribed it as `"."`.
+  - Implemented `jarvisVoice.cancelRecording()` to abort mic streams immediately without triggering `onstop` or creating audio blobs.
+  - Updated `closeVoiceMode()`, `closeHUD()`, and `setMicMuted(true)` to cleanly cancel recording and reset state.
+- **Triple-Layer Punctuation / Whisper Artifact Defense**:
+  - Guarded `toggleRecording()`, `submitCommand()`, and `assistantStore.sendMessage()` with regex `/[a-zA-Z0-9\u0600-\u06FF\u4e00-\u9fa5]/` to ensure punctuation-only inputs (`"."`, `"..."`, `","`, `"?"`) can never be sent to the AI.
+- **Deployments**:
+  - Pushed all changes to branch `ui-redesign` on GitHub (`origin/ui-redesign`) for live mobile deployment via Vercel.
+  - Deployed updated `ai-assistant-chat` edge function to live Supabase project `ixmvqmfesibpnrjmvzuj`.
+
+---
+
 ### Session 9 — Sharing System
 - Deployed `share_link_setup.sql` RLS policies to production Supabase
 - Built `SharedMapPage` with read-only canvas rendering
