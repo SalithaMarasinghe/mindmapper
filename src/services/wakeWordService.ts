@@ -286,6 +286,17 @@ class WakeWordService {
   // ── Browser Web Speech API Keyword Spotter ───────────────────────────────
   private initBrowserRecognition(): boolean {
     if (typeof window === 'undefined') return false;
+
+    const isIOS =
+      typeof navigator !== 'undefined' &&
+      (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+    if (isIOS) {
+      console.warn('[WakeWordService] Browser SpeechRecognition disabled on iOS to prevent double-permission prompts.');
+      return false;
+    }
+
     const SpeechRec =
       (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
       (window as unknown as { webkitSpeechRecognition?: any }).webkitSpeechRecognition;

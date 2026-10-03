@@ -41,6 +41,15 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+// iOS platform detection to prevent duplicate permission prompts and WebKit audio capture crashes
+const isIOS = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+};
+
 // Live semantic turn-taking state (Adaptive Semantic VAD)
 let activeInterimRecognizer: any = null;
 let latestInterimTranscript = '';
@@ -154,6 +163,10 @@ function isLikelySpeakerEcho(detectedText: string, spokenText: string): boolean 
 
 function startBargeInListener() {
   stopBargeInListener();
+
+  // On iOS, skip webkitSpeechRecognition to prevent the OS "Speech Recognition" permission modal
+  // and avoid WebKit audio session locking that breaks speech audio.
+  if (isIOS()) return;
 
   const state = useJarvisStore.getState();
   // Enable natural voice barge-in when in Voice Mode OR Hands-Free mode
@@ -547,8 +560,9 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       latestInterimTranscript = '';
       isTrailingThoughtIncomplete = false;
 
-      // Abort any active recording cleanly without transcribing or submitting
-      jarvisVoice.cancelRecording();
+      // Abort any active recording cleanly and release microphone hardware
+      jarvisVoice.cancelRecording(true);
+      jarvisVoice.releaseMediaStream();
 
       if (get().isSpeaking) {
         get().stopSpeaking();
@@ -580,7 +594,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
         latestInterimTranscript = '';
         isTrailingThoughtIncomplete = false;
 
-        jarvisVoice.cancelRecording();
+        jarvisVoice.cancelRecording(true);
+        jarvisVoice.releaseMediaStream();
         set({ isRecording: false, isTranscribing: false, orbState: 'idle', transcript: '' });
       } else if (!muted && !get().isRecording && get().voiceModeOpen) {
         void get().toggleRecording();
@@ -672,7 +687,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
       latestInterimTranscript = '';
       isTrailingThoughtIncomplete = false;
 
-      jarvisVoice.cancelRecording();
+      jarvisVoice.cancelRecording(true);
+      jarvisVoice.releaseMediaStream();
       jarvisVoice.stopSpeaking();
       set({
         isOpen: false,
@@ -733,7 +749,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           stopActiveInterimRecognizer();
           set({ isRecording: false, isTranscribing: true, orbState: 'thinking', statusMessage: 'Transcribing...' });
 
-          const blob = await jarvisVoice.stopRecording();
+          const isVoiceModeActive = get().voiceModeOpen;
+          const blob = await jarvisVoice.stopRecording(!isVoiceModeActive);
           const savedInterim = latestInterimTranscript.trim();
 
           if (!blob || blob.size < 500) {
@@ -837,8 +854,11 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           });
 
           // Start browser interim speech recognizer if supported for live words & semantic VAD
+          // Note: On iOS devices, NEVER instantiate SpeechRecognition/webkitSpeechRecognition.
+          // Apple prompts a separate "Speech Recognition" system dialog on top of the "Microphone" dialog,
+          // and WebKit conflicts with MediaRecorder. Groq Whisper handles full transcription.
           const SpeechRec =
-            typeof window !== 'undefined'
+            !isIOS() && typeof window !== 'undefined'
               ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
               : null;
 

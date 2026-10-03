@@ -149,15 +149,23 @@ export class JarvisVoiceService {
     if (this.isRecording) return true;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: false,
-      });
-      this.recordingStream = stream;
+      let stream = this.recordingStream;
+      const isStreamActive =
+        Boolean(stream) &&
+        stream!.getAudioTracks().length > 0 &&
+        stream!.getAudioTracks().some((t) => t.readyState === 'live');
+
+      if (!isStreamActive || !stream) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        });
+        this.recordingStream = stream;
+      }
       this.recordingChunks = [];
 
       // Pick best supported codec
@@ -189,10 +197,13 @@ export class JarvisVoiceService {
   }
 
   // ── MediaRecorder: Stop and return audio blob ───────────────────────────
-  stopRecording(): Promise<Blob | null> {
+  stopRecording(releaseStream = false): Promise<Blob | null> {
     return new Promise((resolve) => {
       if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
         this.isRecording = false;
+        if (releaseStream) {
+          this.releaseMediaStream();
+        }
         resolve(null);
         return;
       }
@@ -202,19 +213,12 @@ export class JarvisVoiceService {
         const blob = new Blob(this.recordingChunks, { type: mimeType });
         this.recordingChunks = [];
         this.isRecording = false;
-
-        // Release mic tracks
-        this.recordingStream?.getTracks().forEach((t) => t.stop());
-        this.recordingStream = null;
         this.mediaRecorder = null;
 
-        if (this.micSourceNode) {
-          try {
-            this.micSourceNode.disconnect();
-          } catch {
-            // ignore
-          }
-          this.micSourceNode = null;
+        // Only release underlying audio tracks when explicitly requested
+        // (retains stream alive for smooth conversational dialogue in Voice Mode)
+        if (releaseStream) {
+          this.releaseMediaStream();
         }
 
         resolve(blob);
@@ -224,33 +228,24 @@ export class JarvisVoiceService {
         this.mediaRecorder.stop();
       } catch {
         this.isRecording = false;
+        if (releaseStream) {
+          this.releaseMediaStream();
+        }
         resolve(null);
       }
     });
   }
 
-  // ── Cancel Recording without returning blob or triggering callbacks ────
-  cancelRecording(): void {
-    if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
-      this.isRecording = false;
-      this.recordingChunks = [];
-      return;
+  // ── Release MediaStream and disconnect audio graph ──────────────────────
+  releaseMediaStream(): void {
+    if (this.recordingStream) {
+      try {
+        this.recordingStream.getTracks().forEach((t) => t.stop());
+      } catch {
+        // ignore
+      }
+      this.recordingStream = null;
     }
-
-    try {
-      this.mediaRecorder.onstop = null;
-      this.mediaRecorder.stop();
-    } catch {
-      // ignore
-    }
-
-    this.recordingChunks = [];
-    this.isRecording = false;
-
-    // Release mic tracks
-    this.recordingStream?.getTracks().forEach((t) => t.stop());
-    this.recordingStream = null;
-    this.mediaRecorder = null;
 
     if (this.micSourceNode) {
       try {
@@ -259,6 +254,27 @@ export class JarvisVoiceService {
         // ignore
       }
       this.micSourceNode = null;
+    }
+  }
+
+  // ── Cancel Recording without returning blob or triggering callbacks ────
+  cancelRecording(releaseStream = false): void {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      try {
+        this.mediaRecorder.ondataavailable = null;
+        this.mediaRecorder.onstop = null;
+        this.mediaRecorder.stop();
+      } catch {
+        // ignore
+      }
+    }
+
+    this.recordingChunks = [];
+    this.isRecording = false;
+    this.mediaRecorder = null;
+
+    if (releaseStream) {
+      this.releaseMediaStream();
     }
   }
 

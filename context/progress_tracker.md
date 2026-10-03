@@ -405,6 +405,20 @@ The `direction` column on `nodes` was added after the initial schema was deploye
 
 ---
 
+### Session 18 — Mobile PWA Sidebar Auto-Close & iOS Double-Permission Fix
+- **Mobile Sidebar Startup Fix (`src/pages/MobileJarvisPage.tsx`)**:
+  - Root cause: `localStorage.getItem('jarvis_sidebar_open')` was persisted across sessions or desktop usage. When the app launched as an installed PWA on iPhone, `sidebarOpen` initialized to `true`, rendering the mobile drawer over the entire screen.
+  - Fix: Hard-guarded `sidebarOpen` initialization to always evaluate to `false` on viewports `< 768px`.
+  - Toggling sidebar on mobile no longer writes to `localStorage` (desktop preference is preserved). Purges stale storage on mobile mount.
+  - Added support for `?voice=1` / `?voice=true` query parameters to optionally auto-open Voice Mode directly from an iOS shortcut or home screen bookmark.
+- **iOS Double-Permission Prompt Elimination (`src/services/jarvisVoice.ts`, `src/store/jarvisStore.ts`, `src/services/wakeWordService.ts`)**:
+  - Root cause: WebKit on iOS treats `webkitSpeechRecognition` (Apple Speech Recognition privilege) and `getUserMedia` (Microphone privilege) as separate OS permissions. Calling both when entering Voice Mode presented two consecutive OS modals: "mindmapper Would Like to Use Speech Recognition" followed by "mindmapper Would Like to Access the Microphone". In addition, `stopRecording()` was killing media tracks on every turn, causing WebKit to repeatedly prompt or reset permissions.
+  - Fix 1: Guarded `SpeechRec` and `startBargeInListener` with `!isIOS()`. On iOS, `webkitSpeechRecognition` is bypassed completely; Groq Whisper (`whisper-large-v3`) handles 100% of speech transcription with near-zero latency, eliminating the secondary Speech Recognition prompt entirely.
+  - Fix 2: Stream reuse across conversational turns in `JarvisVoiceService`. `startRecording()` checks if `this.recordingStream` is already active and reuses it without re-calling `navigator.mediaDevices.getUserMedia()`. `stopRecording(!isVoiceModeActive)` leaves the stream alive while Voice Mode is open.
+  - Fix 3: Added `releaseMediaStream()` which is explicitly called upon exiting Voice Mode (`closeVoiceMode()`) or muting (`setMicMuted(true)`), immediately extinguishing the iOS orange status-bar mic indicator.
+
+---
+
 ### Session 17 — Multimodal Voice Canvas & In-Voice Interactive Approval
 - **Interactive Proposal Rendering in Voice Mode (`src/components/jarvis/JarvisVoiceMode.tsx`)**:
   - Integrated `JarvisProposalRenderer` directly into the full-screen Voice Mode canvas.

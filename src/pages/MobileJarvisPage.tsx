@@ -45,6 +45,7 @@ export function MobileJarvisPage() {
     copyPromptToClipboard,
     lastCopiedAt,
     toggleVoiceMode,
+    openVoiceMode,
   } = useJarvisStore();
 
   const {
@@ -56,6 +57,11 @@ export function MobileJarvisPage() {
 
   const [inputVal, setInputVal] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Mobile viewports (< 768px) must ALWAYS start with the sidebar closed
+    // so the drawer never blocks the screen on app launch.
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return false;
+    }
     const saved = localStorage.getItem('jarvis_sidebar_open');
     if (saved !== null) return saved === 'true';
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : false;
@@ -64,10 +70,30 @@ export function MobileJarvisPage() {
   const handleToggleSidebar = () => {
     setSidebarOpen((prev) => {
       const next = !prev;
-      localStorage.setItem('jarvis_sidebar_open', String(next));
+      // Only persist sidebar open preference on desktop viewports
+      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+        localStorage.setItem('jarvis_sidebar_open', String(next));
+      }
       return next;
     });
   };
+
+  // Ensure any stale sidebar open preference on mobile devices is purged
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      localStorage.removeItem('jarvis_sidebar_open');
+    }
+  }, []);
+
+  // Support ?voice=1 or ?voice=true URL param if user launches directly into Voice Mode
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search;
+      if (search.includes('voice=true') || search.includes('voice=1')) {
+        openVoiceMode();
+      }
+    }
+  }, [openVoiceMode]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch initial conversations on mount
