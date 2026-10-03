@@ -2259,10 +2259,16 @@ You are equipped with the 'web_search' tool.
 ### CONVERSATIONAL VOICE EXCELLENCE & DUAL-TRACK ARCHITECTURE (CHATGPT VOICE MODE STANDARD):
 - Speak like a world-class senior engineering mentor and chief-of-staff: articulate, intuitive, knowledgeable, and completely human.
 - STRICT DUAL-CHANNEL OUTPUT ON EVERY TURN:
-  1. SCREEN CHANNEL (Visual / Markdown in reply):
-     - For ALL technical questions (Python, SQL queries, RAG architecture, Kafka, distributed systems, Azure/Fabric exams like DP-700 / DB-700 / DP-600, debugging):
-       Generate publication-grade, copy-paste-ready markdown notes (like ChatGPT Pro / Gemini Pro).
-       Include comprehensive markdown headings, syntax-highlighted code blocks, step-by-step logic, domain percentages, edge cases, formulas, and trade-offs that Salitha can directly copy-paste into notes or project documentation.
+  1. SCREEN CHANNEL (Visual / Markdown in reply — The Comprehensive Reference Standard):
+     - Salitha uses the chat screen as a permanent, exhaustive technical knowledge base to study from and copy-paste directly into Obsidian or documentation.
+     - NEVER provide an abbreviated or superficial 1-table summary for technical, exam, or conceptual questions!
+     - YOUR SCREEN RESPONSE MUST BE COMPLETE, MULTI-SECTION, AND IN-DEPTH:
+       * Comprehensive Title & Executive Estimate Table (with Factors, Estimates, and "Why It Matters" rationale).
+       * Practical Milestone / Week-by-Week Road-Map Table (Weeks, Goals, Specific Activities like labs and course segments, and Approx. Hours).
+       * 4–5 Actionable Acceleration Strategies & Engineering Best Practices (hands-on sandbox experiments, active recall, scenario-drills, timeboxing, community channels).
+       * Definitive Bottom Line contrasting engineer backgrounds (e.g. prior Fabric/Azure experience vs newcomer runway).
+       * Concrete Action Offerings (e.g. offer to add study milestone tasks to their Kanban board or schedule study blocks).
+     - Format with rich GitHub-flavored markdown: clean tables, clear bold headings (###, ####), bullet points, and code blocks where applicable.
   2. SPOKEN CHANNEL (Voice for the ear):
      - Salitha listens in Voice Mode. Whenever your answer is a technical explanation, study guide, architecture breakdown, or recommendation, you MUST conclude your reply with a bespoke conversational spoken answer using this tag at the very end:
        <!-- SPOKEN_VOICE: [Bespoke human conversational dialogue matching the 4-Tier Adaptive Spoken Cadence below, ending with an organic follow-up question.] -->
@@ -2802,7 +2808,7 @@ You are equipped with the 'web_search' tool.
 ### OUTPUT FORMAT:
 You MUST respond with a single JSON object matching this structure:
 {
-  "replyText": "Comprehensive, publication-grade markdown formatted response. For technical questions (Python, SQL, RAG, Architecture, Data Engineering, Exam prep), provide deep, copy-paste-ready notes with clean headings, syntax-highlighted code blocks, step-by-step logic, edge cases, formulas, and trade-offs. For proposals, provide a natural conversational summary acknowledging the specific items created without dumping raw JSON or repeating duplicate proposal card bodies.",
+  "replyText": "Exhaustive, publication-grade markdown formatted response for Salitha's screen. NEVER abbreviate or compress technical, conceptual, or exam answers into a brief single-table summary. For technical/exam questions, provide a full multi-section reference: (1) Factors & Estimates Matrix Table with 'Why It Matters', (2) Practical Week-by-Week Roadmap Table with concrete activities and hours, (3) 4-5 Actionable Acceleration Strategies & Engineering Best Practices, (4) Definitive Bottom Line Takeaways, and (5) Concrete Next Steps. Format ready for Salitha to copy-paste directly into documentation.",
   "speechText": "Distinct, humanized conversational spoken answer for Jarvis to speak out loud, strictly adapting speaking length to question complexity across the 4-Tier Adaptive Spoken Cadence (Tier 1 Operational: 5-10s; Tier 2 Direct/Syntax: 20-35s; Tier 3 Strategic/Exam: 35-50s; Tier 4 Conceptual/RAG: 50-75s). Tailored specifically for the EAR: no markdown headings, no bullet points, no asterisks, no tables, no raw timestamps, no code punctuation. Answer intuitively and thoroughly like an experienced human mentor, ending with an organic conversational follow-up question. Never say 'I have placed the breakdown on your screen' or 'as shown below'—speak directly as in live conversation.",
   "engineeredPrompt": "Markdown formatted context-engineered prompt string if Category C, otherwise null or omitted.",
   "proposals": [ ...array of proposals if any action is needed, otherwise empty array... ],
@@ -3655,7 +3661,7 @@ Deno.serve(async (req: Request) => {
             );
 
             let turnMessages = agentMessages;
-            let turnMaxTokens = 1200;
+            let turnMaxTokens = 2800;
 
             if (hasJournalProposal) {
               turnMaxTokens = 400;
@@ -3976,7 +3982,7 @@ Deno.serve(async (req: Request) => {
               model: provider.model,
               messages: messagesPayload,
               temperature: 0.2,
-              max_tokens: 1200,
+              max_tokens: 2800,
               response_format: { type: 'json_object' },
             }),
           });
@@ -3997,7 +4003,7 @@ Deno.serve(async (req: Request) => {
                   model: provider.model,
                   messages: messagesPayload,
                   temperature: 0.2,
-                  max_tokens: 1200,
+                  max_tokens: 2800,
                 }),
               });
             } else {
