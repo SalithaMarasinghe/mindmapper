@@ -237,7 +237,15 @@ export class JarvisVoiceService {
     anonKey: string
   ): Promise<string> {
     const form = new FormData();
-    form.append('audio', blob, 'recording.webm');
+    let fileName = 'recording.webm';
+    if (blob.type.includes('mp4') || blob.type.includes('m4a') || blob.type.includes('aac')) {
+      fileName = 'recording.m4a';
+    } else if (blob.type.includes('ogg')) {
+      fileName = 'recording.ogg';
+    } else if (blob.type.includes('wav')) {
+      fileName = 'recording.wav';
+    }
+    form.append('audio', blob, fileName);
 
     const res = await fetch(`${supabaseUrl}/functions/v1/jarvis-transcribe`, {
       method: 'POST',
@@ -472,10 +480,17 @@ export class JarvisVoiceService {
       .then((success) => {
         if (!success) {
           // Gracefully fall back to patched browser speech if Neural TTS key is not set or network fails
-          this.speakBrowser(cleanedText, onEnd);
+          // But do NOT fall back if playback was aborted by user interruption
+          if (!this.ttsAbortController?.signal.aborted) {
+            this.speakBrowser(cleanedText, onEnd);
+          }
         }
       })
       .catch((err) => {
+        // If aborted, do NOT start browser fallback!
+        if (err?.name === 'AbortError' || this.ttsAbortController?.signal.aborted) {
+          return;
+        }
         console.warn('[JarvisVoice] Neural TTS threw error, using browser fallback:', err);
         this.speakBrowser(cleanedText, onEnd);
       });

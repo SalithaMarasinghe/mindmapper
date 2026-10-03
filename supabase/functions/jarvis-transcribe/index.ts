@@ -31,8 +31,8 @@ Deno.serve(async (req: Request) => {
 
     // Forward to Groq Whisper
     const groqForm = new FormData();
-    // Rename with explicit extension so Groq detects the codec correctly
-    groqForm.append('file', audioField, 'recording.webm');
+    const fileName = (audioField as File).name || 'recording.webm';
+    groqForm.append('file', audioField, fileName);
     groqForm.append('model', 'whisper-large-v3-turbo');
     groqForm.append('response_format', 'json');
     groqForm.append('language', 'en');

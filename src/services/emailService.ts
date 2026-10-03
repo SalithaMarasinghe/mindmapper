@@ -305,6 +305,10 @@ export async function fetchLiveGmailMessages(accessToken: string): Promise<Email
     );
 
     if (!listRes.ok) {
+      if (listRes.status === 401) {
+        // Access token expired or unauthenticated — return empty quietly
+        return [];
+      }
       throw new Error(`Gmail API returned status ${listRes.status}: ${await listRes.text()}`);
     }
 
@@ -387,7 +391,9 @@ export async function fetchLiveGoogleCalendarEvents(accessToken: string): Promis
     );
 
     if (!calRes.ok) {
-      console.warn(`Google Calendar API returned status ${calRes.status}`);
+      if (calRes.status !== 401) {
+        console.warn(`Google Calendar API returned status ${calRes.status}`);
+      }
       return [];
     }
 
