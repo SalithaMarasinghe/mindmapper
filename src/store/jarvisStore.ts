@@ -353,32 +353,25 @@ export function distillSpeechFromMarkdown(text: string): string {
   // 12. Extract complete sentences for fluid, conversational audio playback
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
-    // If text is long (> 250 chars), scan for sentences with concrete answers / estimates / conclusions
-    const highValueRegex = /\b(take|weeks?|months?|hours?|timeline|plan for|recommend|overall|depends on|expect|prior experience|in short|in summary|verdict)\b/i;
-    const prioritized = sentences.filter((s) => highValueRegex.test(s));
-    const sentencePool = prioritized.length >= 2 ? prioritized : sentences;
-
     let speech = '';
-    let count = 0;
-    for (const s of sentencePool) {
+    for (const s of sentences) {
       const trimmed = s.trim();
-      if (!trimmed || trimmed.length < 15) continue;
-      if (count >= 3) break;
-      if (speech && (speech + ' ' + trimmed).length > 380) break;
+      if (!trimmed || trimmed.length < 10) continue;
+      // Allow conversational speech up to ~1500 chars (~200-240 words)
+      if (speech && (speech + ' ' + trimmed).length > 1500) break;
       speech = speech ? speech + ' ' + trimmed : trimmed;
-      count++;
     }
 
     if (speech) {
-      const hasScreenPointer = /\b(on your screen|details below|breakdown below|take a look|for your review|proposal below|screen)\b/i.test(speech);
-      if (text.length > 200 && !hasScreenPointer && speech.length <= 420) {
-        speech += " I've placed the full breakdown on your screen, sir.";
-      }
+      // Remove any robotic screen pointer references if they sneaked in
+      speech = speech
+        .replace(/\b(?:I have placed|I've placed|as seen on|refer to)\s+(?:the\s+)?(?:full\s+)?(?:breakdown|details|summary|proposal)\s+(?:on your screen|below)[^.!?]*[.!?]?/gi, '')
+        .trim();
       return speech;
     }
   }
 
-  return clean.slice(0, 350).trim();
+  return clean.slice(0, 1500).trim();
 }
 
 interface JarvisState {

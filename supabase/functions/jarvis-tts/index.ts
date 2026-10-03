@@ -62,8 +62,8 @@ function splitIntoChunks(text: string, maxLen = 190): string[] {
   }
   if (currentChunk) chunks.push(currentChunk);
 
-  // Synthesize at most 3 chunks (~550 chars) to prevent excessive latency
-  return chunks.slice(0, 3);
+  // Synthesize up to 10 chunks (~1900 chars) for fluid, comprehensive conversational answers
+  return chunks.slice(0, 10);
 }
 
 // Concatenate and repair PCM WAV buffers into a standard compliant WAV
