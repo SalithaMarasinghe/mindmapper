@@ -31,7 +31,6 @@ export function JarvisCockpit() {
     isHandsFree,
     isWakeWordLoading,
     orbState,
-    audioLevel,
     pastedText,
     statusMessage,
     activeProposal,
@@ -161,7 +160,7 @@ export function JarvisCockpit() {
                 }
               }}
             >
-              <JarvisOrb size={160} state={orbState} audioLevel={audioLevel} />
+              <JarvisOrb size={160} state={orbState} />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="px-2.5 py-1 rounded-full bg-black/80 text-[11px] font-mono text-cyan-300 border border-cyan-500/40 shadow-lg">
                   {isSpeaking ? 'Click to Interrupt' : isRecording ? 'Click to Stop' : 'Click to Speak'}

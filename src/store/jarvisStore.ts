@@ -395,7 +395,6 @@ interface JarvisState {
   isTranscribing: boolean;
   isSpeaking: boolean;
   orbState: OrbVisualState;
-  audioLevel: number;
   transcript: string;
   pastedText: string;
   statusMessage: string;
@@ -451,33 +450,12 @@ interface JarvisState {
 }
 
 export const useJarvisStore = create<JarvisState>((set, get) => {
-  // Sync TTS orb state callback and pulse visualizer during speech
+  // Sync TTS orb state callback
   jarvisVoice.setOrbStateCallback((orbState) => {
     set({ orbState, isSpeaking: orbState === 'speaking' });
     if (orbState === 'speaking') {
       wasSpeakingPriorToIdle = true;
       startBargeInListener();
-      let lastSpeakingAudioPollTime = 0;
-      let lastSpeakingAudioLevel = 0;
-      const pollSpeakingAudio = () => {
-        if (get().orbState !== 'speaking') {
-          if (lastSpeakingAudioLevel !== 0) {
-            lastSpeakingAudioLevel = 0;
-            set({ audioLevel: 0 });
-          }
-          return;
-        }
-        const now = performance.now();
-        const level = jarvisVoice.getLiveAudioLevel();
-        // Throttle store updates to ~12 FPS or significant level change (> 0.08)
-        if (now - lastSpeakingAudioPollTime >= 80 || Math.abs(level - lastSpeakingAudioLevel) >= 0.08) {
-          lastSpeakingAudioPollTime = now;
-          lastSpeakingAudioLevel = level;
-          set({ audioLevel: level });
-        }
-        requestAnimationFrame(pollSpeakingAudio);
-      };
-      requestAnimationFrame(pollSpeakingAudio);
     } else if (orbState === 'idle') {
       stopBargeInListener();
       const shouldAutoResumeInVoiceMode = wasSpeakingPriorToIdle && !isBargeInTransitioning;
@@ -544,7 +522,6 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
     isTranscribing: false,
     isSpeaking: false,
     orbState: 'idle',
-    audioLevel: 0,
     transcript: '',
     pastedText: '',
     statusMessage: 'Press the mic to start speaking',
@@ -941,21 +918,11 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
           const MAX_RECORDING_MS = 60000;  // 60s (1 full minute) safety limit for complex prompts
           const startedAt = Date.now();
 
-          let lastRecAudioPollTime = 0;
-          let lastRecAudioLevel = 0;
-          // Poll audio level for orb visualizer and adaptive silence detection
+          // Adaptive silence detection using audio analysis (zero React re-renders)
           const pollAudio = () => {
             if (!get().isRecording) return;
-            const level = jarvisVoice.getLiveAudioLevel();
             const rms = jarvisVoice.getLiveRMS();
-            
             const now = Date.now();
-            // Throttle store updates to ~12 FPS or significant level change (> 0.08)
-            if (now - lastRecAudioPollTime >= 80 || Math.abs(level - lastRecAudioLevel) >= 0.08) {
-              lastRecAudioPollTime = now;
-              lastRecAudioLevel = level;
-              set({ audioLevel: level });
-            }
 
             // Calibrate ambient noise floor during first 250ms
             if (!ambientCalibrated) {
@@ -976,11 +943,12 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
                 speechDetected = true;
               }
               silenceStart = 0; // reset silence counter while user speaks
-              set({
-                statusMessage: get().isHandsFree
-                  ? 'Listening... pause when done speaking'
-                  : 'Listening... press mic or pause when done',
-              });
+              const activeMsg = get().isHandsFree
+                ? 'Listening... pause when done speaking'
+                : 'Listening... press mic or pause when done';
+              if (get().statusMessage !== activeMsg) {
+                set({ statusMessage: activeMsg });
+              }
             } else if (speechDetected) {
               // 2. User spoke and is now quiet / thinking
               if (silenceStart === 0) {
@@ -990,10 +958,13 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
 
                 // Conversational holding status: inform user we are holding floor
                 if (elapsedSilence > 1200) {
-                  if (isTrailingThoughtIncomplete) {
-                    set({ statusMessage: 'Holding floor... take your time, sir' });
-                  } else if (get().isHandsFree) {
-                    set({ statusMessage: 'Finishing up...' });
+                  const holdingMsg = isTrailingThoughtIncomplete
+                    ? 'Holding floor... take your time, sir'
+                    : get().isHandsFree
+                    ? 'Finishing up...'
+                    : null;
+                  if (holdingMsg && get().statusMessage !== holdingMsg) {
+                    set({ statusMessage: holdingMsg });
                   }
                 }
 

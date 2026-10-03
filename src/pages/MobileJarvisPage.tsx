@@ -8,6 +8,7 @@ import {
   Loader2,
   PanelLeft,
 } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useJarvisStore } from '../store/jarvisStore';
 import { useAssistantStore } from '../store/assistantStore';
 import { JarvisSidebar } from '../components/jarvis/JarvisSidebar';
@@ -45,7 +46,31 @@ export function MobileJarvisPage() {
     lastCopiedAt,
     toggleVoiceMode,
     openVoiceMode,
-  } = useJarvisStore();
+  } = useJarvisStore(
+    useShallow((s) => ({
+      activeProposal: s.activeProposal,
+      isWebSearchEnabled: s.isWebSearchEnabled,
+      isSubmitting: s.isSubmitting,
+      isSpeaking: s.isSpeaking,
+      isRecording: s.isRecording,
+      isTranscribing: s.isTranscribing,
+      isHandsFree: s.isHandsFree,
+      isWakeWordLoading: s.isWakeWordLoading,
+      transcript: s.transcript,
+      orbState: s.orbState,
+      stopSpeaking: s.stopSpeaking,
+      toggleRecording: s.toggleRecording,
+      toggleHandsFree: s.toggleHandsFree,
+      toggleWebSearch: s.toggleWebSearch,
+      approveProposal: s.approveProposal,
+      rejectProposal: s.rejectProposal,
+      submitCommand: s.submitCommand,
+      copyPromptToClipboard: s.copyPromptToClipboard,
+      lastCopiedAt: s.lastCopiedAt,
+      toggleVoiceMode: s.toggleVoiceMode,
+      openVoiceMode: s.openVoiceMode,
+    }))
+  );
 
   const {
     messages,

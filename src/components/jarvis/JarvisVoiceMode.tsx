@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Mic, MicOff, X } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useJarvisStore } from '../../store/jarvisStore';
 import { JarvisOrb } from './JarvisOrb';
 import { JarvisProposalRenderer } from './JarvisProposalRenderer';
@@ -21,7 +22,24 @@ export function JarvisVoiceMode() {
     toggleMicMute,
     stopSpeaking,
     toggleRecording,
-  } = useJarvisStore();
+  } = useJarvisStore(
+    useShallow((s) => ({
+      voiceModeOpen: s.voiceModeOpen,
+      micMuted: s.micMuted,
+      orbState: s.orbState,
+      transcript: s.transcript,
+      isSubmitting: s.isSubmitting,
+      isTranscribing: s.isTranscribing,
+      isSpeaking: s.isSpeaking,
+      activeProposal: s.activeProposal,
+      approveProposal: s.approveProposal,
+      rejectProposal: s.rejectProposal,
+      closeVoiceMode: s.closeVoiceMode,
+      toggleMicMute: s.toggleMicMute,
+      stopSpeaking: s.stopSpeaking,
+      toggleRecording: s.toggleRecording,
+    }))
+  );
 
   // Close on Escape key
   useEffect(() => {

@@ -16,7 +16,6 @@ export function VoiceDeck() {
     isTranscribing,
     isSpeaking,
     isHandsFree,
-    audioLevel,
     transcript,
     statusMessage,
     isSubmitting,
@@ -73,7 +72,6 @@ export function VoiceDeck() {
           <JarvisOrb
             size={120}
             state={derivedOrbState}
-            level={audioLevel}
             analyser={micAnalyser}
             onClick={handleOrbToggle}
           />
