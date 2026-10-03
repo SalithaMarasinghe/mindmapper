@@ -42,6 +42,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 // Sentient speech sanitizer: converts raw written markdown into natural spoken speech
+// Sentient speech sanitizer: converts raw written markdown into natural spoken speech
 export function distillSpeechFromMarkdown(text: string): string {
   if (!text) return '';
 
@@ -49,50 +50,96 @@ export function distillSpeechFromMarkdown(text: string): string {
   let clean = text.replace(/```[\s\S]*?```/g, '');
   clean = clean.replace(/`([^`]+)`/g, '$1');
 
-  // 2. Remove URLs, links, images
+  // 2. Remove markdown tables
+  clean = clean.replace(/^\|[^\r\n]+\|$/gm, '');
+  clean = clean.replace(/\|/g, ' ');
+
+  // 3. Remove URLs, links, images
   clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   clean = clean.replace(/https?:\/\/\S+/g, '');
   clean = clean.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
 
-  // 3. Detect structured weather bullet points
-  const conditionMatch = clean.match(/-\s*\*\*Condition:\*\*\s*([^\n\r]+)/i);
-  const tempMatch = clean.match(/-\s*\*\*Temperature:\*\*\s*([^\n\r]+)/i);
-  const feelsLikeMatch = clean.match(/-\s*\*\*Feels Like:\*\*\s*([^\n\r]+)/i);
-  const rainMatch = clean.match(/-\s*\*\*Precipitation:\*\*\s*([^\n\r]+)/i);
+  // 4. Detect structured weather bullet points
+  const conditionMatch = clean.match(/(?:Condition|Current condition):\s*\*?\*?\s*([^\n\r]+)/i);
+  const tempMatch = clean.match(/(?:Temperature):\s*\*?\*?\s*([^\n\r]+)/i);
+  const feelsLikeMatch = clean.match(/(?:Feels like):\s*\*?\*?\s*([^\n\r]+)/i);
+  const rainMatch = clean.match(/(?:Precipitation):\s*\*?\*?\s*([^\n\r]+)/i);
 
   if (conditionMatch || tempMatch) {
-    const cond = conditionMatch ? conditionMatch[1].replace(/[—–-].*$/, '').trim() : '';
-    const temp = tempMatch ? tempMatch[1].replace(/\([^)]*\)/g, '').trim() : '';
-    const feels = feelsLikeMatch ? feelsLikeMatch[1].replace(/\([^)]*\)/g, '').trim() : '';
-    const rain = rainMatch ? rainMatch[1].replace(/\([^)]*\)/g, '').trim() : '';
+    const cond = conditionMatch ? conditionMatch[1].replace(/[*_~`—–-].*$/, '').trim() : '';
+    const temp = tempMatch ? tempMatch[1].replace(/\([^)]*\)/g, '').replace(/[*_~`]/g, '').trim() : '';
+    const feels = feelsLikeMatch ? feelsLikeMatch[1].replace(/\([^)]*\)/g, '').replace(/[*_~`]/g, '').trim() : '';
+    const rain = rainMatch ? rainMatch[1].replace(/\([^)]*\)/g, '').replace(/[*_~`]/g, '').trim() : '';
 
     let summary = `It's currently ${cond.toLowerCase() || 'clear'} and around ${temp || 'warm'} in Colombo, sir.`;
     if (feels) summary += ` With humidity it feels closer to ${feels}.`;
-    if (rain && (rain.includes('0') || rain.toLowerCase().includes('no rain'))) {
-      summary += ` No rain expected right now.`;
+    if (rain && (rain.includes('0') || rain.toLowerCase().includes('no rain') || rain.toLowerCase().includes('mist') || rain.toLowerCase().includes('drizzle'))) {
+      if (rain.toLowerCase().includes('drizzle') || rain.toLowerCase().includes('mist')) {
+        summary += ` Expect a light drizzle right now.`;
+      } else {
+        summary += ` No rain expected right now.`;
+      }
     }
     return summary;
   }
 
-  // 4. Remove parentheticals with timestamps, dates, or approx signs
+  // 5. CRITICAL: Completely strip all markdown headings (# Heading, ## Subheading, etc.) so they are never read out loud!
+  clean = clean.replace(/^#{1,6}\s+[^\r\n]*/gm, '');
+
+  // 6. Strip blockquotes
+  clean = clean.replace(/^>\s+[^\r\n]*/gm, '');
+
+  // 7. Strip list bullets and numeric list markers (e.g. "1. ", "- ", "* ")
+  clean = clean.replace(/^[ \t]*[-*+]\s+/gm, '');
+  clean = clean.replace(/^[ \t]*\d+\.\s+/gm, '');
+
+  // 8. Remove parentheticals with timestamps, dates, or approx signs
   clean = clean.replace(/\([^)]*?(?:observed|local time|\d{4}-\d{2}-\d{2}|≈|approx)[^)]*?\)/gi, '');
 
-  // 5. Strip list bullets, asterisks, hashtags, quotes
-  clean = clean.replace(/^[ \t]*[-*+]\s+/gm, '');
+  // 9. Strip bold, italic, strikethrough, hashtags, angle brackets
   clean = clean.replace(/[*_#~>]/g, '');
+
+  // 10. Normalize whitespace
   clean = clean.replace(/\s+/g, ' ').trim();
 
-  // 6. Extract first 1-2 complete sentences
-  const sentences = clean.match(/[^.!?]+[.!?]+/g);
-  if (sentences && sentences.length > 0) {
-    let speech = sentences[0].trim();
-    if (sentences[1] && (speech + ' ' + sentences[1].trim()).length <= 220) {
-      speech += ' ' + sentences[1].trim();
-    }
-    return speech;
+  // 11. Handle ultra-short greetings / check-ins (e.g., "Hey there, I am all set.")
+  if (
+    /^(hey|hi|hello|good morning|good afternoon|good evening|hey there)[^.!?]*$/i.test(clean) ||
+    clean.toLowerCase() === 'hey there, i am all set.' ||
+    clean.toLowerCase() === 'i am all set.' ||
+    clean.toLowerCase() === 'all set.'
+  ) {
+    return 'Hey there, Salitha! All systems are online and ready. What would you like to work on today?';
   }
 
-  return clean.slice(0, 200).trim();
+  // 12. Extract complete sentences for fluid, conversational audio playback (2-4 sentences, up to ~480 chars)
+  const sentences = clean.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length > 0) {
+    let speech = '';
+    let count = 0;
+    for (const s of sentences) {
+      const trimmed = s.trim();
+      if (!trimmed) continue;
+      // Skip bullet-like fragments or table remnants that don't look like sentences
+      if (trimmed.length < 15 && count > 0) continue;
+      if (count >= 4) break;
+      if (speech && (speech + ' ' + trimmed).length > 480) break;
+      speech = speech ? speech + ' ' + trimmed : trimmed;
+      count++;
+    }
+
+    if (speech) {
+      // If the response is a deep technical or conceptual explanation (> 250 chars),
+      // conclude with an invitation to view the screen unless already mentioned.
+      const hasScreenPointer = /\b(on your screen|details below|breakdown below|take a look|for your review|proposal below|screen)\b/i.test(speech);
+      if (text.length > 250 && !hasScreenPointer && speech.length <= 420) {
+        speech += " I've placed the full breakdown on your screen, sir.";
+      }
+      return speech;
+    }
+  }
+
+  return clean.slice(0, 350).trim();
 }
 
 interface JarvisState {
@@ -596,7 +643,10 @@ export const useJarvisStore = create<JarvisState>((set, get) => {
               rawContent.length > 30
             ) {
               const cleanSpeech = lastMsg.speechText || distillSpeechFromMarkdown(rawContent);
-              jarvisVoice.speak(`${cleanSpeech}... I've prepared the details below for your review.`);
+              const alreadyMentionsReview = /\b(for your review|details below|on your screen|proposal below|screen)\b/i.test(cleanSpeech);
+              jarvisVoice.speak(
+                alreadyMentionsReview ? cleanSpeech : `${cleanSpeech} I've prepared the details below for your review.`
+              );
             } else {
               let voiceMsg = "I've drafted the details for your review.";
               if (targetProp?.type === 'create_work_event') {

@@ -2206,8 +2206,12 @@ Meeting Journal Format:
 ### TASK DEDUPLICATION & INTEGRITY:
 - NEVER create duplicate tasks. Check SALITHA'S CURRENT TASK BOARD first.
 
-### CONVERSATIONAL STYLE:
-Speak like a world-class senior engineering assistant: crisp, articulate, proactive, and natural. Never sound robotic.`;
+### CONVERSATIONAL STYLE & DUAL-CHANNEL VOCAL EXCELLENCE:
+- Speak like a world-class senior engineering assistant and chief-of-staff: articulate, crisp, knowledgeable, and natural.
+- When answering conceptual, technical, or architecture questions (e.g. "What is monolithic architecture?"):
+  Provide a comprehensive, senior-level architectural breakdown for the screen with headings, clear bullet points, mental models, and trade-offs.
+- When greeting or checking in (e.g. "What's up?", "How are you?"):
+  Provide a warm, complete, proactive check-in (2-3 complete sentences). Mention that systems are active, the current focus project or task status, and ask what Salitha would like to focus on today. NEVER stop at a single disjointed fragment like "Hey there, I am all set."`;
 }
 
 function buildOperationalSystemPrompt(
@@ -2718,8 +2722,8 @@ ${pastUnfinishedList}
 ### OUTPUT FORMAT:
 You MUST respond with a single JSON object matching this structure:
 {
-  "replyText": "Markdown formatted conversational response to the user. When creating proposals or answering questions, provide a natural 1-2 sentence conversational summary acknowledging the specific items created and answering any technical questions asked (e.g. 'I have set up tasks for the Redis caching integration and p95 latency benchmarks for your review. Regarding RLS subqueries: ...'). DO NOT dump raw JSON or repeat full duplicate card markdown blocks in this text, as the user has the interactive proposal card below.",
-  "speechText": "Natural, conversational 1-2 sentence spoken summary for Jarvis to speak out loud. MUST BE written for the EAR, NOT the eye: no markdown symbols, no bullet points, no asterisks, no tables, no raw timestamps. Speak like a sentient, articulate British chief-of-staff (e.g. 'It is currently overcast and 29 degrees in Colombo, sir. Feels closer to 36 with the humidity, but no rain expected.').",
+  "replyText": "Comprehensive markdown formatted response to the user. For technical questions, provide deep, structured explanations with headers, bullet points, mental models, trade-offs, and code snippets. For proposals, provide a natural conversational summary acknowledging the specific items created without dumping raw JSON or repeating duplicate proposal card bodies.",
+  "speechText": "Natural, articulate 2-4 sentence conversational spoken summary (40-80 words) for Jarvis to speak out loud. Tailored specifically for the EAR, NOT the eye: no markdown headings, no bullet points, no asterisks, no tables, no raw timestamps. Explain the core concept or status in clear human speech, highlight the key takeaway or trade-off, and politely invite Salitha to view the screen for details (e.g. 'A monolithic architecture unifies all components into a single deployable unit, sir. While it is simple to develop and deploy initially, scaling individual components independently becomes challenging as the codebase grows. I have placed the full architectural breakdown on your screen.'). For general check-ins like 'What's up?', deliver a warm, complete 2-3 sentence overview.",
   "engineeredPrompt": "Markdown formatted context-engineered prompt string if Category C, otherwise null or omitted.",
   "proposals": [ ...array of proposals if any action is needed, otherwise empty array... ],
   "suggestedFollowups": ["Short quick-action phrase 1", "Short phrase 2"]
@@ -3006,15 +3010,24 @@ You MUST respond with a single JSON object matching this structure:
 For read-only questions like "what did I do today?", "how much time have I tracked?", or "what's still open?", answer accurately in replyText from the snapshot data and set proposals to [].`;
 }
 
-// Sentient speech synthesizer helper: ensures speechText is always punchy, natural and spoken-ready
+// Sentient dual-channel speech synthesizer: transforms written markdown into fluid, articulate spoken voice (for the ear)
 function distillSpeech(text: string): string {
   if (!text) return '';
+
+  // 1. Remove code blocks and inline code
   let clean = text.replace(/```[\s\S]*?```/g, '');
   clean = clean.replace(/`([^`]+)`/g, '$1');
+
+  // 2. Remove markdown tables
+  clean = clean.replace(/^\|[^\r\n]+\|$/gm, '');
+  clean = clean.replace(/\|/g, ' ');
+
+  // 3. Remove URLs, links, images
   clean = clean.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   clean = clean.replace(/https?:\/\/\S+/g, '');
   clean = clean.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
 
+  // 4. Handle structured weather reports gracefully
   const conditionMatch = clean.match(/(?:Condition|Current condition):\s*\*?\*?\s*([^\n\r]+)/i);
   const tempMatch = clean.match(/(?:Temperature):\s*\*?\*?\s*([^\n\r]+)/i);
   const feelsLikeMatch = clean.match(/(?:Feels like):\s*\*?\*?\s*([^\n\r]+)/i);
@@ -3038,20 +3051,63 @@ function distillSpeech(text: string): string {
     return summary;
   }
 
-  clean = clean.replace(/\([^)]*?(?:observed|local time|\d{4}-\d{2}-\d{2}|≈|approx)[^)]*?\)/gi, '');
+  // 5. CRITICAL: Completely strip all markdown headings (# Heading, ## Subheading, etc.) so they are never read out loud!
+  clean = clean.replace(/^#{1,6}\s+[^\r\n]*/gm, '');
+
+  // 6. Strip blockquotes
+  clean = clean.replace(/^>\s+[^\r\n]*/gm, '');
+
+  // 7. Strip list bullets and numeric list markers (e.g. "1. ", "- ", "* ")
   clean = clean.replace(/^[ \t]*[-*+]\s+/gm, '');
+  clean = clean.replace(/^[ \t]*\d+\.\s+/gm, '');
+
+  // 8. Remove parentheticals with timestamps, dates, or approx signs
+  clean = clean.replace(/\([^)]*?(?:observed|local time|\d{4}-\d{2}-\d{2}|≈|approx)[^)]*?\)/gi, '');
+
+  // 9. Strip bold, italic, strikethrough, hashtags, angle brackets
   clean = clean.replace(/[*_#~>]/g, '');
+
+  // 10. Normalize whitespace
   clean = clean.replace(/\s+/g, ' ').trim();
 
+  // 11. Handle ultra-short greetings / check-ins (e.g., "Hey there, I am all set.")
+  if (
+    /^(hey|hi|hello|good morning|good afternoon|good evening|hey there)[^.!?]*$/i.test(clean) ||
+    clean.toLowerCase() === 'hey there, i am all set.' ||
+    clean.toLowerCase() === 'i am all set.' ||
+    clean.toLowerCase() === 'all set.'
+  ) {
+    return 'Hey there, Salitha! All systems are online and ready. What would you like to work on today?';
+  }
+
+  // 12. Extract complete sentences for fluid, conversational audio playback (2-4 sentences, up to ~480 chars)
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
-    let speech = sentences[0].trim();
-    if (sentences[1] && (speech + ' ' + sentences[1].trim()).length <= 220) {
-      speech += ' ' + sentences[1].trim();
+    let speech = '';
+    let count = 0;
+    for (const s of sentences) {
+      const trimmed = s.trim();
+      if (!trimmed) continue;
+      // Skip bullet-like fragments or table remnants that don't look like sentences
+      if (trimmed.length < 15 && count > 0) continue;
+      if (count >= 4) break;
+      if (speech && (speech + ' ' + trimmed).length > 480) break;
+      speech = speech ? speech + ' ' + trimmed : trimmed;
+      count++;
     }
-    return speech;
+
+    if (speech) {
+      // If the response is a deep technical or conceptual explanation (> 250 chars),
+      // conclude with an invitation to view the screen unless already mentioned.
+      const hasScreenPointer = /\b(on your screen|details below|breakdown below|take a look|for your review|proposal below|screen)\b/i.test(speech);
+      if (text.length > 250 && !hasScreenPointer && speech.length <= 420) {
+        speech += " I've placed the full breakdown on your screen, sir.";
+      }
+      return speech;
+    }
   }
-  return clean.slice(0, 200).trim();
+
+  return clean.slice(0, 350).trim();
 }
 
 Deno.serve(async (req: Request) => {
@@ -3668,11 +3724,15 @@ Deno.serve(async (req: Request) => {
 
     if (agentFinalReply !== null) {
       let cleanReply = agentFinalReply.trim();
+      let extractedSpeechText: string | null = null;
       if (cleanReply.startsWith('{') && cleanReply.endsWith('}')) {
         try {
           const parsed = JSON.parse(cleanReply);
           if (parsed.replyText) {
             cleanReply = parsed.replyText;
+          }
+          if (parsed.speechText) {
+            extractedSpeechText = parsed.speechText;
           }
         } catch {}
       }
@@ -3700,6 +3760,7 @@ Deno.serve(async (req: Request) => {
 
       parsedResult = {
         replyText: cleanReply,
+        speechText: extractedSpeechText,
         engineeredPrompt: null,
         proposals: deduplicatedProposals,
         suggestedFollowups: [],
