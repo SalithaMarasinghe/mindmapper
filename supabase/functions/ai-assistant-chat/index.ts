@@ -98,10 +98,13 @@ interface ChatRequestBody {
   message: string;
   timezone: string;
   currentTimeISO: string;
-  context: ContextSnapshot;
+  context?: ContextSnapshot;
   mode?: 'assistant' | 'prompt_engineer' | 'technical_qa';
   promptRefinementTarget?: string;
   enableSearch?: boolean;
+  userId?: string;
+  channel?: string;
+  channelThreadId?: string;
 }
 
 interface SearchResultSource {
@@ -3325,6 +3328,105 @@ Rules:
   return null;
 }
 
+async function buildServerContextSnapshot(
+  supabase: any,
+  userId: string,
+  timezone: string
+): Promise<ContextSnapshot> {
+  const now = new Date();
+  const local = getLocalTimeAndDate(now, timezone, now.toISOString().slice(0, 10));
+  const today = local.dateISO;
+
+  // 1. Fetch today's tasks and in-progress tasks
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .or(`planned_date.eq.${today},status.eq.in_progress`)
+    .order('updated_at', { ascending: false });
+
+  const allTasks = tasks || [];
+  const running = allTasks.find((t: any) => t.status === 'in_progress' && !t.is_paused);
+  const paused = allTasks.find((t: any) => t.is_paused);
+
+  const runningTask = running
+    ? {
+        id: running.id,
+        title: running.title,
+        startedAt: running.started_at || running.updated_at || now.toISOString(),
+        trackedSeconds: running.tracked_seconds || 0,
+        activeSegmentStartedAt: running.active_segment_started_at || null,
+      }
+    : null;
+
+  const lastPausedTask = paused ? { id: paused.id, title: paused.title } : null;
+
+  const todaysTasks = allTasks.map((t: any) => ({
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    priority: t.priority || 'medium',
+    isPaused: Boolean(t.is_paused),
+    trackedSeconds: t.tracked_seconds || 0,
+    descriptionSnippet: (t.description || '').slice(0, 100),
+  }));
+
+  // 2. Fetch projects
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id, name, status, description, created_at, is_active')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .limit(10);
+
+  const activeProjRow = projects?.find((p: any) => p.is_active) || projects?.[0] || null;
+  const activeProject = activeProjRow
+    ? {
+        id: activeProjRow.id,
+        name: activeProjRow.name,
+        status: activeProjRow.status,
+        description: activeProjRow.description,
+      }
+    : null;
+
+  // 3. Fetch today's events
+  const { data: events } = await supabase
+    .from('events')
+    .select('id, title, type, start_time, end_time, project_id, project_tag')
+    .eq('user_id', userId)
+    .eq('date', today)
+    .order('start_time', { ascending: true });
+
+  const todaysEvents = (events || []).map((e: any) => ({
+    id: e.id,
+    title: e.title,
+    type: e.type,
+    startTime: e.start_time,
+    endTime: e.end_time,
+    projectId: e.project_id,
+    projectTag: e.project_tag,
+  }));
+
+  return {
+    today,
+    currentTimeLocal: local.time24h,
+    runningTask,
+    lastPausedTask,
+    todaysTasks,
+    activeProject,
+    existingProjects: (projects || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      description: p.description,
+      createdAt: p.created_at,
+    })),
+    todaysEvents,
+    recentMeetings: [],
+    pastUnfinishedTasks: [],
+  };
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin') ?? '*';
   const corsHeaders = {
@@ -3380,7 +3482,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // 1. Auth: extract JWT
+    // 1. Auth: extract JWT / API Key
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
@@ -3392,7 +3494,7 @@ Deno.serve(async (req: Request) => {
 
     // 2. Parse request
     const body: ChatRequestBody = await req.json();
-    const { message, timezone, currentTimeISO, context, mode, promptRefinementTarget } = body;
+    let { message, timezone, currentTimeISO, context, mode, promptRefinementTarget } = body;
     let conversationId = body.conversationId;
 
     if (!message || typeof message !== 'string') {
@@ -3402,39 +3504,85 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 3. User Client (respects RLS)
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: `Bearer ${jwt}` } } }
-    );
+    // 3. Authenticate User or Service Role Bridge
+    const isServiceRole =
+      jwt === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ||
+      jwt === Deno.env.get('JARVIS_MCP_API_KEY');
 
-    const tAuthStart = isLatencyDebug ? performance.now() : 0;
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (isLatencyDebug) {
-      addTiming('auth', performance.now() - tAuthStart);
+    let supabase: any;
+    let user: any;
+
+    if (isServiceRole) {
+      const targetUserId =
+        body.userId ||
+        Deno.env.get('JARVIS_USER_ID') ||
+        '3e9e3dd3-a59b-4b02-968a-ee95e7317583';
+      user = { id: targetUserId };
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+    } else {
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+      );
+
+      const tAuthStart = isLatencyDebug ? performance.now() : 0;
+      const {
+        data: { user: authUser },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (isLatencyDebug) {
+        addTiming('auth', performance.now() - tAuthStart);
+      }
+
+      if (userError || !authUser) {
+        return new Response(JSON.stringify({ error: 'Invalid or expired session' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      user = authUser;
     }
 
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired session' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Context hydration fallback for headless channels (WhatsApp, Slack, cron)
+    if (!context || !context.today) {
+      context = await buildServerContextSnapshot(supabase, user.id, timezone || 'Asia/Colombo');
     }
 
     const tDbStart = isLatencyDebug ? performance.now() : 0;
-    // 4. Ensure conversation exists
+
+    // 4. Ensure conversation exists (supporting persistent channel threads)
+    if (!conversationId && body.channel && body.channelThreadId) {
+      const { data: threadConv } = await supabase
+        .from('assistant_conversations')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('channel', body.channel)
+        .eq('channel_thread_id', body.channelThreadId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (threadConv) {
+        conversationId = threadConv.id;
+      }
+    }
+
     if (!conversationId) {
       const titleSnippet = message.slice(0, 40).replace(/\n/g, ' ');
+      const convInsertPayload: Record<string, unknown> = {
+        user_id: user.id,
+        title: titleSnippet || (body.channel === 'whatsapp' ? 'WhatsApp Conversation' : 'New Conversation'),
+      };
+      if (body.channel) convInsertPayload.channel = body.channel;
+      if (body.channelThreadId) convInsertPayload.channel_thread_id = body.channelThreadId;
+
       const { data: convData, error: convError } = await supabase
         .from('assistant_conversations')
-        .insert({
-          user_id: user.id,
-          title: titleSnippet || 'New Conversation',
-        })
+        .insert(convInsertPayload)
         .select('id')
         .single();
 

@@ -1,0 +1,11 @@
+project_id = "mindmap-tool"
+
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/oauth/consent"
+allow_dynamic_registration = true
+
+[functions.jarvis-mcp]
+# MCP OAuth discovery must reach the function before the user's access token exists.
+# The function's OAuth middleware authenticates all tool requests.
+verify_jwt = false

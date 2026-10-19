@@ -13,6 +13,7 @@ import { NodePage } from './pages/NodePage';
 import { SharedMapPage } from './pages/SharedMapPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MobileJarvisPage } from './pages/MobileJarvisPage';
+import { OAuthConsentPage } from './pages/OAuthConsentPage';
 
 import { useEmailStore } from './store/emailStore';
 
@@ -39,6 +40,7 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/oauth/consent" element={<OAuthConsentPage />} />
       <Route path="/share/:token" element={<SharedMapPage />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />

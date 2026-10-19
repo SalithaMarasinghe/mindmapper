@@ -2,22 +2,21 @@
 // Jarvis Cloud MCP Server (Supabase Edge Function) - Full Headless OS Suite
 // ═══════════════════════════════════════════════════════════════════════════════
 // Fully online, serverless Model Context Protocol (MCP) server running on Supabase.
-// Dual protocol support:
-// 1. Standard MCP JSON-RPC 2.0 (for Antigravity, Claude Code, Cursor, Claude Desktop)
-// 2. Direct REST / OpenAPI format (for ChatGPT Custom GPT Actions, curl, scripts)
+// ChatGPT uses the OAuth-protected Streamable HTTP MCP transport. Internal
+// server callers use a separate secret-header JSON-RPC bridge.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { pipeline } from 'npm:@supabase/middleware@1';
+import { withOAuthProtectedResource, withSupabase } from 'npm:@supabase/server@1';
+import { McpServer, StreamableHttpTransport } from 'npm:mcp-lite@0.10.0';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, mcp-session-id',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, mcp-session-id, mcp-protocol-version, x-jarvis-internal-token',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Expose-Headers': 'WWW-Authenticate, MCP-Protocol-Version, MCP-Session-Id',
 };
-
-// Default fallback user ID for API-Key authorized requests (Salitha Marasinghe - marasinghe3u@gmail.com)
-const DEFAULT_USER_ID = Deno.env.get('JARVIS_USER_ID') || '3e9e3dd3-a59b-4b02-968a-ee95e7317583';
 
 // ─── HELPER: FORMAT POINT-WISE BULLETS ───────────────────────────────────────
 
@@ -2029,183 +2028,152 @@ Project Description: ${project.description || ''}`;
 
 // ─── AUTHENTICATION & HANDLER ────────────────────────────────────────────────
 
-serve(async (req: Request) => {
-  // CORS Preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS });
+// OAuth-protected MCP server. Supabase middleware serves protected-resource metadata
+// and verifies the caller's Supabase OAuth access token before tools run.
+function addCorsHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(CORS_HEADERS)) headers.set(name, value);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function createMcpHandlerForUser(supabase: any, userId: string) {
+  const server = new McpServer({ name: 'jarvis-cloud-mcp', version: '3.0.0' });
+
+  for (const tool of JARVIS_TOOLS) {
+    server.tool(tool.name, {
+      description: tool.description,
+      inputSchema: tool.inputSchema as any,
+      handler: async (args: Record<string, any>) => {
+        try {
+          const result = await executeTool(tool.name, args || {}, supabase, userId);
+          return {
+            content: [{
+              type: 'text' as const,
+              text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+            }],
+          };
+        } catch (error) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: 'Error executing ' + tool.name + ': ' + (error instanceof Error ? error.message : String(error)),
+            }],
+            isError: true,
+          };
+        }
+      },
+    });
+  }
+
+  return new StreamableHttpTransport().bind(server);
+}
+
+const authenticatedMcpHandler = pipeline(
+  [withOAuthProtectedResource(), withSupabase({ auth: 'user' })],
+  async (req, { supabase }) => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+      return new Response(JSON.stringify({ error: 'A valid signed-in user is required.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return createMcpHandlerForUser(supabase, user.id)(req);
+  },
+);
+
+async function handleInternalMcpRequest(req: Request): Promise<Response> {
+  const expectedToken = Deno.env.get('JARVIS_MCP_INTERNAL_TOKEN') || Deno.env.get('JARVIS_MCP_API_KEY');
+  const providedToken = req.headers.get('x-jarvis-internal-token') || '';
+  const userId = Deno.env.get('JARVIS_USER_ID');
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const headers = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
+
+  if (!expectedToken || !userId || !serviceKey || providedToken !== expectedToken) {
+    return new Response(JSON.stringify({ error: 'Unauthorized internal MCP request.' }), {
+      status: 401,
+      headers,
+    });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const mcpSecretKey = Deno.env.get('JARVIS_MCP_API_KEY') || 'jarvis_mcp_live_e82f7c19a4b';
-
-    const url = new URL(req.url);
-    const authHeader = req.headers.get('Authorization') || '';
-    const token = authHeader.replace(/^Bearer\s+/i, '').trim() ||
-                  url.searchParams.get('key') ||
-                  url.searchParams.get('token') ||
-                  url.searchParams.get('apikey') || '';
-
-    let authenticatedUserId: string | null = null;
-
-    // 1. Direct Secret API Key match
-    if (token && (token === mcpSecretKey || token === supabaseServiceKey)) {
-      authenticatedUserId = DEFAULT_USER_ID;
-    } else if (token) {
-      // 2. Validate Supabase JWT token
-      const client = createClient(supabaseUrl, supabaseServiceKey);
-      const { data: { user }, error: jwtError } = await client.auth.getUser(token);
-      if (user && !jwtError) {
-        authenticatedUserId = user.id;
-      }
-    }
-
-    if (!authenticatedUserId) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 401,
-            message: 'Unauthorized. Please provide a valid Bearer token in the Authorization header or ?key= param.',
-          },
-        }),
-        { status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const body = await req.json().catch(() => ({}));
-
-    // ─── 1. MCP JSON-RPC 2.0 PROTOCOL ───────────────────────────────────────
-    if (body.jsonrpc === '2.0') {
-      const { id, method, params } = body;
-
-      // Method: initialize
-      if (method === 'initialize') {
-        return new Response(
-          JSON.stringify({
-            jsonrpc: '2.0',
-            id,
-            result: {
-              protocolVersion: '2024-11-05',
-              capabilities: {
-                tools: { listChanged: false },
-                resources: { subscribe: false, listChanged: false },
-              },
-              serverInfo: {
-                name: 'jarvis-cloud-mcp',
-                version: '2.0.0',
-              },
-            },
-          }),
-          { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Method: notifications/initialized
-      if (method === 'notifications/initialized' || method === 'initialized') {
-        return new Response(
-          JSON.stringify({ jsonrpc: '2.0', id, result: {} }),
-          { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Method: tools/list
-      if (method === 'tools/list') {
-        return new Response(
-          JSON.stringify({
-            jsonrpc: '2.0',
-            id,
-            result: {
-              tools: JARVIS_TOOLS,
-            },
-          }),
-          { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Method: tools/call
-      if (method === 'tools/call') {
-        const { name, arguments: toolArgs } = params || {};
-        try {
-          const toolResult = await executeTool(name, toolArgs || {}, supabase, authenticatedUserId);
-          return new Response(
-            JSON.stringify({
-              jsonrpc: '2.0',
-              id,
-              result: {
-                content: [
-                  {
-                    type: 'text',
-                    text: typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult, null, 2),
-                  },
-                ],
-                isError: false,
-              },
-            }),
-            { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-          );
-        } catch (err: any) {
-          return new Response(
-            JSON.stringify({
-              jsonrpc: '2.0',
-              id,
-              result: {
-                content: [{ type: 'text', text: `Error executing ${name}: ${err.message}` }],
-                isError: true,
-              },
-            }),
-            { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-
-      // Method: ping
-      if (method === 'ping') {
-        return new Response(
-          JSON.stringify({ jsonrpc: '2.0', id, result: {} }),
-          { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          jsonrpc: '2.0',
-          id,
-          error: { code: -32601, message: `Method not found: ${method}` },
-        }),
-        { status: 404, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      );
+    if (body.jsonrpc !== '2.0') {
+      return new Response(JSON.stringify({ error: 'Internal MCP requests must use JSON-RPC 2.0.' }), {
+        status: 400,
+        headers,
+      });
     }
 
-    // ─── 2. DIRECT REST / OPENAPI FALLBACK (for ChatGPT Actions, curl) ───────
-    const action = body.action || body.tool || (req.url.split('/').pop() !== 'jarvis-mcp' ? req.url.split('/').pop() : null);
-    const args = body.arguments || body.args || body;
-
-    if (action) {
-      const toolName = action.startsWith('jarvis_') ? action : `jarvis_${action}`;
-      const result = await executeTool(toolName, args, supabase, authenticatedUserId);
-      return new Response(
-        JSON.stringify({ success: true, result }),
-        { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      );
+    const { id, method, params } = body;
+    if (method === 'tools/list') {
+      return new Response(JSON.stringify({ jsonrpc: '2.0', id, result: { tools: JARVIS_TOOLS } }), { headers });
+    }
+    if (method === 'ping' || method === 'notifications/initialized') {
+      return new Response(JSON.stringify({ jsonrpc: '2.0', id, result: {} }), { headers });
+    }
+    if (method !== 'tools/call') {
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        error: { code: -32601, message: 'Method not found: ' + method },
+      }), { status: 404, headers });
     }
 
-    // Default metadata landing
-    return new Response(
-      JSON.stringify({
-        status: 'online',
-        service: 'Jarvis Cloud MCP Server (Headless Personal OS)',
-        protocol: 'Model Context Protocol (MCP) 2024-11-05',
-        totalTools: JARVIS_TOOLS.length,
-        availableTools: JARVIS_TOOLS.map((t) => t.name),
-      }),
-      { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-    );
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-    );
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const { name, arguments: toolArgs } = params || {};
+    try {
+      const result = await executeTool(name, toolArgs || {}, supabase, userId);
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result, null, 2) }],
+          isError: false,
+        },
+      }), { headers });
+    } catch (error) {
+      return new Response(JSON.stringify({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [{
+            type: 'text',
+            text: 'Error executing ' + name + ': ' + (error instanceof Error ? error.message : String(error)),
+          }],
+          isError: true,
+        },
+      }), { headers });
+    }
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Internal server error',
+    }), { status: 500, headers });
+  }
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  // The WhatsApp caller uses a server-side secret header, separate from ChatGPT OAuth.
+  if (req.headers.has('x-jarvis-internal-token')) {
+    return handleInternalMcpRequest(req);
+  }
+
+  try {
+    return addCorsHeaders(await authenticatedMcpHandler(req));
+  } catch (error) {
+    return addCorsHeaders(new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Internal server error',
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    }));
   }
 });
