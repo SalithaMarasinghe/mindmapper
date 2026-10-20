@@ -296,6 +296,10 @@ const JARVIS_TOOLS = [
           type: 'string',
           description: 'Project storyline name. Compulsory.',
         },
+        description: {
+          type: 'string',
+          description: 'Full narrative description of the work journal. Optional: compiled automatically from objective, technicalExecution, keyAccomplishments, and measuredImpact if omitted.',
+        },
         summaryXyz: {
           type: 'string',
           description: '🎯 Google XYZ Micro-Summary: A concise 2–4 sentence paragraph strictly following the Google XYZ formula (Accomplished [X] as measured by [Y] by doing [Z]). Compulsory.',
@@ -325,6 +329,7 @@ const JARVIS_TOOLS = [
         technicalExecution: { type: 'string' },
         keyAccomplishments: { type: 'string' },
         measuredImpact: { type: 'string' },
+        description: { type: 'string', description: 'Updated full narrative description.' },
         summaryXyz: { type: 'string', description: 'Updated Google XYZ micro-summary paragraph.' },
         summary_xyz: { type: 'string', description: 'Alias for summaryXyz: Updated Google XYZ micro-summary.' },
         implementationNotes: { type: 'string' },
@@ -1249,17 +1254,20 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
       if (!summaryXyz) throw new Error('summaryXyz (Google XYZ micro-summary) is compulsory for work journal');
 
       // Assemble strict 4-badge Google XYZ narrative with auto-bulleting
-      const descriptionParts = [
-        `🎯 Objective & Context\n${args.objective.trim()}`,
-        `🛠️ Technical Execution [Doing Z]\n${toBulletPoints(args.technicalExecution)}`,
-        `🏆 Key Accomplishments [Accomplished X]\n${toBulletPoints(args.keyAccomplishments)}`,
-        `📊 Measured Impact & Metrics [Measured by Y]\n${toBulletPoints(args.measuredImpact)}`,
-      ];
-      if (args.nextMilestone) {
-        const cleanMilestone = args.nextMilestone.trim().replace(/^[-*•]\s*/, '').replace(/^Planned next milestone \(Tomorrow\):\s*/i, '');
-        descriptionParts[2] += `\n- Planned next milestone (Tomorrow): ${cleanMilestone}`;
+      let fullDescription = args.description?.trim();
+      if (!fullDescription) {
+        const descriptionParts = [
+          `🎯 Objective & Context\n${(args.objective || '').trim()}`,
+          `🛠️ Technical Execution [Doing Z]\n${toBulletPoints(args.technicalExecution || '')}`,
+          `🏆 Key Accomplishments [Accomplished X]\n${toBulletPoints(args.keyAccomplishments || '')}`,
+          `📊 Measured Impact & Metrics [Measured by Y]\n${toBulletPoints(args.measuredImpact || '')}`,
+        ];
+        if (args.nextMilestone) {
+          const cleanMilestone = args.nextMilestone.trim().replace(/^[-*•]\s*/, '').replace(/^Planned next milestone \(Tomorrow\):\s*/i, '');
+          descriptionParts[2] += `\n- Planned next milestone (Tomorrow): ${cleanMilestone}`;
+        }
+        fullDescription = descriptionParts.join('\n\n');
       }
-      const fullDescription = descriptionParts.join('\n\n');
 
       // 1. Create main event record
       const { data: eventRow, error: eventErr } = await supabase
@@ -1378,7 +1386,9 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
       }
 
       const detailUpdates: Record<string, any> = {};
-      if (args.objective || args.technicalExecution || args.keyAccomplishments || args.measuredImpact) {
+      if (args.description) {
+        detailUpdates.description = args.description.trim();
+      } else if (args.objective || args.technicalExecution || args.keyAccomplishments || args.measuredImpact) {
         const { data: existingDetail } = await supabase.from('work_details').select('*').eq('event_id', target.id).single();
         const descriptionParts = [
           `🎯 Objective & Context\n${(args.objective || '').trim()}`,
@@ -2098,7 +2108,7 @@ function addCorsHeaders(response: Response): Response {
 }
 
 function createMcpHandlerForUser(supabase: any, userId: string) {
-  const server = new McpServer({ name: 'jarvis-cloud-mcp', version: '3.2.0' });
+  const server = new McpServer({ name: 'jarvis-cloud-mcp', version: '3.2.1' });
 
   for (const tool of JARVIS_TOOLS) {
     server.tool(tool.name, {
@@ -2224,7 +2234,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'GET' && (url.pathname.endsWith('/tools.json') || url.pathname.endsWith('/schema.json') || url.pathname.endsWith('/tools'))) {
     return new Response(JSON.stringify({
       server: 'jarvis-cloud-mcp',
-      version: '3.2.0',
+      version: '3.2.1',
       tools: JARVIS_TOOLS,
     }, null, 2), {
       status: 200,
