@@ -7,18 +7,20 @@ import { useMapsStore } from '../store/mapsStore';
 import { Plus, Search } from 'lucide-react';
 import { useSettingsStore } from '../store/settingsStore';
 import { WorkJournal } from '../components/timeline/WorkJournal';
+import { WorkSummaryView } from '../components/summary/WorkSummaryView';
 import { TaskLog } from '../components/tasklog/TaskLog';
 import { JarvisScreen } from '../components/jarvis/JarvisScreen';
 import { CareerLedgerModal } from '../components/ledger/CareerLedgerModal';
 import { ProjectsModal } from '../components/ledger/ProjectsModal';
 import { isStandaloneApp, isMobileViewport, getAndClearIntendedRedirect } from '../utils/authRedirect';
 
-type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'mind-maps';
+type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'work-summary' | 'mind-maps';
 
 const TABS = [
   { id: 'jarvis-cockpit', label: 'Jarvis AI' },
   { id: 'task-log', label: 'Task Log' },
   { id: 'work-journal', label: 'Work Journal' },
+  { id: 'work-summary', label: 'Work Summary' },
   { id: 'mind-maps', label: 'Mind Maps' },
 ];
 
@@ -96,6 +98,12 @@ export function DashboardPage() {
         {activeTab === 'work-journal' && (
           <div className="flex-1 flex flex-col min-h-0 w-full h-full">
             <WorkJournal />
+          </div>
+        )}
+
+        {activeTab === 'work-summary' && (
+          <div className="flex-1 flex flex-col min-h-0 w-full h-full">
+            <WorkSummaryView />
           </div>
         )}
 
