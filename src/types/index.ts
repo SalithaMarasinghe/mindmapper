@@ -161,6 +161,7 @@ export interface TimelineEvent {
   title: string;
   projectId?: string | null;
   projectTag: string | null;
+  summaryXyz?: string | null;
   chainId: string | null;
   previousEventId: string | null;
   sourceSegmentId?: string | null;
@@ -402,6 +403,7 @@ export interface CreateWorkEventProposal extends BaseProposal {
     projectTag: string | null;
     description: string;
     implementationNotes: string;
+    summaryXyz?: string;
     status: WorkStatus;
     linkedTaskId?: string;
     sourceSegmentId?: string;
@@ -434,6 +436,7 @@ export interface CreateMeetingEventProposal extends BaseProposal {
     isOptional: boolean;
     discussionSummary: string;
     decisions: string;
+    summaryXyz?: string;
     tasksAssigned: TaskItem[];
     actionItems?: MeetingActionItem[];
     addTasksToKanban?: boolean;

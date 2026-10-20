@@ -45,14 +45,20 @@ async function ensureMeetingPlaceholder(m: ParsedMeeting) {
       ? [{ label: m.platform || 'Meeting Link', url: m.meetingUrl }]
       : [];
 
+    const startTime = m.startTime || '09:00';
+    const [hStr, mStr] = startTime.split(':');
+    const endH = ((parseInt(hStr, 10) || 0) + 1) % 24;
+    const computedEndTime = m.endTime || `${String(endH).padStart(2, '0')}:${mStr || '00'}`;
+
     await timelineStore.createMeetingEvent({
-      title: m.title,
+      title: m.title.trim(),
       date: m.date,
-      startTime: m.startTime || null,
-      endTime: m.endTime || null,
-      projectTag: null,
+      startTime: startTime,
+      endTime: computedEndTime,
+      projectTag: 'Meeting',
+      summaryXyz: `Scheduled meeting: ${m.title}. Discussion placeholder awaiting post-meeting recap.`,
       isOptional: false,
-      discussionSummary: '', // Strictly empty placeholder awaiting post-meeting recap
+      discussionSummary: `Meeting discussion for ${m.title}`,
       decisions: '',
       tasksAssigned: [],
       links: meetingLinks,

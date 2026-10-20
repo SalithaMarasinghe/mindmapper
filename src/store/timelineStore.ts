@@ -43,6 +43,7 @@ interface RawEvent {
   title: string;
   project_id?: string | null;
   project_tag: string | null;
+  summary_xyz?: string | null;
   chain_id: string | null;
   previous_event_id: string | null;
   source_segment_id?: string | null;
@@ -66,6 +67,7 @@ function toTimelineEvent(row: RawEvent): TimelineEvent {
     title: row.title,
     projectId: row.project_id ?? null,
     projectTag: row.project_tag,
+    summaryXyz: row.summary_xyz ?? null,
     chainId: row.chain_id,
     previousEventId: row.previous_event_id,
     sourceSegmentId: row.source_segment_id ?? null,
@@ -144,6 +146,7 @@ interface TimelineState {
   createWorkEvent: (
     payload: Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag'> &
       Pick<WorkDetails, 'description' | 'implementationNotes' | 'status' | 'links'> & {
+        summaryXyz: string;
         projectId?: string | null;
         sourceSegmentId?: string | null;
         sourceTaskId?: string | null;
@@ -155,6 +158,7 @@ interface TimelineState {
   createMeetingEvent: (
     payload: Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag'> &
       Pick<MeetingDetails, 'isOptional' | 'discussionSummary' | 'tasksAssigned' | 'decisions' | 'links'> & {
+        summaryXyz: string;
         projectId?: string | null;
         previousEventId?: string | null;
         chainId?: string | null;
@@ -163,7 +167,7 @@ interface TimelineState {
 
   updateEvent: (
     eventId: string,
-    eventUpdates: Partial<Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag' | 'projectId'>>,
+    eventUpdates: Partial<Pick<TimelineEvent, 'date' | 'startTime' | 'endTime' | 'title' | 'projectTag' | 'projectId' | 'summaryXyz'>>,
     detailUpdates: Partial<WorkDetails> | Partial<MeetingDetails>
   ) => Promise<void>;
 
@@ -476,9 +480,10 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
           start_time: payload.startTime,
           end_time: payload.endTime,
           type: 'work',
-          title: payload.title,
+          title: payload.title.trim(),
           project_id: payload.projectId ?? null,
           project_tag: payload.projectTag,
+          summary_xyz: payload.summaryXyz.trim(),
           source_segment_id: payload.sourceSegmentId ?? null,
           source_task_id: payload.sourceTaskId ?? null,
           previous_event_id: payload.previousEventId ?? null,
@@ -572,9 +577,10 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
           start_time: payload.startTime,
           end_time: payload.endTime,
           type: 'meeting',
-          title: payload.title,
+          title: payload.title.trim(),
           project_id: payload.projectId ?? null,
           project_tag: payload.projectTag,
+          summary_xyz: payload.summaryXyz.trim(),
           previous_event_id: payload.previousEventId ?? null,
           chain_id: chainId,
         })

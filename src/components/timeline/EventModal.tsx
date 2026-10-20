@@ -166,6 +166,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
   const [projectId, setProjectId] = useState<string | null>(existingEvent?.projectId ?? null);
   const [isCreatingNewProject, setIsCreatingNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [summaryXyz, setSummaryXyz] = useState(existingEvent?.summaryXyz ?? '');
   const [previousEventId, setPreviousEventId] = useState(existingEvent?.previousEventId ?? null as string | null);
   const [chainSearch, setChainSearch] = useState('');
   const [chainOpen, setChainOpen]     = useState(false);
@@ -229,7 +230,44 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
   // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !date) return;
+
+    // Compulsory field validations
+    if (!title.trim()) {
+      setError('Title is compulsory.');
+      return;
+    }
+    if (!date) {
+      setError('Date is compulsory.');
+      return;
+    }
+    if (!startTime.trim()) {
+      setError('Start time is compulsory.');
+      return;
+    }
+    if (!endTime.trim()) {
+      setError('End time is compulsory.');
+      return;
+    }
+    if (isCreatingNewProject && !newProjectName.trim()) {
+      setError('New Project name is compulsory.');
+      return;
+    }
+    if (!isCreatingNewProject && !projectId && !projectTag.trim()) {
+      setError('Project / Initiative is compulsory.');
+      return;
+    }
+    if (!summaryXyz.trim()) {
+      setError(eventType === 'work' ? 'Google XYZ Work Summary is compulsory.' : 'Google XYZ Executive Summary is compulsory.');
+      return;
+    }
+    if (eventType === 'work' && !description.trim()) {
+      setError('"What did you work on?" (Description) is compulsory for work journals.');
+      return;
+    }
+    if (eventType === 'meeting' && !discussionSummary.trim()) {
+      setError('Discussion Summary is compulsory for meeting journals.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -249,19 +287,26 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
         if (proj) finalProjectTag = proj.name;
       }
 
+      if (!finalProjectTag) {
+        setError('Project / Initiative is compulsory.');
+        setIsSubmitting(false);
+        return;
+      }
+
       if (isEditing && existingEvent) {
         const eventUpdates = {
           title:      title.trim(),
           date,
-          startTime:  startTime || null,
-          endTime:    endTime   || null,
+          startTime:  startTime.trim(),
+          endTime:    endTime.trim(),
           projectId:  finalProjectId,
           projectTag: finalProjectTag,
+          summaryXyz: summaryXyz.trim(),
         };
 
         const detailUpdates = eventType === 'work'
-          ? { description, implementationNotes, status, links: workLinks }
-          : { isOptional, discussionSummary, tasksAssigned, decisions, links: meetingLinks };
+          ? { description: description.trim(), implementationNotes, status, links: workLinks }
+          : { isOptional, discussionSummary: discussionSummary.trim(), tasksAssigned, decisions, links: meetingLinks };
 
         await updateEvent(existingEvent.id, eventUpdates, detailUpdates);
 
@@ -269,11 +314,12 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
         await createWorkEvent({
           title:               title.trim(),
           date,
-          startTime:           startTime || null,
-          endTime:             endTime   || null,
+          startTime:           startTime.trim(),
+          endTime:             endTime.trim(),
           projectId:           finalProjectId,
           projectTag:          finalProjectTag,
-          description,
+          summaryXyz:          summaryXyz.trim(),
+          description:         description.trim(),
           implementationNotes,
           status,
           links:               workLinks,
@@ -282,12 +328,13 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
         await createMeetingEvent({
           title:             title.trim(),
           date,
-          startTime:         startTime || null,
-          endTime:           endTime   || null,
+          startTime:         startTime.trim(),
+          endTime:           endTime.trim(),
           projectId:         finalProjectId,
           projectTag:        finalProjectTag,
+          summaryXyz:        summaryXyz.trim(),
           isOptional,
-          discussionSummary,
+          discussionSummary: discussionSummary.trim(),
           tasksAssigned,
           decisions,
           links:             meetingLinks,
@@ -388,8 +435,9 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
               />
             </div>
             <div className={SECTION_CLS}>
-              <FieldLabel optional>Start</FieldLabel>
+              <FieldLabel>Start Time <span className="text-red-400 font-bold">*</span></FieldLabel>
               <input
+                required
                 type="time"
                 className={INPUT_CLS}
                 value={startTime}
@@ -397,8 +445,9 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
               />
             </div>
             <div className={SECTION_CLS}>
-              <FieldLabel optional>End</FieldLabel>
+              <FieldLabel>End Time <span className="text-red-400 font-bold">*</span></FieldLabel>
               <input
+                required
                 type="time"
                 className={INPUT_CLS}
                 value={endTime}
@@ -407,10 +456,10 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
             </div>
           </div>
 
-          {/* Project Initiative */}
+          {/* Project Initiative (Compulsory) */}
           <div className={SECTION_CLS}>
             <div className="flex items-center justify-between mb-1">
-              <FieldLabel optional>Project Initiative</FieldLabel>
+              <FieldLabel>Project / Initiative <span className="text-red-400 font-bold">*</span></FieldLabel>
               <button
                 type="button"
                 onClick={() => {
@@ -428,6 +477,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
             {isCreatingNewProject ? (
               <div className="flex gap-2 items-center">
                 <input
+                  required
                   type="text"
                   className={INPUT_CLS}
                   placeholder="Enter new project name (e.g., Mobile App Redesign)..."
@@ -439,6 +489,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
             ) : (
               <div className="relative">
                 <select
+                  required
                   className={`${INPUT_CLS} appearance-none pr-8 cursor-pointer`}
                   value={projectId || (projects.find(p => p.name.toLowerCase() === projectTag.toLowerCase())?.id ?? '')}
                   onChange={e => {
@@ -456,7 +507,7 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                     }
                   }}
                 >
-                  <option value="">No Project Assigned (Standalone)</option>
+                  <option value="">Select Project (Compulsory)...</option>
                   {projects.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.name} {p.status === 'completed' ? '(Completed)' : '(Active)'}
@@ -469,15 +520,40 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
             )}
           </div>
 
+          {/* ── GOOGLE XYZ SUMMARY (Compulsory) ── */}
+          <div className={SECTION_CLS}>
+            <div className="flex items-center justify-between">
+              <FieldLabel>
+                {eventType === 'work' ? 'Google XYZ Work Summary' : 'Google XYZ Executive Summary'}{' '}
+                <span className="text-red-400 font-bold">*</span>
+              </FieldLabel>
+              <span className="text-[11px] text-text-muted">
+                Accomplished [X] • Measured by [Y] • Doing [Z]
+              </span>
+            </div>
+            <textarea
+              required
+              rows={3}
+              className={INPUT_CLS}
+              placeholder={
+                eventType === 'work'
+                  ? 'A concise 2–4 sentence micro-summary: Accomplished [X], as measured by [Y], by doing [Z].'
+                  : 'A concise 2–4 sentence micro-summary capturing strategic alignments, key decisions, and measurable outcomes.'
+              }
+              value={summaryXyz}
+              onChange={e => setSummaryXyz(e.target.value)}
+            />
+          </div>
+
           {/* ── Divider ──────────────────────────────────────────────── */}
           <div className="border-t border-border" />
 
           {/* ── Work form ────────────────────────────────────────────── */}
           {eventType === 'work' && (
             <>
-              {/* Description */}
+              {/* Description (Compulsory) */}
               <div className={SECTION_CLS}>
-                <FieldLabel>What did you work on?</FieldLabel>
+                <FieldLabel>What did you work on? <span className="text-red-400 font-bold">*</span></FieldLabel>
                 <MarkdownEditor
                   value={description}
                   onChange={setDescription}
@@ -540,9 +616,9 @@ export function EventModal({ draft, existingEvent, onClose }: EventModalProps) {
                 <span className="text-sm font-semibold text-text">Attendance was optional for me</span>
               </div>
 
-              {/* Discussion summary */}
+              {/* Discussion summary (Compulsory) */}
               <div className={SECTION_CLS}>
-                <FieldLabel optional>Discussion Summary</FieldLabel>
+                <FieldLabel>Discussion Summary <span className="text-red-400 font-bold">*</span></FieldLabel>
                 <MarkdownEditor
                   value={discussionSummary}
                   onChange={setDiscussion}

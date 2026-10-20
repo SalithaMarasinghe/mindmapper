@@ -161,6 +161,23 @@ export function EventDetailView({ event, onClose, onEdit }: EventDetailViewProps
             </div>
           )}
 
+          {/* ── GOOGLE XYZ SUMMARY ── */}
+          {event.summaryXyz && (
+            <div className="flex flex-col gap-2 p-4 rounded-xl bg-accent/5 border border-accent/20">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-accent/20 text-accent">
+                  Google XYZ Summary
+                </span>
+                <span className="text-xs text-text-muted">
+                  Accomplished [X] • Measured by [Y] • Doing [Z]
+                </span>
+              </div>
+              <p className="text-sm font-medium leading-relaxed text-text">
+                {event.summaryXyz}
+              </p>
+            </div>
+          )}
+
           {/* ── WORK EVENT FIELDS ── */}
           {event.type === 'work' && (
             <>

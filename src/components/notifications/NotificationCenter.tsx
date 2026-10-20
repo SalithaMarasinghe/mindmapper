@@ -67,14 +67,22 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
     }
 
     try {
+      const [hStr, mStr] = notif.meetingTime.split(':');
+      const h = parseInt(hStr, 10) || 0;
+      const m = parseInt(mStr || '0', 10);
+      const endH = (h + 1) % 24;
+      const computedEndTime = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const cleanTitle = notif.title.replace(/^Meeting Invite:\s*/i, '').trim();
+
       const evId = await createMeetingEvent({
         date: notif.meetingDate,
         startTime: notif.meetingTime,
-        endTime: null,
-        title: notif.title.replace(/^Meeting Invite:\s*/i, ''),
+        endTime: computedEndTime,
+        title: cleanTitle,
         projectTag: 'Meeting',
+        summaryXyz: `Convened ${cleanTitle}. Synchronized discussion points: ${(notif.message || 'Discussion sync').slice(0, 160)}.`,
         isOptional: false,
-        discussionSummary: notif.message,
+        discussionSummary: notif.message || cleanTitle,
         decisions: '',
         tasksAssigned: [],
         links: notif.meetingLink

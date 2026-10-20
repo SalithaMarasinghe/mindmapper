@@ -294,10 +294,14 @@ const JARVIS_TOOLS = [
         },
         projectName: {
           type: 'string',
-          description: 'Project storyline name. Defaults to current active focus project.',
+          description: 'Project storyline name. Compulsory.',
+        },
+        summaryXyz: {
+          type: 'string',
+          description: '🎯 Google XYZ Micro-Summary: A concise 2–4 sentence paragraph strictly following the Google XYZ formula (Accomplished [X] as measured by [Y] by doing [Z]). Compulsory.',
         },
       },
-      required: ['title', 'startTime', 'endTime', 'objective', 'technicalExecution', 'keyAccomplishments', 'measuredImpact'],
+      required: ['title', 'startTime', 'endTime', 'projectName', 'summaryXyz', 'objective', 'technicalExecution', 'keyAccomplishments', 'measuredImpact'],
     },
   },
   {
@@ -317,6 +321,7 @@ const JARVIS_TOOLS = [
         technicalExecution: { type: 'string' },
         keyAccomplishments: { type: 'string' },
         measuredImpact: { type: 'string' },
+        summaryXyz: { type: 'string', description: 'Updated Google XYZ micro-summary paragraph.' },
         implementationNotes: { type: 'string' },
         status: { type: 'string', enum: ['done', 'in_progress'] },
       },
@@ -503,10 +508,14 @@ const JARVIS_TOOLS = [
         },
         projectName: {
           type: 'string',
-          description: 'Project storyline name.',
+          description: 'Project storyline name. Compulsory.',
+        },
+        summaryXyz: {
+          type: 'string',
+          description: '🎯 Google XYZ Executive Summary: A concise 2–4 sentence micro-summary paragraph capturing strategic alignments, key decisions, and measurable outcomes. Compulsory.',
         },
       },
-      required: ['title', 'startTime', 'endTime', 'discussionSummary'],
+      required: ['title', 'startTime', 'endTime', 'projectName', 'summaryXyz', 'discussionSummary'],
     },
   },
 
@@ -1208,9 +1217,16 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
     case 'jarvis_create_work_journal': {
       const active = await getActiveProject(supabase, userId);
       const projectId = args.projectId || active?.id || null;
-      const projectTag = args.projectName || active?.name || null;
+      const projectTag = (args.projectName || active?.name || '').trim();
       const eventDate = args.date || todayISO;
       const rawStatus = args.status || 'done';
+
+      if (!args.title?.trim()) throw new Error('title is compulsory for work journal');
+      if (!args.startTime?.trim()) throw new Error('startTime is compulsory for work journal');
+      if (!args.endTime?.trim()) throw new Error('endTime is compulsory for work journal');
+      if (!projectTag) throw new Error('projectName (Project / Initiative) is compulsory for work journal');
+      if (!args.objective?.trim()) throw new Error('objective (what did you work on) is compulsory for work journal');
+      if (!args.summaryXyz?.trim()) throw new Error('summaryXyz (Google XYZ micro-summary) is compulsory for work journal');
 
       // Assemble strict 4-badge Google XYZ narrative with auto-bulleting
       const descriptionParts = [
@@ -1234,9 +1250,10 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
           start_time: args.startTime,
           end_time: args.endTime,
           type: 'work',
-          title: args.title,
+          title: args.title.trim(),
           project_id: projectId,
           project_tag: projectTag,
+          summary_xyz: args.summaryXyz.trim(),
         })
         .select('id')
         .single();
@@ -1334,6 +1351,7 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
       if (args.title) eventUpdates.title = args.title;
       if (args.startTime) eventUpdates.start_time = args.startTime;
       if (args.endTime) eventUpdates.end_time = args.endTime;
+      if (args.summaryXyz) eventUpdates.summary_xyz = args.summaryXyz.trim();
 
       if (Object.keys(eventUpdates).length > 1) {
         await supabase.from('events').update(eventUpdates).eq('id', target.id);
@@ -1562,8 +1580,15 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
     case 'jarvis_log_meeting': {
       const active = await getActiveProject(supabase, userId);
       const projectId = active?.id || null;
-      const projectTag = args.projectName || active?.name || null;
+      const projectTag = (args.projectName || active?.name || '').trim();
       const eventDate = args.date || todayISO;
+
+      if (!args.title?.trim()) throw new Error('title is compulsory for meeting journal');
+      if (!args.startTime?.trim()) throw new Error('startTime is compulsory for meeting journal');
+      if (!args.endTime?.trim()) throw new Error('endTime is compulsory for meeting journal');
+      if (!projectTag) throw new Error('projectName (Project / Initiative) is compulsory for meeting journal');
+      if (!args.discussionSummary?.trim()) throw new Error('discussionSummary is compulsory for meeting journal');
+      if (!args.summaryXyz?.trim()) throw new Error('summaryXyz (Google XYZ executive summary) is compulsory for meeting journal');
 
       const { data: eventRow, error: eventErr } = await supabase
         .from('events')
@@ -1573,9 +1598,10 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
           start_time: args.startTime,
           end_time: args.endTime,
           type: 'meeting',
-          title: args.title,
+          title: args.title.trim(),
           project_id: projectId,
           project_tag: projectTag,
+          summary_xyz: args.summaryXyz.trim(),
         })
         .select('id')
         .single();
