@@ -300,6 +300,10 @@ const JARVIS_TOOLS = [
           type: 'string',
           description: '🎯 Google XYZ Micro-Summary: A concise 2–4 sentence paragraph strictly following the Google XYZ formula (Accomplished [X] as measured by [Y] by doing [Z]). Compulsory.',
         },
+        summary_xyz: {
+          type: 'string',
+          description: 'Alias for summaryXyz: Google XYZ Micro-Summary paragraph (Accomplished [X] as measured by [Y] by doing [Z]).',
+        },
       },
       required: ['title', 'startTime', 'endTime', 'projectName', 'summaryXyz', 'objective', 'technicalExecution', 'keyAccomplishments', 'measuredImpact'],
     },
@@ -322,6 +326,7 @@ const JARVIS_TOOLS = [
         keyAccomplishments: { type: 'string' },
         measuredImpact: { type: 'string' },
         summaryXyz: { type: 'string', description: 'Updated Google XYZ micro-summary paragraph.' },
+        summary_xyz: { type: 'string', description: 'Alias for summaryXyz: Updated Google XYZ micro-summary.' },
         implementationNotes: { type: 'string' },
         status: { type: 'string', enum: ['done', 'in_progress'] },
       },
@@ -513,6 +518,10 @@ const JARVIS_TOOLS = [
         summaryXyz: {
           type: 'string',
           description: '🎯 Google XYZ Executive Summary: A concise 2–4 sentence micro-summary paragraph capturing strategic alignments, key decisions, and measurable outcomes. Compulsory.',
+        },
+        summary_xyz: {
+          type: 'string',
+          description: 'Alias for summaryXyz: Google XYZ Executive Summary paragraph.',
         },
       },
       required: ['title', 'startTime', 'endTime', 'projectName', 'summaryXyz', 'discussionSummary'],
@@ -2089,7 +2098,7 @@ function addCorsHeaders(response: Response): Response {
 }
 
 function createMcpHandlerForUser(supabase: any, userId: string) {
-  const server = new McpServer({ name: 'jarvis-cloud-mcp', version: '3.0.0' });
+  const server = new McpServer({ name: 'jarvis-cloud-mcp', version: '3.2.0' });
 
   for (const tool of JARVIS_TOOLS) {
     server.tool(tool.name, {
@@ -2208,6 +2217,20 @@ async function handleInternalMcpRequest(req: Request): Promise<Response> {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+
+  const url = new URL(req.url);
+
+  // Public tools / schema inspection route (useful for verification and Custom GPT Actions)
+  if (req.method === 'GET' && (url.pathname.endsWith('/tools.json') || url.pathname.endsWith('/schema.json') || url.pathname.endsWith('/tools'))) {
+    return new Response(JSON.stringify({
+      server: 'jarvis-cloud-mcp',
+      version: '3.2.0',
+      tools: JARVIS_TOOLS,
+    }, null, 2), {
+      status: 200,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    });
+  }
 
   // The WhatsApp caller uses a server-side secret header, separate from ChatGPT OAuth.
   if (req.headers.has('x-jarvis-internal-token')) {
