@@ -1226,7 +1226,18 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
       if (!args.endTime?.trim()) throw new Error('endTime is compulsory for work journal');
       if (!projectTag) throw new Error('projectName (Project / Initiative) is compulsory for work journal');
       if (!args.objective?.trim()) throw new Error('objective (what did you work on) is compulsory for work journal');
-      if (!args.summaryXyz?.trim()) throw new Error('summaryXyz (Google XYZ micro-summary) is compulsory for work journal');
+
+      // Resolve summaryXyz directly or via fallback extraction from notes/objective/accomplishments
+      const summaryXyz = (
+        args.summaryXyz ||
+        args.summary_xyz ||
+        args.summary ||
+        args.implementationNotes?.match(/(?:Google XYZ Summary|summaryXyz):\s*([^\n]+(?:\n[^\n]+){0,3})/i)?.[1] ||
+        args.objective?.match(/(?:Google XYZ Summary|summaryXyz):\s*([^\n]+(?:\n[^\n]+){0,3})/i)?.[1] ||
+        `${toBulletPoints(args.keyAccomplishments || '').replace(/^- /gm, '').replace(/\n/g, '; ')}. Measured by: ${toBulletPoints(args.measuredImpact || '').replace(/^- /gm, '').replace(/\n/g, '; ')}`
+      )?.trim();
+
+      if (!summaryXyz) throw new Error('summaryXyz (Google XYZ micro-summary) is compulsory for work journal');
 
       // Assemble strict 4-badge Google XYZ narrative with auto-bulleting
       const descriptionParts = [
@@ -1253,7 +1264,7 @@ async function executeTool(name: string, args: Record<string, any>, supabase: an
           title: args.title.trim(),
           project_id: projectId,
           project_tag: projectTag,
-          summary_xyz: args.summaryXyz.trim(),
+          summary_xyz: summaryXyz,
         })
         .select('id')
         .single();
@@ -1588,7 +1599,18 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
       if (!args.endTime?.trim()) throw new Error('endTime is compulsory for meeting journal');
       if (!projectTag) throw new Error('projectName (Project / Initiative) is compulsory for meeting journal');
       if (!args.discussionSummary?.trim()) throw new Error('discussionSummary is compulsory for meeting journal');
-      if (!args.summaryXyz?.trim()) throw new Error('summaryXyz (Google XYZ executive summary) is compulsory for meeting journal');
+
+      // Resolve summaryXyz directly or via fallback extraction from decisions/discussion
+      const summaryXyz = (
+        args.summaryXyz ||
+        args.summary_xyz ||
+        args.summary ||
+        args.decisions?.match(/(?:Google XYZ Summary|summaryXyz):\s*([^\n]+(?:\n[^\n]+){0,3})/i)?.[1] ||
+        args.discussionSummary?.slice(0, 300) ||
+        args.title
+      )?.trim();
+
+      if (!summaryXyz) throw new Error('summaryXyz (Google XYZ executive summary) is compulsory for meeting journal');
 
       const { data: eventRow, error: eventErr } = await supabase
         .from('events')
@@ -1601,7 +1623,7 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
           title: args.title.trim(),
           project_id: projectId,
           project_tag: projectTag,
-          summary_xyz: args.summaryXyz.trim(),
+          summary_xyz: summaryXyz,
         })
         .select('id')
         .single();
