@@ -31,7 +31,7 @@ const customCodeBlockOptions = {
 const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...BlockNoteSchema.create().blockSpecs,
-    codeBlock: createCodeBlockSpec(customCodeBlockOptions),
+    codeBlock: createCodeBlockSpec(customCodeBlockOptions as any),
   },
 });
 

@@ -44,7 +44,7 @@ export function TopBar({
       <div className="flex h-full items-center justify-between">
         
         {/* Left: Logo & Active Focus Project */}
-        <div className="flex-1 flex items-center justify-start gap-3">
+        <div className="flex items-center justify-start gap-3 shrink-0">
           <Link to="/dashboard" className="flex items-center gap-2 font-semibold text-accent text-lg tracking-tight shrink-0">
             <span>🧠</span> MindMap
           </Link>
@@ -54,12 +54,12 @@ export function TopBar({
         </div>
 
         {/* Center: Tabs */}
-        <div className="flex-1 flex justify-center items-center px-4">
+        <div className="flex-1 flex justify-center items-center px-2 min-w-0">
           <SegmentedTabs tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
         </div>
 
         {/* Right: Actions */}
-        <div className="flex-1 flex justify-end items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 shrink-0">
           {/* Projects Initiative Manager Button */}
           {onProjectsOpen && (
             <button

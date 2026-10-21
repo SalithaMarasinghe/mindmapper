@@ -356,7 +356,7 @@ export function MindmapCanvas() {
     return chain;
   }, [previewNode, nodes]);
 
-  const handleNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
+  const handleNodeDragStart = useCallback((_event: any, node: Node) => {
     // Collect starting positions for all selected nodes so we can calculate accurate displacement
     const startPositions = new Map<string, { x: number; y: number }>();
     flowNodes.forEach(n => {
@@ -373,7 +373,7 @@ export function MindmapCanvas() {
     // which depends on flowNodePositionMap (derived from flowNodes).
   }, []);
 
-  const handleNodeDragStop = useCallback(async (_event: React.MouseEvent, draggedNode: Node) => {
+  const handleNodeDragStop = useCallback(async (_event: any, draggedNode: Node) => {
     // Check if the dragged node is part of a selection
     const selectedNodes = flowNodes.filter(n => n.selected);
     const isPartOfSelection = selectedNodes.some(n => n.id === draggedNode.id);

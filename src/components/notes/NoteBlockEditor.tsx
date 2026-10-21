@@ -12,9 +12,7 @@ import {
   FolderGit2,
   Sparkles,
   Code,
-  Eye,
   Clock,
-  Tag,
   X,
   Plus,
 } from 'lucide-react';
@@ -276,7 +274,7 @@ export function NoteBlockEditor({
             ) : (
               <>
                 <Check className="w-3 h-3 text-emerald-500" />
-                <span>Saved</span>
+                <span>Saved{lastSavedAt ? ` ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
               </>
             )}
           </div>

@@ -4,13 +4,10 @@ import {
   Plus,
   Search,
   Pin,
-  Clock,
-  Trash2,
   FolderGit2,
   Sparkles,
   BookOpen,
-  Calendar,
-} from 'lucide-react';
+  } from 'lucide-react';
 import { useNoteStore } from '../../store/noteStore';
 import { useTimelineStore } from '../../store/timelineStore';
 import { NoteBlockEditor } from './NoteBlockEditor';

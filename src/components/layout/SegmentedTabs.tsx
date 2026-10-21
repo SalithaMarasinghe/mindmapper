@@ -41,7 +41,7 @@ export function SegmentedTabs({ tabs, activeTab, onTabChange }: SegmentedTabsPro
               else tabsRef.current.delete(tab.id);
             }}
             onClick={() => onTabChange(tab.id)}
-            className={`px-3.5 py-1.5 text-sm font-medium rounded-[8px] relative z-10 transition-colors duration-200 ${
+            className={`px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-[8px] whitespace-nowrap relative z-10 transition-colors duration-200 ${
               isActive ? 'text-text' : 'text-text-muted hover:text-text-secondary'
             }`}
           >
