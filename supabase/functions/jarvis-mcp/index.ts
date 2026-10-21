@@ -423,8 +423,8 @@ const JARVIS_TOOLS = [
         },
         category: {
           type: 'string',
-          enum: ['work', 'study'],
-          description: 'Category: "work" for professional client deliverables, "study" for personal upskilling/certifications (default "work").',
+          enum: ['work', 'study', 'freelance', 'business'],
+          description: 'Category: "work" (studio/client), "study" (upskilling/certs), "freelance" (freelance gigs), or "business" (commercial ventures) (default "work").',
         },
       },
       required: ['name'],
@@ -454,9 +454,9 @@ const JARVIS_TOOLS = [
           description: 'Updated status for the project.',
         },
         category: {
-          type: 'string',
-          enum: ['work', 'study'],
-          description: 'Updated category: "work" or "study".',
+    type: 'string',
+          enum: ['work', 'study', 'freelance', 'business'],
+          description: 'Updated category: "work", "study", "freelance", or "business".',
         },
       },
       required: ['projectId'],
@@ -1673,7 +1673,8 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
     case 'jarvis_create_project': {
       const name = String(args.name).trim();
       let status = args.status === 'planned' ? 'planning' : (args.status || 'planning');
-      const category = args.category === 'study' ? 'study' : 'work';
+      const validCategories = ['work', 'study', 'freelance', 'business'];
+      const category = validCategories.includes(args.category) ? args.category : 'work';
 
       if (status === 'active') {
         await supabase.from('projects').update({ status: 'completed' }).eq('user_id', userId).eq('status', 'active');
@@ -1735,7 +1736,10 @@ ${args.nextMilestone ? `Next Milestone: ${args.nextMilestone}` : ''}`;
         }
       }
       if (args.category) {
-        updates.category = args.category === 'study' ? 'study' : 'work';
+        const validCategories = ['work', 'study', 'freelance', 'business'];
+        if (validCategories.includes(args.category)) {
+          updates.category = args.category;
+        }
       }
 
       const { data: updated, error: updateErr } = await supabase

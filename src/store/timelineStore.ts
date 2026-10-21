@@ -10,6 +10,7 @@ import type {
   TaskItem,
   WorkStatus,
   Project,
+  ProjectCategory,
 } from '../types';
 import { nanoid } from 'nanoid';
 
@@ -130,7 +131,7 @@ interface TimelineState {
     name: string,
     description?: string,
     status?: 'active' | 'completed' | 'on_hold' | 'planning',
-    category?: 'work' | 'study'
+    category?: ProjectCategory
   ) => Promise<Project | null>;
   updateProject: (
     id: string,
@@ -222,7 +223,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         name: row.name,
         description: row.description,
         status: row.status,
-        category: (row.category as 'work' | 'study') || 'work',
+        category: (row.category as ProjectCategory) || 'work',
         summary_xyz: row.summary_xyz,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -248,7 +249,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   },
 
   // ── createProject ────────────────────────────────────────────────────────
-  createProject: async (name, description, status = 'active', category = 'work') => {
+  createProject: async (name, description, status = 'active', category: ProjectCategory = 'work') => {
     const { user } = useAuthStore.getState();
     if (!user) return null;
     try {
@@ -271,7 +272,7 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         name: data.name,
         description: data.description,
         status: data.status,
-        category: data.category || category,
+        category: (data.category as ProjectCategory) || category,
         summary_xyz: data.summary_xyz,
         createdAt: data.created_at,
         updatedAt: data.updated_at,

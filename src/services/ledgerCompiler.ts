@@ -1,4 +1,4 @@
-import type { TimelineEventFull, Project } from '../types';
+import type { TimelineEventFull, Project, ProjectCategory } from '../types';
 
 export type MeetingEventFull = TimelineEventFull & { type: 'meeting' };
 export type WorkEventFull = TimelineEventFull & { type: 'work' };
@@ -260,7 +260,7 @@ export function compileLedger(
   filterTag?: string | null,
   sortOrder: 'asc' | 'desc' = 'asc',
   projects: Project[] = [],
-  categoryFilter?: 'work' | 'study' | null
+  categoryFilter?: ProjectCategory | null
 ): CompiledLedger {
   const projectMap = new Map<string, Project>();
   const projectNameMap = new Map<string, Project>();

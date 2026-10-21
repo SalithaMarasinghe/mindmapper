@@ -139,13 +139,15 @@ export interface EventLink {
   url: string;
 }
 
+export type ProjectCategory = 'work' | 'study' | 'freelance' | 'business';
+
 export interface Project {
   id: string;
   userId: string;
   name: string;
   description?: string | null;
   status: 'active' | 'completed' | 'on_hold' | 'planning';
-  category?: 'work' | 'study';
+  category?: ProjectCategory;
   summary_xyz?: string | null;
   createdAt: string;
   updatedAt: string;

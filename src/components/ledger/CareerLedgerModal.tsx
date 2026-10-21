@@ -14,10 +14,13 @@ import {
   Users,
   ExternalLink,
   ArrowUpDown,
+  GraduationCap,
+  Rocket,
+  Building2,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useTimelineStore } from '../../store/timelineStore';
-import type { TimelineEventFull } from '../../types';
+import type { TimelineEventFull, ProjectCategory } from '../../types';
 import { compileLedger, type CompiledLedger } from '../../services/ledgerCompiler';
 import { compileLedgerToMarkdown } from '../../utils/markdownCompiler';
 import { MarkdownViewer } from '../common/MarkdownViewer';
@@ -32,7 +35,7 @@ export interface CareerLedgerModalProps {
 type DatePreset = '7d' | '30d' | '90d' | '180d' | 'all' | 'custom';
 type TabType = 'storylines' | 'chronological' | 'markdown' | 'synthesis';
 type SynthesisType = 'resume' | 'promotion' | 'linkedin';
-type CategoryScope = 'all' | 'work' | 'study';
+type CategoryScope = 'all' | ProjectCategory;
 
 export function CareerLedgerModal({ isOpen, onClose }: CareerLedgerModalProps) {
   const { fetchRange, fetchProjects, projects } = useTimelineStore();
@@ -144,8 +147,12 @@ export function CareerLedgerModal({ isOpen, onClose }: CareerLedgerModalProps) {
     const scopeLabel =
       categoryScope === 'study'
         ? 'Data Engineering & Technical Self-Study Dossier'
+        : categoryScope === 'freelance'
+        ? 'Freelance & Client Consulting Portfolio Dossier'
+        : categoryScope === 'business'
+        ? 'Commercial & Business Venture Strategic Dossier'
         : categoryScope === 'work'
-        ? 'Professional Client & Studio Engineering Ledger'
+        ? 'Professional Studio & Enterprise Engineering Ledger'
         : 'Continuous Workload & Career Ledger';
 
     if (type === 'resume') {
@@ -293,27 +300,27 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
         {/* ── Filters & Controls Bar ────────────────────────────────────────── */}
         <div className="px-6 py-3 border-b border-[#111111] bg-[#080808] flex flex-wrap items-center justify-between gap-3 text-xs flex-shrink-0">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Scope Selector: All vs Professional Work vs Self-Study */}
-            <div className="flex items-center gap-1 bg-[#0e0e0e] p-0.5 rounded-lg border border-[#161616]">
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-1.5">
+            {/* Scope Selector: All vs Professional Work vs Self-Study vs Freelance vs Business */}
+            <div className="flex items-center gap-1 bg-[#0e0e0e] p-0.5 rounded-lg border border-[#161616] overflow-x-auto">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-1.5 shrink-0">
                 Scope:
               </span>
               <button
                 type="button"
                 onClick={() => handleCategoryScopeChange('all')}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition shrink-0 ${
                   categoryScope === 'all'
                     ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                title="Full 360° Career Overview (Work + Self-Study)"
+                title="Full 360° Career Overview (Work + Self-Study + Freelance + Business)"
               >
                 All (360°)
               </button>
               <button
                 type="button"
                 onClick={() => handleCategoryScopeChange('work')}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shrink-0 ${
                   categoryScope === 'work'
                     ? 'bg-teal-500 text-slate-950 font-bold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -321,20 +328,46 @@ Generate 2 engaging, professional LinkedIn accomplishment posts celebrating key 
                 title="Professional Client & Studio Engineering Only"
               >
                 <Briefcase className="w-3 h-3" />
-                <span>Professional Work</span>
+                <span>Work</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleCategoryScopeChange('study')}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shrink-0 ${
                   categoryScope === 'study'
                     ? 'bg-purple-500 text-white font-bold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
                 title="Personal Technical Upskilling, Certifications & Drills"
               >
-                <Sparkles className="w-3 h-3" />
-                <span>Self-Study & Certs</span>
+                <GraduationCap className="w-3 h-3" />
+                <span>Study</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryScopeChange('freelance')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shrink-0 ${
+                  categoryScope === 'freelance'
+                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Freelance & Client Consulting Gigs"
+              >
+                <Rocket className="w-3 h-3" />
+                <span>Freelance</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryScopeChange('business')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1 shrink-0 ${
+                  categoryScope === 'business'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Commercial Business Ventures & Products"
+              >
+                <Building2 className="w-3 h-3" />
+                <span>Business</span>
               </button>
             </div>
 
