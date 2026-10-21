@@ -77,14 +77,12 @@ export function WorkSummaryView() {
   const user = useAuthStore((s) => s.user);
 
   // ── Date Filters ────────────────────────────────────────────────────────────
-  const [datePreset, setDatePreset] = useState<DatePreset>('this_month');
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
 
   const defaultDates = useMemo(() => {
     const today = new Date();
     const endStr = today.toISOString().slice(0, 10);
-    // 1st of current month
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const startStr = firstDay.toISOString().slice(0, 10);
+    const startStr = '2024-01-01';
     return { startStr, endStr };
   }, []);
 
