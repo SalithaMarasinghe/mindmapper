@@ -635,3 +635,17 @@ export interface AppNotification {
   actionUrl?: string;
 }
 
+
+export interface Note {
+  id: string;
+  userId: string;
+  title: string;
+  content: string;
+  projectId?: string | null;
+  projectTag?: string | null;
+  tags: string[];
+  isPinned: boolean;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

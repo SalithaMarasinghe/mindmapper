@@ -662,6 +662,134 @@ const JARVIS_TOOLS = [
       required: ['eventId', 'summaryXyz'],
     },
   },
+  // ─── SUITE 7: STANDALONE NOTION-STYLE NOTES ─────────────────────────────────
+  {
+    name: 'jarvis_list_notes',
+    description: 'Lists or searches standalone Markdown notes in Jarvis. Supports keyword search across title and content, plus project and tag filtering.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Optional search text to filter notes by title or content.',
+        },
+        projectTag: {
+          type: 'string',
+          description: 'Optional project name or tag to filter notes by.',
+        },
+        projectId: {
+          type: 'string',
+          description: 'Optional project UUID to filter notes by.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max number of notes to return (default 30).',
+        },
+      },
+    },
+  },
+  {
+    name: 'jarvis_get_note',
+    description: 'Retrieves a single standalone note by UUID or title, returning its full Markdown content and metadata.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        noteId: {
+          type: 'string',
+          description: 'UUID or title of the note.',
+        },
+      },
+      required: ['noteId'],
+    },
+  },
+  {
+    name: 'jarvis_create_note',
+    description: 'Creates a new standalone Notion-style Markdown note in Jarvis after user approval. Can be associated with an active or specified project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Title of the note (e.g. "Architecture RFC: Auth Redesign", "Client Meeting Takeaways").',
+        },
+        content: {
+          type: 'string',
+          description: 'Full Markdown content of the note (supports headings, code blocks, lists, tables, callouts).',
+        },
+        projectTag: {
+          type: 'string',
+          description: 'Optional project name or tag (defaults to active project if set).',
+        },
+        projectId: {
+          type: 'string',
+          description: 'Optional project UUID.',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional tags array (e.g. ["architecture", "rfc"]).',
+        },
+        isPinned: {
+          type: 'boolean',
+          description: 'Optional flag to pin note to top.',
+        },
+      },
+      required: ['title', 'content'],
+    },
+  },
+  {
+    name: 'jarvis_update_note',
+    description: 'Updates an existing standalone note in Jarvis (title, Markdown content, project, tags, or pinned status).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        noteId: {
+          type: 'string',
+          description: 'UUID or title of the note to update.',
+        },
+        title: {
+          type: 'string',
+          description: 'New title.',
+        },
+        content: {
+          type: 'string',
+          description: 'New or updated Markdown content.',
+        },
+        projectTag: {
+          type: 'string',
+          description: 'Updated project tag.',
+        },
+        projectId: {
+          type: 'string',
+          description: 'Updated project UUID.',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Updated tags array.',
+        },
+        isPinned: {
+          type: 'boolean',
+          description: 'Whether note is pinned.',
+        },
+      },
+      required: ['noteId'],
+    },
+  },
+  {
+    name: 'jarvis_delete_note',
+    description: 'Permanently deletes a standalone note in Jarvis by its UUID or title.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        noteId: {
+          type: 'string',
+          description: 'UUID or title of the note to delete.',
+        },
+      },
+      required: ['noteId'],
+    },
+  },
 ];
 
 // ─── DATABASE ENTITY RESOLVERS ───────────────────────────────────────────────
@@ -708,6 +836,18 @@ async function resolveMindmapId(supabase: any, userId: string, identifier: strin
   }
   const clean = identifier.replace(/\b(the|map|mindmap)\b/gi, '').trim();
   const { data } = await supabase.from('mindmaps').select('id, title, node_count').eq('user_id', userId).ilike('title', `%${clean || identifier}%`).limit(1);
+  return data?.[0] || null;
+}
+
+async function resolveNoteId(supabase: any, userId: string, identifier: string): Promise<{ id: string; title: string } | null> {
+  if (!identifier) return null;
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+  if (isUUID) {
+    const { data } = await supabase.from('notes').select('id, title').eq('id', identifier).eq('user_id', userId).maybeSingle();
+    return data || null;
+  }
+  const clean = identifier.replace(/\b(the|note|document)\b/gi, '').trim();
+  const { data } = await supabase.from('notes').select('id, title').eq('user_id', userId).ilike('title', `%${clean || identifier}%`).limit(1);
   return data?.[0] || null;
 }
 
@@ -2146,6 +2286,145 @@ Project Description: ${project.description || ''}`;
       return { success: true, eventId, summaryXyz: summaryXyz.trim() };
     }
 
+    case 'jarvis_list_notes': {
+      let query = supabase
+        .from('notes')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_archived', false)
+        .order('is_pinned', { ascending: false })
+        .order('updated_at', { ascending: false })
+        .limit(args.limit || 30);
+
+      if (args.projectId) {
+        query = query.eq('project_id', args.projectId);
+      } else if (args.projectTag) {
+        query = query.ilike('project_tag', `%${args.projectTag.trim()}%`);
+      }
+
+      if (args.query) {
+        const q = args.query.trim();
+        query = query.or(`title.ilike.%${q}%,content.ilike.%${q}%`);
+      }
+
+      const { data: notes, error } = await query;
+      if (error) throw error;
+      return {
+        count: notes?.length || 0,
+        notes: (notes || []).map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          projectTag: n.project_tag,
+          projectId: n.project_id,
+          tags: n.tags || [],
+          isPinned: n.is_pinned,
+          preview: (n.content || '').slice(0, 150),
+          createdAt: n.created_at,
+          updatedAt: n.updated_at,
+        })),
+      };
+    }
+
+    case 'jarvis_get_note': {
+      const resolved = await resolveNoteId(supabase, userId, args.noteId);
+      if (!resolved) throw new Error(`Note "${args.noteId}" not found.`);
+      const { data: note, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('id', resolved.id)
+        .eq('user_id', userId)
+        .single();
+      if (error) throw error;
+      return { note };
+    }
+
+    case 'jarvis_create_note': {
+      const active = await getActiveProject(supabase, userId);
+      let projectId = args.projectId || null;
+      let projectTag = (args.projectTag || '').trim();
+
+      if (!projectId && !projectTag && active) {
+        projectId = active.id;
+        projectTag = active.name;
+      }
+
+      const { data: note, error } = await supabase
+        .from('notes')
+        .insert({
+          user_id: userId,
+          title: (args.title || 'Untitled').trim(),
+          content: args.content || '',
+          project_id: projectId,
+          project_tag: projectTag || null,
+          tags: Array.isArray(args.tags) ? args.tags : [],
+          is_pinned: !!args.isPinned,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: `Note "${note.title}" created successfully.`,
+        note: {
+          id: note.id,
+          title: note.title,
+          projectTag: note.project_tag,
+          tags: note.tags,
+          updatedAt: note.updated_at,
+        },
+      };
+    }
+
+    case 'jarvis_update_note': {
+      const resolved = await resolveNoteId(supabase, userId, args.noteId);
+      if (!resolved) throw new Error(`Note "${args.noteId}" not found.`);
+
+      const updates: any = { updated_at: new Date().toISOString() };
+      if (args.title !== undefined) updates.title = args.title.trim();
+      if (args.content !== undefined) updates.content = args.content;
+      if (args.projectTag !== undefined) updates.project_tag = args.projectTag.trim() || null;
+      if (args.projectId !== undefined) updates.project_id = args.projectId || null;
+      if (args.tags !== undefined) updates.tags = args.tags;
+      if (args.isPinned !== undefined) updates.is_pinned = !!args.isPinned;
+
+      const { data: note, error } = await supabase
+        .from('notes')
+        .update(updates)
+        .eq('id', resolved.id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return {
+        success: true,
+        message: `Note "${note.title}" updated successfully.`,
+        note,
+      };
+    }
+
+    case 'jarvis_delete_note': {
+      const resolved = await resolveNoteId(supabase, userId, args.noteId);
+      if (!resolved) throw new Error(`Note "${args.noteId}" not found.`);
+
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', resolved.id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return {
+        success: true,
+        message: `Note "${resolved.title}" deleted successfully.`,
+        deletedNoteId: resolved.id,
+      };
+    }
+
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -2166,7 +2445,7 @@ function addCorsHeaders(response: Response): Response {
 }
 
 function createMcpHandlerForUser(supabase: any, userId: string) {
-  const server = new McpServer({ name: 'jarvis-cloud-mcp', version: '3.2.1' });
+  const server = new McpServer({ name: 'jarvis-cloud-mcp', version: '3.3.0' });
 
   for (const tool of JARVIS_TOOLS) {
     server.tool(tool.name, {
@@ -2292,7 +2571,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'GET' && (url.pathname.endsWith('/tools.json') || url.pathname.endsWith('/schema.json') || url.pathname.endsWith('/tools'))) {
     return new Response(JSON.stringify({
       server: 'jarvis-cloud-mcp',
-      version: '3.2.1',
+      version: '3.3.0',
       tools: JARVIS_TOOLS,
     }, null, 2), {
       status: 200,

@@ -8,19 +8,21 @@ import { Plus, Search } from 'lucide-react';
 import { useSettingsStore } from '../store/settingsStore';
 import { WorkJournal } from '../components/timeline/WorkJournal';
 import { WorkSummaryView } from '../components/summary/WorkSummaryView';
+import { NotesView } from '../components/notes/NotesView';
 import { TaskLog } from '../components/tasklog/TaskLog';
 import { JarvisScreen } from '../components/jarvis/JarvisScreen';
 import { CareerLedgerModal } from '../components/ledger/CareerLedgerModal';
 import { ProjectsModal } from '../components/ledger/ProjectsModal';
 import { isStandaloneApp, isMobileViewport, getAndClearIntendedRedirect } from '../utils/authRedirect';
 
-type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'work-summary' | 'mind-maps';
+type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'work-summary' | 'notes' | 'mind-maps';
 
 const TABS = [
   { id: 'jarvis-cockpit', label: 'Jarvis AI' },
   { id: 'task-log', label: 'Task Log' },
   { id: 'work-journal', label: 'Work Journal' },
   { id: 'work-summary', label: 'Work Summary' },
+  { id: 'notes', label: 'Notes' },
   { id: 'mind-maps', label: 'Mind Maps' },
 ];
 
