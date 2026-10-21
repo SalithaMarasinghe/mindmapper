@@ -2497,7 +2497,9 @@ const authenticatedMcpHandler = pipeline(
 
 async function handleInternalMcpRequest(req: Request): Promise<Response> {
   const expectedToken = Deno.env.get('JARVIS_MCP_INTERNAL_TOKEN') || Deno.env.get('JARVIS_MCP_API_KEY');
-  const providedToken = req.headers.get('x-jarvis-internal-token') || '';
+  const authHeader = req.headers.get('authorization') || '';
+  const tokenFromAuth = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const providedToken = req.headers.get('x-jarvis-internal-token') || tokenFromAuth;
   const userId = Deno.env.get('JARVIS_USER_ID');
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -2583,8 +2585,12 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // The WhatsApp caller uses a server-side secret header, separate from ChatGPT OAuth.
-  if (req.headers.has('x-jarvis-internal-token')) {
+  // Internal callers (bridge, CLI, WhatsApp) use secret header or Bearer API key
+  const authHeader = req.headers.get('authorization') || '';
+  const tokenFromAuth = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const internalSecret = Deno.env.get('JARVIS_MCP_INTERNAL_TOKEN') || Deno.env.get('JARVIS_MCP_API_KEY');
+
+  if (req.headers.has('x-jarvis-internal-token') || (internalSecret && tokenFromAuth === internalSecret)) {
     return handleInternalMcpRequest(req);
   }
 
