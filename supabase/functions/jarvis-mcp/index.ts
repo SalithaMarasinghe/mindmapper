@@ -631,6 +631,37 @@ const JARVIS_TOOLS = [
       },
     },
   },
+  {
+    name: 'jarvis_get_historical_events_for_backfill',
+    description: 'Fetches all historical events with work_details or meeting_details for Google XYZ backfill.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        beforeDate: {
+          type: 'string',
+          description: 'YYYY-MM-DD. Events on or after this date will be excluded (default 2026-10-21).',
+        },
+      },
+    },
+  },
+  {
+    name: 'jarvis_update_event_summary_xyz',
+    description: 'Updates summary_xyz for a specific event.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        eventId: {
+          type: 'string',
+          description: 'UUID of the event.',
+        },
+        summaryXyz: {
+          type: 'string',
+          description: 'New Google XYZ summary to store.',
+        },
+      },
+      required: ['eventId', 'summaryXyz'],
+    },
+  },
 ];
 
 // ─── DATABASE ENTITY RESOLVERS ───────────────────────────────────────────────
@@ -2086,6 +2117,33 @@ Project Description: ${project.description || ''}`;
         processedItems: embeddedCount,
         message: `Successfully backfilled and embedded ${embeddedCount} historical items into long-term memory.`,
       };
+    }
+
+    case 'jarvis_get_historical_events_for_backfill': {
+      const beforeDate = args.beforeDate || '2026-10-21';
+      const { data: events, error } = await supabase
+        .from('events')
+        .select('id, title, date, start_time, end_time, type, project_id, project_tag, summary_xyz, work_details(*), meeting_details(*)')
+        .eq('user_id', userId)
+        .lt('date', beforeDate)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true, nullsFirst: true });
+
+      if (error) throw error;
+      return events || [];
+    }
+
+    case 'jarvis_update_event_summary_xyz': {
+      const { eventId, summaryXyz } = args;
+      if (!eventId || !summaryXyz) throw new Error('eventId and summaryXyz are required');
+      const { error } = await supabase
+        .from('events')
+        .update({ summary_xyz: summaryXyz.trim(), updated_at: new Date().toISOString() })
+        .eq('id', eventId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return { success: true, eventId, summaryXyz: summaryXyz.trim() };
     }
 
     default:
