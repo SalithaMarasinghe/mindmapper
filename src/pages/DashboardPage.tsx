@@ -9,13 +9,14 @@ import { useSettingsStore } from '../store/settingsStore';
 import { WorkJournal } from '../components/timeline/WorkJournal';
 import { WorkSummaryView } from '../components/summary/WorkSummaryView';
 import { NotesView } from '../components/notes/NotesView';
+import { HabitTrackerView } from '../components/habits/HabitTrackerView';
 import { TaskLog } from '../components/tasklog/TaskLog';
 import { JarvisScreen } from '../components/jarvis/JarvisScreen';
 import { CareerLedgerModal } from '../components/ledger/CareerLedgerModal';
 import { ProjectsModal } from '../components/ledger/ProjectsModal';
 import { isStandaloneApp, isMobileViewport, getAndClearIntendedRedirect } from '../utils/authRedirect';
 
-type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'work-summary' | 'notes' | 'mind-maps';
+type DashboardTab = 'jarvis-cockpit' | 'task-log' | 'work-journal' | 'work-summary' | 'notes' | 'habits' | 'mind-maps';
 
 const TABS = [
   { id: 'jarvis-cockpit', label: 'Jarvis AI' },
@@ -23,6 +24,7 @@ const TABS = [
   { id: 'work-journal', label: 'Work Journal' },
   { id: 'work-summary', label: 'Work Summary' },
   { id: 'notes', label: 'Notes' },
+  { id: 'habits', label: 'Habit Tracker' },
   { id: 'mind-maps', label: 'Mind Maps' },
 ];
 
@@ -112,6 +114,12 @@ export function DashboardPage() {
         {activeTab === 'notes' && (
           <div className="flex-1 flex flex-col min-h-0 w-full h-full">
             <NotesView />
+          </div>
+        )}
+
+        {activeTab === 'habits' && (
+          <div className="flex-1 flex flex-col min-h-0 w-full h-full">
+            <HabitTrackerView />
           </div>
         )}
 

@@ -651,3 +651,30 @@ export interface Note {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Habit {
+  id: string;
+  userId?: string;
+  name: string;
+  targetMinutes: number; // Daily target in minutes (e.g. 60 for 1h, 120 for 2h)
+  color: string;         // Hex code or color class (e.g. '#8b5cf6')
+  icon?: string;
+  projectId?: string | null;
+  projectTag?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HabitDayLog {
+  id?: string;
+  userId?: string;
+  habitId: string;
+  date: string;          // YYYY-MM-DD
+  minutes: number;       // Minutes completed
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type HabitLogMap = Record<string, Record<string, number>>; // date -> { habitId: minutes }
+
