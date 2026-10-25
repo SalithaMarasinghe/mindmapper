@@ -790,6 +790,183 @@ const JARVIS_TOOLS = [
       required: ['noteId'],
     },
   },
+  // ─── SUITE 8: HABIT TRACKER & DAILY LOGGING ──────────────────────────────
+  {
+    name: 'jarvis_list_habits',
+    description: 'Lists all daily habit routines defined in Jarvis (name, target minutes, color, icon, project), optionally with completion and logged minutes for a given date (defaults to today).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: {
+          type: 'string',
+          description: 'Optional date in YYYY-MM-DD format (or "today") to include logged minutes and completion status for each habit.',
+        },
+        projectId: {
+          type: 'string',
+          description: 'Optional project UUID to filter habits.',
+        },
+        projectTag: {
+          type: 'string',
+          description: 'Optional project name or tag to filter habits.',
+        },
+      },
+    },
+  },
+  {
+    name: 'jarvis_get_habit',
+    description: 'Retrieves details for a single habit routine and its recent logging history by habit UUID or name.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        habitId: {
+          type: 'string',
+          description: 'UUID or name of the habit (e.g. "Yoga & Mobility", "Python & SQL Practice").',
+        },
+        days: {
+          type: 'number',
+          description: 'Number of past days of tracking logs to retrieve (default 7).',
+        },
+      },
+      required: ['habitId'],
+    },
+  },
+  {
+    name: 'jarvis_create_habit',
+    description: 'Creates a new daily habit routine in Jarvis with a target duration, theme color, emoji icon, and optional project association.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Name of the habit (e.g. "Yoga & Mobility", "Python & SQL Practice", "Mindful Meditation").',
+        },
+        targetMinutes: {
+          type: 'number',
+          description: 'Daily target duration in minutes (e.g. 60 for 1 hour, 120 for 2 hours, 30 for 30 mins).',
+        },
+        color: {
+          type: 'string',
+          description: 'Optional hex color for calendar visualization (default: "#8b5cf6"). Common colors: "#8b5cf6" (violet), "#0284c7" (sky), "#10b981" (emerald), "#f59e0b" (amber), "#f43f5e" (rose).',
+        },
+        icon: {
+          type: 'string',
+          description: 'Optional emoji icon (e.g. "🧘", "💻", "🌿", "📚", "🏃").',
+        },
+        projectId: {
+          type: 'string',
+          description: 'Optional project UUID to link this habit with.',
+        },
+        projectTag: {
+          type: 'string',
+          description: 'Optional project name or tag.',
+        },
+      },
+      required: ['name', 'targetMinutes'],
+    },
+  },
+  {
+    name: 'jarvis_update_habit',
+    description: 'Updates an existing habit routine in Jarvis (name, targetMinutes, color, icon, or project).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        habitId: {
+          type: 'string',
+          description: 'UUID or name of the habit to update.',
+        },
+        name: {
+          type: 'string',
+          description: 'Updated name of the habit.',
+        },
+        targetMinutes: {
+          type: 'number',
+          description: 'Updated daily target in minutes.',
+        },
+        color: {
+          type: 'string',
+          description: 'Updated hex color.',
+        },
+        icon: {
+          type: 'string',
+          description: 'Updated emoji icon.',
+        },
+        projectId: {
+          type: 'string',
+          description: 'Updated project UUID (or null to clear).',
+        },
+        projectTag: {
+          type: 'string',
+          description: 'Updated project tag.',
+        },
+      },
+      required: ['habitId'],
+    },
+  },
+  {
+    name: 'jarvis_delete_habit',
+    description: 'Permanently deletes a habit routine and its past tracking logs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        habitId: {
+          type: 'string',
+          description: 'UUID or name of the habit to delete.',
+        },
+      },
+      required: ['habitId'],
+    },
+  },
+  {
+    name: 'jarvis_log_habit_time',
+    description: 'Logs or updates the actual time spent on a habit for a given date (defaults to today). Fills the day on the habit tracker calendar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        habitId: {
+          type: 'string',
+          description: 'UUID or name of the habit (e.g. "Yoga", "Python & SQL").',
+        },
+        minutes: {
+          type: 'number',
+          description: 'Number of minutes completed (e.g. 30, 45, 60, 120).',
+        },
+        date: {
+          type: 'string',
+          description: 'Date in YYYY-MM-DD format, or "today" / "yesterday" (defaults to today).',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional note or reflection about this session.',
+        },
+      },
+      required: ['habitId', 'minutes'],
+    },
+  },
+  {
+    name: 'jarvis_get_habit_logs',
+    description: 'Retrieves habit tracking logs for a specific date, date range, or specific habit.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        date: {
+          type: 'string',
+          description: 'Specific date in YYYY-MM-DD format (or "today").',
+        },
+        startDate: {
+          type: 'string',
+          description: 'Optional start date for date range (YYYY-MM-DD).',
+        },
+        endDate: {
+          type: 'string',
+          description: 'Optional end date for date range (YYYY-MM-DD).',
+        },
+        habitId: {
+          type: 'string',
+          description: 'Optional habit UUID or name to filter logs.',
+        },
+      },
+    },
+  },
 ];
 
 // ─── DATABASE ENTITY RESOLVERS ───────────────────────────────────────────────
@@ -848,6 +1025,18 @@ async function resolveNoteId(supabase: any, userId: string, identifier: string):
   }
   const clean = identifier.replace(/\b(the|note|document)\b/gi, '').trim();
   const { data } = await supabase.from('notes').select('id, title').eq('user_id', userId).ilike('title', `%${clean || identifier}%`).limit(1);
+  return data?.[0] || null;
+}
+
+async function resolveHabitId(supabase: any, userId: string, identifier: string): Promise<{ id: string; name: string; target_minutes: number; color: string } | null> {
+  if (!identifier) return null;
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier) || identifier.startsWith('habit_');
+  if (isUUID) {
+    const { data } = await supabase.from('habits').select('id, name, target_minutes, color').eq('id', identifier).eq('user_id', userId).maybeSingle();
+    return data || null;
+  }
+  const clean = identifier.replace(/\b(the|habit|routine)\b/gi, '').trim();
+  const { data } = await supabase.from('habits').select('id, name, target_minutes, color').eq('user_id', userId).ilike('name', `%${clean || identifier}%`).limit(1);
   return data?.[0] || null;
 }
 
@@ -2426,6 +2615,275 @@ Project Description: ${project.description || ''}`;
         success: true,
         message: `Note "${resolved.title}" deleted successfully.`,
         deletedNoteId: resolved.id,
+      };
+    }
+
+    // ─── SUITE 8: HABIT TRACKER & DAILY LOGGING ──────────────────────────────
+
+    case 'jarvis_list_habits': {
+      let query = supabase
+        .from('habits')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (args.projectId) {
+        query = query.eq('project_id', args.projectId);
+      } else if (args.projectTag) {
+        query = query.ilike('project_tag', `%${args.projectTag.trim()}%`);
+      }
+
+      const { data: habits, error } = await query;
+      if (error) throw error;
+
+      const targetDate = args.date === 'today' || !args.date ? todayISO : args.date;
+      const { data: logs } = await supabase
+        .from('habit_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', targetDate);
+
+      const logMap = new Map((logs || []).map((l: any) => [l.habit_id, l]));
+
+      return {
+        date: targetDate,
+        count: habits?.length || 0,
+        habits: (habits || []).map((h: any) => {
+          const log = logMap.get(h.id);
+          const loggedMinutes = log ? log.minutes : 0;
+          const targetMinutes = h.target_minutes || 60;
+          return {
+            id: h.id,
+            name: h.name,
+            targetMinutes,
+            color: h.color,
+            icon: h.icon,
+            projectTag: h.project_tag,
+            projectId: h.project_id,
+            loggedMinutes,
+            isGoalMet: loggedMinutes >= targetMinutes,
+            percentComplete: Math.round((loggedMinutes / targetMinutes) * 100),
+            notes: log?.notes || null,
+          };
+        }),
+      };
+    }
+
+    case 'jarvis_get_habit': {
+      const resolved = await resolveHabitId(supabase, userId, args.habitId);
+      if (!resolved) throw new Error(`Habit "${args.habitId}" not found.`);
+
+      const { data: habit, error } = await supabase
+        .from('habits')
+        .select('*')
+        .eq('id', resolved.id)
+        .eq('user_id', userId)
+        .single();
+      if (error) throw error;
+
+      const days = Math.min(60, Math.max(1, args.days || 7));
+      const { data: recentLogs } = await supabase
+        .from('habit_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('habit_id', resolved.id)
+        .order('date', { ascending: false })
+        .limit(days);
+
+      return {
+        habit: {
+          id: habit.id,
+          name: habit.name,
+          targetMinutes: habit.target_minutes,
+          color: habit.color,
+          icon: habit.icon,
+          projectTag: habit.project_tag,
+          projectId: habit.project_id,
+          createdAt: habit.created_at,
+        },
+        recentLogs: (recentLogs || []).map((l: any) => ({
+          date: l.date,
+          minutes: l.minutes,
+          isGoalMet: l.minutes >= habit.target_minutes,
+          notes: l.notes,
+        })),
+      };
+    }
+
+    case 'jarvis_create_habit': {
+      const name = (args.name || '').trim();
+      if (!name) throw new Error('Habit name is required.');
+      const targetMinutes = Math.max(5, Number(args.targetMinutes) || 60);
+      const color = args.color || '#8b5cf6';
+      const icon = args.icon || '⚡';
+      const id = 'habit_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
+      const { data: habit, error } = await supabase
+        .from('habits')
+        .insert({
+          id,
+          user_id: userId,
+          name,
+          target_minutes: targetMinutes,
+          color,
+          icon,
+          project_id: args.projectId || null,
+          project_tag: args.projectTag || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return {
+        success: true,
+        message: `Created habit "${habit.name}" with daily target of ${habit.target_minutes}m.`,
+        habit,
+      };
+    }
+
+    case 'jarvis_update_habit': {
+      const resolved = await resolveHabitId(supabase, userId, args.habitId);
+      if (!resolved) throw new Error(`Habit "${args.habitId}" not found.`);
+
+      const updates: any = { updated_at: new Date().toISOString() };
+      if (args.name !== undefined) updates.name = args.name.trim();
+      if (args.targetMinutes !== undefined) updates.target_minutes = Math.max(5, Number(args.targetMinutes));
+      if (args.color !== undefined) updates.color = args.color;
+      if (args.icon !== undefined) updates.icon = args.icon;
+      if (args.projectId !== undefined) updates.project_id = args.projectId || null;
+      if (args.projectTag !== undefined) updates.project_tag = args.projectTag || null;
+
+      const { data: habit, error } = await supabase
+        .from('habits')
+        .update(updates)
+        .eq('id', resolved.id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return {
+        success: true,
+        message: `Updated habit "${habit.name}".`,
+        habit,
+      };
+    }
+
+    case 'jarvis_delete_habit': {
+      const resolved = await resolveHabitId(supabase, userId, args.habitId);
+      if (!resolved) throw new Error(`Habit "${args.habitId}" not found.`);
+
+      const { error } = await supabase
+        .from('habits')
+        .delete()
+        .eq('id', resolved.id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      await supabase
+        .from('habit_logs')
+        .delete()
+        .eq('habit_id', resolved.id)
+        .eq('user_id', userId);
+
+      return {
+        success: true,
+        message: `Deleted habit "${resolved.name}" and its logs.`,
+        deletedHabitId: resolved.id,
+      };
+    }
+
+    case 'jarvis_log_habit_time': {
+      const resolved = await resolveHabitId(supabase, userId, args.habitId);
+      if (!resolved) throw new Error(`Habit "${args.habitId}" not found.`);
+
+      let targetDate = todayISO;
+      if (args.date === 'yesterday') {
+        const y = new Date();
+        y.setDate(y.getDate() - 1);
+        targetDate = y.toISOString().slice(0, 10);
+      } else if (args.date && args.date !== 'today') {
+        targetDate = args.date;
+      }
+
+      const minutes = Math.max(0, Number(args.minutes) || 0);
+
+      const { data: log, error } = await supabase
+        .from('habit_logs')
+        .upsert(
+          {
+            user_id: userId,
+            habit_id: resolved.id,
+            date: targetDate,
+            minutes,
+            notes: args.notes || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,habit_id,date' }
+        )
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const isGoalMet = minutes >= resolved.target_minutes;
+      return {
+        success: true,
+        message: `Logged ${minutes}m for habit "${resolved.name}" on ${targetDate}. ${isGoalMet ? '🎉 Daily goal met!' : `Goal: ${resolved.target_minutes}m`}`,
+        log: {
+          habitId: resolved.id,
+          habitName: resolved.name,
+          date: targetDate,
+          minutes,
+          targetMinutes: resolved.target_minutes,
+          isGoalMet,
+          notes: log.notes,
+        },
+      };
+    }
+
+    case 'jarvis_get_habit_logs': {
+      let query = supabase
+        .from('habit_logs')
+        .select('*, habits(name, target_minutes, color, icon)')
+        .eq('user_id', userId)
+        .order('date', { ascending: false });
+
+      if (args.habitId) {
+        const resolved = await resolveHabitId(supabase, userId, args.habitId);
+        if (resolved) {
+          query = query.eq('habit_id', resolved.id);
+        }
+      }
+
+      if (args.date) {
+        const d = args.date === 'today' ? todayISO : args.date;
+        query = query.eq('date', d);
+      } else {
+        if (args.startDate) query = query.gte('date', args.startDate);
+        if (args.endDate) query = query.lte('date', args.endDate);
+      }
+
+      const { data: logs, error } = await query;
+      if (error) throw error;
+
+      return {
+        count: logs?.length || 0,
+        logs: (logs || []).map((l: any) => ({
+          id: l.id,
+          date: l.date,
+          habitId: l.habit_id,
+          habitName: l.habits?.name || 'Unknown',
+          color: l.habits?.color,
+          icon: l.habits?.icon,
+          minutes: l.minutes,
+          targetMinutes: l.habits?.target_minutes || 0,
+          isGoalMet: l.habits ? l.minutes >= l.habits.target_minutes : false,
+          notes: l.notes,
+        })),
       };
     }
 
