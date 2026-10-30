@@ -29,8 +29,8 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useContentStore } from '../../store/contentStore';
 import { supabase } from '../../lib/supabase';
 import { nanoid } from 'nanoid';
-import { buildFlowElements } from '../../utils/treeLayout';
-import type { MindmapNode, NodeType, NodeDirection } from '../../types';
+import { buildFlowElements, computeMindmapLayout, estimateNodeWidth } from '../../utils/treeLayout';
+import type { MindmapNode, NodeType, NodeDirection, LayoutPattern } from '../../types';
 import { DEFAULT_BRANCH_COLORS } from '../../types';
 import { exportMindmapToPDF } from '../../utils/exportPDF';
 
@@ -40,10 +40,9 @@ const nodeTypes = {
   leaf: LeafNode
 };
 
-const SIDE_GAP_X = 260;
 const SIDE_GAP_Y = 170;
-const STACK_GAP = 110;
-const STACK_GAP_HORIZONTAL = 220;
+const STACK_GAP = 70;
+const STACK_GAP_HORIZONTAL = 260;
 
 export function MindmapCanvas() {
   const { mapId } = useParams();
@@ -61,14 +60,15 @@ export function MindmapCanvas() {
     loadMap, 
     addNode, 
     updateNode, 
-    saveNodePositions, 
     deleteNode, 
     edgeWaypoints,
     saveBatchChanges 
   } = useMapStore();
   const { getMapById, fetchMaps } = useMapsStore();
-  const { getViewport, saveViewport, isReadOnly } = useSettingsStore();
+  const { getViewport, saveViewport, isReadOnly, getLayoutPattern, setLayoutPattern } = useSettingsStore();
   const { loadContent, content, fetchNodeContent } = useContentStore();
+
+  const activeLayoutPattern = mapId ? getLayoutPattern(mapId) : 'radial';
 
   const [menuInfo, setMenuInfo] = useState<{ x: number, y: number, node: MindmapNode } | null>(null);
   const [paneMenuInfo, setPaneMenuInfo] = useState<{ x: number; y: number } | null>(null);
@@ -121,12 +121,16 @@ export function MindmapCanvas() {
     setPaneMenuInfo(null);
   }, []);
 
-  const { nodes: baseFlowNodes } = useMemo(() => buildFlowElements(nodes, edgeWaypoints), [nodes, edgeWaypoints]);
+  const { nodes: baseFlowNodes } = useMemo(
+    () => buildFlowElements(nodes, edgeWaypoints, undefined, activeLayoutPattern), 
+    [nodes, edgeWaypoints, activeLayoutPattern]
+  );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(baseFlowNodes);
   const flowNodePositionMap = useMemo(
     () => new Map(flowNodes.map((n) => [n.id, n.position] as const)),
     [flowNodes]
   );
+
   const { edges: flowEdges } = useMemo(() => {
     // Calculate dynamic waypoints for real-time smoothness
     const dynamicWaypoints = { ...edgeWaypoints };
@@ -140,12 +144,10 @@ export function MindmapCanvas() {
         
         // If this node moved, all its outgoing and incoming internal edges should shift
         if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-          // Find edges where this is the target
           if (node.parentId) {
             const parentLivePos = flowNodePositionMap.get(node.parentId);
             const parentStorePos = nodes.find(n => n.id === node.parentId)?.position;
             
-            // If both parent and child moved by the same amount, shift the joint
             if (parentLivePos && parentStorePos) {
               const pdx = parentLivePos.x - parentStorePos.x;
               const pdy = parentLivePos.y - parentStorePos.y;
@@ -166,14 +168,13 @@ export function MindmapCanvas() {
       }
     });
 
-    return buildFlowElements(nodes, dynamicWaypoints, flowNodePositionMap);
-  }, [nodes, edgeWaypoints, flowNodePositionMap]);
+    return buildFlowElements(nodes, dynamicWaypoints, flowNodePositionMap, activeLayoutPattern);
+  }, [nodes, edgeWaypoints, flowNodePositionMap, activeLayoutPattern]);
 
   useEffect(() => {
     if (!baseFlowNodes.length) return;
     
     // De-duplicate updates to prevent loop #185
-    // We only care if the IDs or basic structure changed from the store
     const baseStr = JSON.stringify(baseFlowNodes.map(n => ({ id: n.id, type: n.type })));
     if (baseStr === lastBaseNodesRef.current) return;
     lastBaseNodesRef.current = baseStr;
@@ -196,7 +197,8 @@ export function MindmapCanvas() {
   }, []);
 
   const getNextPositionForSide = useCallback((parent: MindmapNode, side: NodeDirection) => {
-    const parentPos = flowNodePositionMap.get(parent.id) || parent.position || { x: 120, y: 0 };
+    const parentPos = flowNodePositionMap.get(parent.id) || parent.position || { x: 0, y: 0 };
+    const parentWidth = estimateNodeWidth(parent);
     const children = nodes.filter((n) => n.parentId === parent.id);
 
     const sameSideChildren = children.filter((child) => {
@@ -211,15 +213,15 @@ export function MindmapCanvas() {
 
     switch (side) {
       case 'left':
-        return { x: parentPos.x - SIDE_GAP_X, y: parentPos.y + centeredOffset };
+        return { x: parentPos.x - 320 - 75, y: parentPos.y + centeredOffset };
       case 'right':
-        return { x: parentPos.x + SIDE_GAP_X, y: parentPos.y + centeredOffset };
+        return { x: parentPos.x + parentWidth + 75, y: parentPos.y + centeredOffset };
       case 'top':
         return { x: parentPos.x + (index - (totalAfterInsert - 1) / 2) * STACK_GAP_HORIZONTAL, y: parentPos.y - SIDE_GAP_Y };
       case 'bottom':
         return { x: parentPos.x + (index - (totalAfterInsert - 1) / 2) * STACK_GAP_HORIZONTAL, y: parentPos.y + SIDE_GAP_Y };
       default:
-        return { x: parentPos.x + SIDE_GAP_X, y: parentPos.y };
+        return { x: parentPos.x + parentWidth + 75, y: parentPos.y };
     }
   }, [flowNodePositionMap, getDirectionFromPoints, nodes]);
 
@@ -357,7 +359,6 @@ export function MindmapCanvas() {
   }, [previewNode, nodes]);
 
   const handleNodeDragStart = useCallback((_event: any, node: Node) => {
-    // Collect starting positions for all selected nodes so we can calculate accurate displacement
     const startPositions = new Map<string, { x: number; y: number }>();
     flowNodes.forEach(n => {
       if (n.selected || n.id === node.id) {
@@ -368,17 +369,13 @@ export function MindmapCanvas() {
   }, [flowNodes]);
 
   const handleNodeDrag = useCallback(() => {
-    // No-op for state. 
-    // real-time edge updates are now handled by flowEdges useMemo 
-    // which depends on flowNodePositionMap (derived from flowNodes).
+    // Real-time edge updates handled by flowEdges useMemo
   }, []);
 
   const handleNodeDragStop = useCallback(async (_event: any, draggedNode: Node) => {
-    // Check if the dragged node is part of a selection
     const selectedNodes = flowNodes.filter(n => n.selected);
     const isPartOfSelection = selectedNodes.some(n => n.id === draggedNode.id);
 
-    // Calculate displacement based on starting positions ref
     const startPos = dragStartPositionsRef.current.get(draggedNode.id);
     const dx = startPos ? draggedNode.position.x - startPos.x : 0;
     const dy = startPos ? draggedNode.position.y - startPos.y : 0;
@@ -388,7 +385,6 @@ export function MindmapCanvas() {
       const newEdgeWaypoints = { ...edgeWaypoints };
       let waypointsChanged = false;
 
-      // Identify internal edges (both endpoints selected) and shift their waypoints
       nodes.forEach(node => {
         if (node.parentId && selectedIds.has(node.id) && selectedIds.has(node.parentId)) {
           const edgeId = `${node.parentId}-${node.id}`;
@@ -423,7 +419,6 @@ export function MindmapCanvas() {
       }).filter(u => u !== null) as Array<{ id: string; position: { x: number; y: number }; direction?: NodeDirection }>;
 
       if (nodeUpdates.length > 0) {
-        // Use Atomic Save to prevent UI flicker
         await saveBatchChanges(nodeUpdates, waypointsChanged ? newEdgeWaypoints : edgeWaypoints);
         toast.success(`Moved ${nodeUpdates.length} nodes`);
       }
@@ -449,77 +444,66 @@ export function MindmapCanvas() {
 
     const direction = getDirectionFromPoints(parentPos, draggedNode.position);
     await updateNode(mappedNode.id, { position: draggedNode.position, direction });
-  }, [flowNodes, nodes, flowNodePositionMap, getDirectionFromPoints, saveNodePositions, updateNode]);
+  }, [flowNodes, nodes, flowNodePositionMap, getDirectionFromPoints, edgeWaypoints, saveBatchChanges, updateNode]);
 
-  const handleTidyUp = useCallback(async () => {
+  /**
+   * Tidy Up: Recalculates clean, collision-free auto layout using the chosen pattern
+   * and saves all positions atomically to Supabase while clearing old waypoints.
+   */
+  const handleTidyUp = useCallback(async (pattern: LayoutPattern = activeLayoutPattern, silent: boolean = false) => {
+    if (!nodes.length) return;
     const root = nodes.find((n) => n.type === 'root');
     if (!root) return;
 
-    const byParent = new Map<string, MindmapNode[]>();
-    nodes.forEach((n) => {
-      if (!n.parentId) return;
-      const curr = byParent.get(n.parentId) || [];
-      curr.push(n);
-      byParent.set(n.parentId, curr);
+    const layoutPositions = computeMindmapLayout(nodes, pattern);
+    const updates: Array<{ id: string; position: { x: number; y: number }; direction?: NodeDirection }> = [];
+
+    nodes.forEach((node) => {
+      const computed = layoutPositions.get(node.id);
+      if (computed) {
+        updates.push({
+          id: node.id,
+          position: { x: computed.x, y: computed.y },
+          direction: computed.direction,
+        });
+      }
     });
 
-    const nextPos = new Map<string, { x: number; y: number }>();
-    const rootPos = { x: 60, y: 0 };
-    nextPos.set(root.id, rootPos);
+    if (updates.length > 0) {
+      // Optimistically update positions in flowNodes immediately
+      setFlowNodes((prev) =>
+        prev.map((flowNode) => {
+          const match = layoutPositions.get(flowNode.id);
+          return match ? { ...flowNode, position: { x: match.x, y: match.y } } : flowNode;
+        })
+      );
 
-    const assign = (parent: MindmapNode) => {
-      const parentPos = nextPos.get(parent.id);
-      if (!parentPos) return;
-      const children = (byParent.get(parent.id) || []).slice();
-      const grouped: Record<NodeDirection, MindmapNode[]> = { left: [], right: [], top: [], bottom: [] };
+      // Save to database atomically and reset waypoints for clean direct edges
+      await saveBatchChanges(updates, {});
 
-      children.forEach((child) => {
-        const currentChildPos = flowNodePositionMap.get(child.id) || child.position || { x: parentPos.x + SIDE_GAP_X, y: parentPos.y };
-        const side = getDirectionFromPoints(parentPos, currentChildPos);
-        grouped[side].push(child);
-      });
+      setTimeout(() => {
+        fitView({ duration: 500, padding: 0.15 });
+      }, 50);
 
-      (['left', 'right'] as const).forEach((side) => {
-        const list = grouped[side];
-        list.sort((a, b) => a.order - b.order);
-        list.forEach((child, index) => {
-          const y = parentPos.y + (index - (list.length - 1) / 2) * STACK_GAP;
-          const x = side === 'left' ? parentPos.x - SIDE_GAP_X : parentPos.x + SIDE_GAP_X;
-          nextPos.set(child.id, { x, y });
-        });
-      });
+      if (!silent) {
+        const patternLabels: Record<LayoutPattern, string> = {
+          radial: 'Radial 360°',
+          balanced: 'Balanced L/R',
+          right: 'Flow Right',
+        };
+        toast.success(`Organized in ${patternLabels[pattern]} layout ✓`);
+      }
+    }
+  }, [nodes, activeLayoutPattern, setFlowNodes, saveBatchChanges, fitView]);
 
-      (['top', 'bottom'] as const).forEach((side) => {
-        const list = grouped[side];
-        list.sort((a, b) => a.order - b.order);
-        list.forEach((child, index) => {
-          const x = parentPos.x + (index - (list.length - 1) / 2) * STACK_GAP_HORIZONTAL;
-          const y = side === 'top' ? parentPos.y - SIDE_GAP_Y : parentPos.y + SIDE_GAP_Y;
-          nextPos.set(child.id, { x, y });
-        });
-      });
-
-      children.forEach((child) => assign(child));
-    };
-
-    assign(root);
-
-    setFlowNodes((prev) => prev.map((n) => ({ ...n, position: nextPos.get(n.id) || n.position })));
-
-    const updates = nodes
-      .map((node) => {
-        const position = nextPos.get(node.id);
-        if (!position) return null;
-        if (!node.parentId) return { id: node.id, position };
-        const parentPos = nextPos.get(node.parentId) || flowNodePositionMap.get(node.parentId);
-        if (!parentPos) return { id: node.id, position };
-        return { id: node.id, position, direction: getDirectionFromPoints(parentPos, position) };
-      })
-      .filter((u) => u !== null) as Array<{ id: string; position: { x: number; y: number }; direction?: NodeDirection }>;
-
-    await saveNodePositions(updates);
-    toast.success('Canvas tidied');
-  }, [flowNodePositionMap, getDirectionFromPoints, nodes, saveNodePositions, setFlowNodes]);
+  // Auto-layout detection: If nodes lack saved positions (e.g. freshly created via MCP), auto-layout and persist
+  useEffect(() => {
+    if (!nodes.length || isReadOnly || !mapId) return;
+    const unpositionedNodes = nodes.filter((n) => n.type !== 'root' && !n.position);
+    if (unpositionedNodes.length > 0) {
+      handleTidyUp(activeLayoutPattern, true);
+    }
+  }, [nodes, isReadOnly, mapId, activeLayoutPattern, handleTidyUp]);
 
   const handleShare = useCallback(async () => {
     if (!mapId) return;
@@ -657,6 +641,10 @@ export function MindmapCanvas() {
         onFitView={() => fitView({ duration: 500, padding: 0.2 })} 
         onAddBranch={handleAddBranch}
         onTidyUp={handleTidyUp}
+        layoutPattern={activeLayoutPattern}
+        onLayoutPatternChange={(pattern) => {
+          if (mapId) setLayoutPattern(mapId, pattern);
+        }}
       />
       <div className="flex-1 w-full bg-bg relative">
         <ReactFlow

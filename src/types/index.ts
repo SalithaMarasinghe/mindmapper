@@ -1,5 +1,6 @@
 export type NodeType = 'root' | 'branch' | 'leaf';
 export type NodeDirection = 'left' | 'right' | 'top' | 'bottom';
+export type LayoutPattern = 'radial' | 'balanced' | 'right';
 
 export interface Waypoint {
   id: string;
