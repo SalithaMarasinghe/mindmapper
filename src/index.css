@@ -291,8 +291,18 @@ body {
 /* =====================================================
    FULL WIDTH EDITOR AREA
    ===================================================== */
+.node-page-fullwidth {
+  width: 100%;
+  height: calc(100vh - 3.5rem);
+  height: calc(100dvh - 3.5rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 .node-editor-full {
   width: 100%;
+  min-height: 100%;
   padding: 1.5rem 2rem 1.5rem 2.5rem;
 }
 

@@ -177,14 +177,10 @@ export function NodePage() {
   );
 
   return (
-    <div
-      className="nodrag nowheel nopan flex flex-col min-h-screen bg-[#000000] font-sans"
-      onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
+    <div className="flex flex-col h-screen h-[100dvh] bg-[#000000] font-sans overflow-hidden">
       <AppHeader leftContent={LeftContent} />
 
-      <div className="node-page-fullwidth pt-14 min-h-screen relative">
+      <div className="node-page-fullwidth mt-14 flex-1 min-h-0 overflow-y-auto relative">
         <button
           onClick={() => setPanelOpen((p) => !p)}
           className="panel-toggle-tab"

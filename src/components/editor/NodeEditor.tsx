@@ -144,7 +144,7 @@ export function NodeEditor({
   };
 
   return (
-    <div className="node-study-page flex flex-col h-full bg-bg w-full pb-16">
+    <div className="node-study-page flex flex-col min-h-full bg-bg w-full pb-16">
       <div className="node-page-header flex items-center justify-between py-4 px-1 xl:px-4 sticky top-0 bg-bg/95 backdrop-blur z-10 border-b border-border mb-4">
         <h1 className="text-xl font-bold text-text tracking-tight flex items-center gap-3">
           {currentNode?.label || 'Study Material'}
