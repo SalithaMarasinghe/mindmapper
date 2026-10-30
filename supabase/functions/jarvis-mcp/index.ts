@@ -543,8 +543,57 @@ const JARVIS_TOOLS = [
     },
   },
   {
+    name: 'jarvis_create_mindmap',
+    description: 'Creates a new Mind Map with title, optional emoji, color, tags, and description. Automatically creates the root canvas node so branches can be attached immediately.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Title of the mind map (e.g. "DP-700: Microsoft Fabric Data Engineer").',
+        },
+        emoji: {
+          type: 'string',
+          description: 'Optional emoji icon for the map (default: "🧠").',
+        },
+        color: {
+          type: 'string',
+          description: 'Optional hex color theme for the map (default: "#01696f").',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional array of tags (e.g. ["DP-700", "Fabric", "DataEngineering"]).',
+        },
+        description: {
+          type: 'string',
+          description: 'Optional summary or learning goal for this mind map.',
+        },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'jarvis_get_mindmap',
+    description: 'Retrieves the complete tree hierarchy of a mind map, including its root node, branches, subtopics (leaves), node IDs, and study completion status. Essential for inspecting where to attach new subtopics.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mapId: {
+          type: 'string',
+          description: 'UUID or fuzzy title of the mind map.',
+        },
+        includeContent: {
+          type: 'boolean',
+          description: 'If true, also includes study note previews for each node.',
+        },
+      },
+      required: ['mapId'],
+    },
+  },
+  {
     name: 'jarvis_add_mindmap_node',
-    description: 'Adds a concept node to a Mind Map directly from an IDE discussion or research session.',
+    description: 'Adds a main branch or subtopic leaf to a Mind Map, with optional standalone study notes in Markdown. Automatically converts Markdown into native BlockNote rich text blocks for the web editor.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -554,18 +603,109 @@ const JARVIS_TOOLS = [
         },
         label: {
           type: 'string',
-          description: 'Text or concept name for the node.',
+          description: 'Text/concept label for the node (e.g. "Lakehouse vs Warehouse", "Delta Lake V-Order").',
         },
         parentNodeId: {
           type: 'string',
-          description: 'Optional parent node UUID.',
+          description: 'Optional parent node UUID. If omitted or set to root, the node becomes a main branch.',
+        },
+        markdown: {
+          type: 'string',
+          description: 'Optional full standalone study guide / notes in Markdown (headings, code blocks, bullet points, callouts). Rendered natively when the user clicks the node.',
         },
         emoji: {
           type: 'string',
-          description: 'Optional emoji for the node (e.g. "🧠", "⚡").',
+          description: 'Optional emoji for the node (e.g. "📦", "⚡", "🎯").',
+        },
+        color: {
+          type: 'string',
+          description: 'Optional hex color for the branch or node (e.g. "#01696f").',
+        },
+        direction: {
+          type: 'string',
+          enum: ['left', 'right', 'top', 'bottom'],
+          description: 'Optional canvas layout direction relative to parent.',
         },
       },
       required: ['mapId', 'label'],
+    },
+  },
+  {
+    name: 'jarvis_update_mindmap_node',
+    description: 'Updates an existing mind map node label, color, emoji, or replaces/appends to its markdown study notes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mapId: {
+          type: 'string',
+          description: 'UUID or title of the mind map.',
+        },
+        nodeId: {
+          type: 'string',
+          description: 'UUID or label of the node to update.',
+        },
+        label: {
+          type: 'string',
+          description: 'Optional new label for the node.',
+        },
+        markdown: {
+          type: 'string',
+          description: 'Optional new or updated Markdown study notes for the node.',
+        },
+        appendMarkdown: {
+          type: 'boolean',
+          description: 'If true, appends the markdown to existing notes instead of overwriting.',
+        },
+        emoji: {
+          type: 'string',
+          description: 'Optional new emoji.',
+        },
+        color: {
+          type: 'string',
+          description: 'Optional new color.',
+        },
+        isCompleted: {
+          type: 'boolean',
+          description: 'Optional boolean to mark this node as studied / complete.',
+        },
+      },
+      required: ['mapId', 'nodeId'],
+    },
+  },
+  {
+    name: 'jarvis_get_mindmap_node',
+    description: 'Retrieves a single mind map node with its full standalone Markdown study notes, completion status, and parent branch info.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mapId: {
+          type: 'string',
+          description: 'UUID or title of the mind map.',
+        },
+        nodeId: {
+          type: 'string',
+          description: 'UUID or label of the node.',
+        },
+      },
+      required: ['mapId', 'nodeId'],
+    },
+  },
+  {
+    name: 'jarvis_delete_mindmap_node',
+    description: 'Deletes a node from a mind map and cleans up all its child nodes and associated study notes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mapId: {
+          type: 'string',
+          description: 'UUID or title of the mind map.',
+        },
+        nodeId: {
+          type: 'string',
+          description: 'UUID or label of the node to delete.',
+        },
+      },
+      required: ['mapId', 'nodeId'],
     },
   },
 
@@ -1005,14 +1145,322 @@ async function resolveEventId(supabase: any, userId: string, identifier: string)
   return data?.[0] || null;
 }
 
-async function resolveMindmapId(supabase: any, userId: string, identifier: string): Promise<{ id: string; title: string; node_count: number } | null> {
+const DEFAULT_BRANCH_COLORS = [
+  '#01696f',
+  '#437a22',
+  '#964219',
+  '#006494',
+  '#7a39bb',
+];
+
+interface BlockNoteInline {
+  type: 'text' | 'link';
+  text?: string;
+  href?: string;
+  content?: BlockNoteInline[];
+  styles?: {
+    bold?: boolean;
+    italic?: boolean;
+    strike?: boolean;
+    code?: boolean;
+    underline?: boolean;
+  };
+}
+
+interface BlockNoteBlock {
+  id: string;
+  type: 'heading' | 'paragraph' | 'bulletListItem' | 'numberedListItem' | 'codeBlock' | 'quote' | 'divider';
+  props?: Record<string, unknown>;
+  content?: BlockNoteInline[];
+  children?: BlockNoteBlock[];
+}
+
+function parseInlineMarkdown(text: string): BlockNoteInline[] {
+  if (!text) return [];
+
+  const tokenRegex = /(\[([^\]]+)\]\(([^)]+)\))|(\*\*\*([^*]+)\*\*\*)|(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(`([^`]+)`)|(~~([^~]+)~~)/g;
+  const inlines: BlockNoteInline[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      inlines.push({
+        type: 'text',
+        text: text.slice(lastIndex, match.index),
+        styles: {},
+      });
+    }
+
+    if (match[1]) {
+      // Link [text](url)
+      inlines.push({
+        type: 'link',
+        href: match[3],
+        content: [{ type: 'text', text: match[2], styles: {} }],
+      });
+    } else if (match[4]) {
+      // Bold + Italic ***text***
+      inlines.push({
+        type: 'text',
+        text: match[5],
+        styles: { bold: true, italic: true },
+      });
+    } else if (match[6]) {
+      // Bold **text**
+      inlines.push({
+        type: 'text',
+        text: match[7],
+        styles: { bold: true },
+      });
+    } else if (match[8]) {
+      // Italic *text*
+      inlines.push({
+        type: 'text',
+        text: match[9],
+        styles: { italic: true },
+      });
+    } else if (match[10]) {
+      // Inline Code `text`
+      inlines.push({
+        type: 'text',
+        text: match[11],
+        styles: { code: true },
+      });
+    } else if (match[12]) {
+      // Strikethrough ~~text~~
+      inlines.push({
+        type: 'text',
+        text: match[13],
+        styles: { strike: true },
+      });
+    }
+
+    lastIndex = tokenRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    inlines.push({
+      type: 'text',
+      text: text.slice(lastIndex),
+      styles: {},
+    });
+  }
+
+  return inlines.length > 0 ? inlines : [{ type: 'text', text: '', styles: {} }];
+}
+
+function markdownToBlockNote(markdown: string): BlockNoteBlock[] {
+  if (!markdown || !markdown.trim()) {
+    return [
+      {
+        id: crypto.randomUUID(),
+        type: 'paragraph',
+        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+        content: [],
+        children: [],
+      },
+    ];
+  }
+
+  const lines = markdown.split(/\r?\n/);
+  const blocks: BlockNoteBlock[] = [];
+  let inCodeBlock = false;
+  let codeLanguage = 'python';
+  let codeLines: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    // Fenced code blocks
+    if (trimmed.startsWith('```')) {
+      if (!inCodeBlock) {
+        inCodeBlock = true;
+        const lang = trimmed.slice(3).trim().toLowerCase();
+        codeLanguage = lang === 'py' || lang === 'python3' ? 'python' : lang === 'sql' ? 'sql' : lang || 'python';
+        codeLines = [];
+        continue;
+      } else {
+        inCodeBlock = false;
+        blocks.push({
+          id: crypto.randomUUID(),
+          type: 'codeBlock',
+          props: { language: codeLanguage, textColor: 'default' },
+          content: [{ type: 'text', text: codeLines.join('\n'), styles: {} }],
+          children: [],
+        });
+        continue;
+      }
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(rawLine);
+      continue;
+    }
+
+    // Skip empty lines to prevent excessive blank blocks
+    if (!trimmed) {
+      continue;
+    }
+
+    // Dividers (--- or ***)
+    if (/^(\-{3,}|\*{3,})$/.test(trimmed)) {
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'divider',
+        props: {},
+        children: [],
+      });
+      continue;
+    }
+
+    // Headings: # H1, ## H2, ### H3, #### H4
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const level = Math.min(headingMatch[1].length, 3);
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'heading',
+        props: {
+          level,
+          textColor: 'default',
+          backgroundColor: 'default',
+          textAlignment: 'left',
+          isToggleable: false,
+        },
+        content: parseInlineMarkdown(headingMatch[2]),
+        children: [],
+      });
+      continue;
+    }
+
+    // Blockquote: > text
+    if (trimmed.startsWith('>')) {
+      const quoteText = trimmed.replace(/^>\s*/, '');
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'quote',
+        props: { textColor: 'default', backgroundColor: 'default' },
+        content: parseInlineMarkdown(quoteText),
+        children: [],
+      });
+      continue;
+    }
+
+    // Bullet list: - item, * item
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+    if (bulletMatch) {
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'bulletListItem',
+        props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+        content: parseInlineMarkdown(bulletMatch[1]),
+        children: [],
+      });
+      continue;
+    }
+
+    // Numbered list: 1. item
+    const numMatch = trimmed.match(/^(\d+)[.)]\s+(.*)$/);
+    if (numMatch) {
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'numberedListItem',
+        props: {
+          start: parseInt(numMatch[1], 10),
+          textColor: 'default',
+          backgroundColor: 'default',
+          textAlignment: 'left',
+        },
+        content: parseInlineMarkdown(numMatch[2]),
+        children: [],
+      });
+      continue;
+    }
+
+    // Regular paragraph
+    blocks.push({
+      id: crypto.randomUUID(),
+      type: 'paragraph',
+      props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+      content: parseInlineMarkdown(trimmed),
+      children: [],
+    });
+  }
+
+  // If code block was unclosed
+  if (inCodeBlock && codeLines.length > 0) {
+    blocks.push({
+      id: crypto.randomUUID(),
+      type: 'codeBlock',
+      props: { language: codeLanguage, textColor: 'default' },
+      content: [{ type: 'text', text: codeLines.join('\n'), styles: {} }],
+      children: [],
+    });
+  }
+
+  return blocks.length > 0
+    ? blocks
+    : [
+        {
+          id: crypto.randomUUID(),
+          type: 'paragraph',
+          props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
+          content: [],
+          children: [],
+        },
+      ];
+}
+
+async function resolveMindmapId(
+  supabase: any,
+  userId: string,
+  identifier: string
+): Promise<{ id: string; title: string; node_count: number; emoji?: string; color?: string; description?: string; tags?: string[]; completed_count?: number } | null> {
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
   if (isUUID) {
-    const { data } = await supabase.from('mindmaps').select('id, title, node_count').eq('id', identifier).eq('user_id', userId).maybeSingle();
+    const { data } = await supabase
+      .from('mindmaps')
+      .select('id, title, node_count, emoji, color, description, tags, completed_count')
+      .eq('id', identifier)
+      .eq('user_id', userId)
+      .maybeSingle();
     return data || null;
   }
   const clean = identifier.replace(/\b(the|map|mindmap)\b/gi, '').trim();
-  const { data } = await supabase.from('mindmaps').select('id, title, node_count').eq('user_id', userId).ilike('title', `%${clean || identifier}%`).limit(1);
+  const { data } = await supabase
+    .from('mindmaps')
+    .select('id, title, node_count, emoji, color, description, tags, completed_count')
+    .eq('user_id', userId)
+    .ilike('title', `%${clean || identifier}%`)
+    .limit(1);
+  return data?.[0] || null;
+}
+
+async function resolveNodeId(
+  supabase: any,
+  mapId: string,
+  identifier: string
+): Promise<{ id: string; label: string; parent_id: string | null; type: string; color: string | null; emoji: string | null } | null> {
+  if (!identifier) return null;
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+  if (isUUID) {
+    const { data } = await supabase
+      .from('nodes')
+      .select('id, label, parent_id, type, color, emoji')
+      .eq('id', identifier)
+      .eq('map_id', mapId)
+      .maybeSingle();
+    return data || null;
+  }
+  const clean = identifier.replace(/\b(the|node|topic|subtopic)\b/gi, '').trim();
+  const { data } = await supabase
+    .from('nodes')
+    .select('id, label, parent_id, type, color, emoji')
+    .eq('map_id', mapId)
+    .ilike('label', `%${clean || identifier}%`)
+    .limit(1);
   return data?.[0] || null;
 }
 
@@ -2107,7 +2555,7 @@ ${actionItems.map((a: any) => `- ${typeof a === 'string' ? a : a.text} (Priority
     case 'jarvis_list_mindmaps': {
       const { data: maps, error } = await supabase
         .from('mindmaps')
-        .select('id, title, emoji, color, node_count, updated_at')
+        .select('id, title, emoji, color, tags, description, node_count, completed_count, updated_at')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false });
 
@@ -2118,39 +2566,496 @@ ${actionItems.map((a: any) => `- ${typeof a === 'string' ? a : a.text} (Priority
       };
     }
 
-    case 'jarvis_add_mindmap_node': {
-      const map = await resolveMindmapId(supabase, userId, args.mapId);
-      if (!map) return { success: false, error: `Mind Map "${args.mapId}" not found.` };
+    case 'jarvis_create_mindmap': {
+      const title = args.title?.trim();
+      if (!title) throw new Error('Mind map title is required.');
+      const emoji = args.emoji?.trim() || '🧠';
+      const color = args.color?.trim() || '#01696f';
+      const tags = Array.isArray(args.tags) ? args.tags : [];
+      const description = args.description?.trim() || null;
 
-      const { data: node, error } = await supabase
-        .from('nodes')
+      const { data: newMap, error: mapErr } = await supabase
+        .from('mindmaps')
         .insert({
-          map_id: map.id,
           user_id: userId,
-          label: args.label,
-          parent_id: args.parentNodeId || null,
-          emoji: args.emoji || null,
-          type: 'topic',
-          order_index: (map.node_count || 0) + 1,
+          title,
+          emoji,
+          color,
+          tags,
+          description,
+          node_count: 1,
+          completed_count: 0,
+          created_at: nowISO,
+          updated_at: nowISO,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (mapErr) throw mapErr;
 
-      // Increment node_count on map
+      // Automatically create root node for the new mind map
+      const { data: rootNode, error: rootErr } = await supabase
+        .from('nodes')
+        .insert({
+          map_id: newMap.id,
+          user_id: userId,
+          label: title,
+          type: 'root',
+          parent_id: null,
+          order_index: 0,
+          color,
+          bg_color: '',
+          emoji,
+        })
+        .select()
+        .single();
+
+      if (rootErr) throw rootErr;
+
+      return {
+        success: true,
+        message: `Created mind map "${title}" with root node.`,
+        mapId: newMap.id,
+        rootNodeId: rootNode.id,
+        title: newMap.title,
+        emoji: newMap.emoji,
+        color: newMap.color,
+      };
+    }
+
+    case 'jarvis_get_mindmap': {
+      const map = await resolveMindmapId(supabase, userId, args.mapId);
+      if (!map) return { success: false, error: `Mind Map "${args.mapId}" not found.` };
+
+      const { data: fullMap, error: mapErr } = await supabase
+        .from('mindmaps')
+        .select('*')
+        .eq('id', map.id)
+        .single();
+      if (mapErr) throw mapErr;
+
+      const { data: nodes, error: nodesErr } = await supabase
+        .from('nodes')
+        .select('id, label, parent_id, type, order_index, color, emoji, position_x, position_y, direction')
+        .eq('map_id', map.id)
+        .order('order_index', { ascending: true });
+      if (nodesErr) throw nodesErr;
+
+      // Fetch node_content metadata to know which nodes have notes/completion
+      const { data: contents } = await supabase
+        .from('node_content')
+        .select('node_id, is_completed, notes, last_edited')
+        .eq('map_id', map.id);
+
+      const contentMap = new Map<string, { is_completed: boolean; notes_length: number; preview?: string }>();
+      (contents || []).forEach((c: any) => {
+        contentMap.set(c.node_id, {
+          is_completed: Boolean(c.is_completed),
+          notes_length: c.notes?.length || 0,
+          preview: args.includeContent && c.notes ? c.notes.slice(0, 200) + (c.notes.length > 200 ? '...' : '') : undefined,
+        });
+      });
+
+      const rootNode = (nodes || []).find((n: any) => n.type === 'root');
+      const branches = (nodes || [])
+        .filter((n: any) => n.parent_id === rootNode?.id || (n.type === 'branch' && n.id !== rootNode?.id))
+        .map((b: any) => {
+          const leaves = (nodes || []).filter((l: any) => l.parent_id === b.id);
+          return {
+            id: b.id,
+            label: b.label,
+            emoji: b.emoji,
+            color: b.color,
+            contentMeta: contentMap.get(b.id) || { is_completed: false, notes_length: 0 },
+            subtopics: leaves.map((l: any) => ({
+              id: l.id,
+              label: l.label,
+              emoji: l.emoji,
+              color: l.color,
+              contentMeta: contentMap.get(l.id) || { is_completed: false, notes_length: 0 },
+            })),
+          };
+        });
+
+      return {
+        success: true,
+        map: {
+          id: fullMap.id,
+          title: fullMap.title,
+          emoji: fullMap.emoji,
+          color: fullMap.color,
+          tags: fullMap.tags || [],
+          description: fullMap.description,
+          nodeCount: nodes?.length || 0,
+          completedCount: fullMap.completed_count || 0,
+          updatedAt: fullMap.updated_at,
+        },
+        rootNode: rootNode ? { id: rootNode.id, label: rootNode.label, emoji: rootNode.emoji } : null,
+        tree: branches,
+        totalNodes: nodes?.length || 0,
+      };
+    }
+
+    case 'jarvis_add_mindmap_node': {
+      const map = await resolveMindmapId(supabase, userId, args.mapId);
+      if (!map) return { success: false, error: `Mind Map "${args.mapId}" not found.` };
+
+      const label = args.label?.trim();
+      if (!label) throw new Error('Node label is required.');
+
+      // Find root node of map
+      const { data: rootNode } = await supabase
+        .from('nodes')
+        .select('id, color')
+        .eq('map_id', map.id)
+        .eq('type', 'root')
+        .maybeSingle();
+
+      let parentId = args.parentNodeId?.trim() || null;
+      let parentNode: any = null;
+
+      if (parentId) {
+        parentNode = await resolveNodeId(supabase, map.id, parentId);
+        if (parentNode) {
+          parentId = parentNode.id;
+        }
+      }
+
+      // If no parent given or parent not found, attach to root node
+      if (!parentId && rootNode) {
+        parentId = rootNode.id;
+        parentNode = rootNode;
+      }
+
+      const isParentRoot = Boolean(rootNode && parentId === rootNode.id);
+      const nodeType = isParentRoot ? 'branch' : 'leaf';
+
+      // Determine color
+      let nodeColor = args.color?.trim() || '';
+      if (!nodeColor) {
+        if (nodeType === 'branch') {
+          const { data: branchNodes } = await supabase
+            .from('nodes')
+            .select('id')
+            .eq('map_id', map.id)
+            .eq('type', 'branch');
+          const branchCount = branchNodes?.length || 0;
+          nodeColor = DEFAULT_BRANCH_COLORS[branchCount % DEFAULT_BRANCH_COLORS.length];
+        } else if (parentNode?.color) {
+          nodeColor = parentNode.color;
+        } else {
+          nodeColor = DEFAULT_BRANCH_COLORS[0];
+        }
+      }
+
+      // Query existing sibling count for order_index
+      const { data: siblings } = await supabase
+        .from('nodes')
+        .select('order_index')
+        .eq('map_id', map.id)
+        .eq('parent_id', parentId);
+      const nextOrder = (siblings?.length || 0);
+
+      const nodePayload: any = {
+        map_id: map.id,
+        user_id: userId,
+        label,
+        parent_id: parentId,
+        emoji: args.emoji?.trim() || null,
+        type: nodeType,
+        color: nodeColor,
+        bg_color: '',
+        order_index: nextOrder,
+      };
+
+      if (args.direction) {
+        nodePayload.direction = args.direction;
+      }
+
+      const { data: node, error: nodeErr } = await supabase
+        .from('nodes')
+        .insert(nodePayload)
+        .select()
+        .single();
+
+      if (nodeErr) throw nodeErr;
+
+      let hasNotes = false;
+      if (args.markdown && typeof args.markdown === 'string' && args.markdown.trim()) {
+        const blocks = markdownToBlockNote(args.markdown);
+        const { error: contentErr } = await supabase
+          .from('node_content')
+          .upsert({
+            node_id: node.id,
+            map_id: map.id,
+            user_id: userId,
+            rich_content: blocks,
+            notes: args.markdown.trim(),
+            definition: '',
+            key_points: [],
+            mental_model: '',
+            good_example: '',
+            bad_example: '',
+            resources: [],
+            is_completed: false,
+            last_edited: nowISO,
+            created_at: nowISO,
+          }, { onConflict: 'node_id' });
+
+        if (contentErr) {
+          console.error('Error saving node_content:', contentErr);
+        } else {
+          hasNotes = true;
+        }
+      }
+
+      // Update node_count on mindmaps table
+      const { count } = await supabase
+        .from('nodes')
+        .select('id', { count: 'exact', head: true })
+        .eq('map_id', map.id);
+
       await supabase
         .from('mindmaps')
         .update({
-          node_count: (map.node_count || 0) + 1,
+          node_count: count || (map.node_count || 0) + 1,
           updated_at: nowISO,
         })
         .eq('id', map.id);
 
       return {
         success: true,
-        message: `Added node "${args.label}" to mindmap "${map.title}".`,
+        message: `Added ${nodeType} node "${label}" to mindmap "${map.title}"${hasNotes ? ' with standalone study notes' : ''}.`,
         nodeId: node.id,
+        mapId: map.id,
+        label: node.label,
+        type: nodeType,
+        parentId: node.parent_id,
+        color: node.color,
+        hasNotes,
+      };
+    }
+
+    case 'jarvis_update_mindmap_node': {
+      const map = await resolveMindmapId(supabase, userId, args.mapId);
+      if (!map) return { success: false, error: `Mind Map "${args.mapId}" not found.` };
+
+      const target = await resolveNodeId(supabase, map.id, args.nodeId);
+      if (!target) return { success: false, error: `Node "${args.nodeId}" not found in mindmap "${map.title}".` };
+
+      const nodeUpdates: any = {};
+      if (args.label !== undefined) nodeUpdates.label = args.label.trim();
+      if (args.emoji !== undefined) nodeUpdates.emoji = args.emoji ? args.emoji.trim() : null;
+      if (args.color !== undefined) nodeUpdates.color = args.color.trim();
+
+      if (Object.keys(nodeUpdates).length > 0) {
+        const { error: updateErr } = await supabase
+          .from('nodes')
+          .update(nodeUpdates)
+          .eq('id', target.id);
+        if (updateErr) throw updateErr;
+      }
+
+      // Markdown / study notes update
+      let updatedNotes = false;
+      if (args.markdown !== undefined && typeof args.markdown === 'string') {
+        let finalMarkdown = args.markdown.trim();
+        if (args.appendMarkdown) {
+          const { data: existingContent } = await supabase
+            .from('node_content')
+            .select('notes')
+            .eq('node_id', target.id)
+            .maybeSingle();
+          if (existingContent?.notes) {
+            finalMarkdown = `${existingContent.notes}\n\n${finalMarkdown}`;
+          }
+        }
+
+        const blocks = markdownToBlockNote(finalMarkdown);
+        const { error: contentErr } = await supabase
+          .from('node_content')
+          .upsert({
+            node_id: target.id,
+            map_id: map.id,
+            user_id: userId,
+            rich_content: blocks,
+            notes: finalMarkdown,
+            last_edited: nowISO,
+          }, { onConflict: 'node_id' });
+
+        if (contentErr) throw contentErr;
+        updatedNotes = true;
+      }
+
+      // Completion status update
+      if (args.isCompleted !== undefined) {
+        const isCompleted = Boolean(args.isCompleted);
+        await supabase
+          .from('node_content')
+          .upsert({
+            node_id: target.id,
+            map_id: map.id,
+            user_id: userId,
+            is_completed: isCompleted,
+            completed_at: isCompleted ? nowISO : null,
+            last_edited: nowISO,
+          }, { onConflict: 'node_id' });
+
+        // Recalculate completed_count
+        const { data: completedRows } = await supabase
+          .from('node_content')
+          .select('id')
+          .eq('map_id', map.id)
+          .eq('is_completed', true);
+
+        await supabase
+          .from('mindmaps')
+          .update({
+            completed_count: completedRows?.length || 0,
+            updated_at: nowISO,
+          })
+          .eq('id', map.id);
+      }
+
+      await supabase
+        .from('mindmaps')
+        .update({ updated_at: nowISO })
+        .eq('id', map.id);
+
+      return {
+        success: true,
+        message: `Updated node "${args.label || target.label}" in mindmap "${map.title}".`,
+        nodeId: target.id,
+        mapId: map.id,
+        updatedNotes,
+        isCompleted: args.isCompleted,
+      };
+    }
+
+    case 'jarvis_get_mindmap_node': {
+      const map = await resolveMindmapId(supabase, userId, args.mapId);
+      if (!map) return { success: false, error: `Mind Map "${args.mapId}" not found.` };
+
+      const target = await resolveNodeId(supabase, map.id, args.nodeId);
+      if (!target) return { success: false, error: `Node "${args.nodeId}" not found in mindmap "${map.title}".` };
+
+      const { data: node, error: nodeErr } = await supabase
+        .from('nodes')
+        .select('*')
+        .eq('id', target.id)
+        .single();
+      if (nodeErr) throw nodeErr;
+
+      let parentNode = null;
+      if (node.parent_id) {
+        const { data: parent } = await supabase
+          .from('nodes')
+          .select('id, label, emoji, type')
+          .eq('id', node.parent_id)
+          .maybeSingle();
+        parentNode = parent || null;
+      }
+
+      const { data: content } = await supabase
+        .from('node_content')
+        .select('*')
+        .eq('node_id', target.id)
+        .maybeSingle();
+
+      return {
+        success: true,
+        node: {
+          id: node.id,
+          label: node.label,
+          emoji: node.emoji,
+          type: node.type,
+          color: node.color,
+          direction: node.direction,
+          parent: parentNode,
+        },
+        content: content ? {
+          notes: content.notes || '',
+          isCompleted: content.is_completed || false,
+          completedAt: content.completed_at,
+          lastEdited: content.last_edited,
+          blockCount: Array.isArray(content.rich_content) ? content.rich_content.length : 0,
+        } : {
+          notes: '',
+          isCompleted: false,
+          blockCount: 0,
+        },
+      };
+    }
+
+    case 'jarvis_delete_mindmap_node': {
+      const map = await resolveMindmapId(supabase, userId, args.mapId);
+      if (!map) return { success: false, error: `Mind Map "${args.mapId}" not found.` };
+
+      const target = await resolveNodeId(supabase, map.id, args.nodeId);
+      if (!target) return { success: false, error: `Node "${args.nodeId}" not found in mindmap "${map.title}".` };
+
+      if (target.type === 'root') {
+        return { success: false, error: 'Cannot delete the root node of a mind map. Delete the mind map itself instead.' };
+      }
+
+      // Collect all descendant IDs recursively
+      const { data: allNodes } = await supabase
+        .from('nodes')
+        .select('id, parent_id')
+        .eq('map_id', map.id);
+
+      const toDelete = new Set<string>([target.id]);
+      let added = true;
+      while (added) {
+        added = false;
+        for (const n of allNodes || []) {
+          if (n.parent_id && toDelete.has(n.parent_id) && !toDelete.has(n.id)) {
+            toDelete.add(n.id);
+            added = true;
+          }
+        }
+      }
+
+      const deleteIds = Array.from(toDelete);
+
+      // Delete node_content rows
+      await supabase
+        .from('node_content')
+        .delete()
+        .in('node_id', deleteIds);
+
+      // Delete nodes rows
+      const { error: delErr } = await supabase
+        .from('nodes')
+        .delete()
+        .in('id', deleteIds);
+      if (delErr) throw delErr;
+
+      // Recalculate node_count and completed_count
+      const { count } = await supabase
+        .from('nodes')
+        .select('id', { count: 'exact', head: true })
+        .eq('map_id', map.id);
+
+      const { data: completedRows } = await supabase
+        .from('node_content')
+        .select('id')
+        .eq('map_id', map.id)
+        .eq('is_completed', true);
+
+      await supabase
+        .from('mindmaps')
+        .update({
+          node_count: count || 0,
+          completed_count: completedRows?.length || 0,
+          updated_at: nowISO,
+        })
+        .eq('id', map.id);
+
+      return {
+        success: true,
+        message: `Deleted node "${target.label}" and ${deleteIds.length - 1} subtopics from mindmap "${map.title}".`,
+        deletedNodeCount: deleteIds.length,
       };
     }
 
